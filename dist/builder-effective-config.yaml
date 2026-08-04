@@ -1,0 +1,15 @@
+directories:
+  output: dist
+  buildResources: build
+appId: com.kisekirecord.app
+productName: Kiseki Record
+files:
+  - filter:
+      - out/**/*
+win:
+  target: nsis
+  icon: build/icon.ico
+nsis:
+  oneClick: false
+  allowToChangeInstallationDirectory: true
+electronVersion: 31.7.7
