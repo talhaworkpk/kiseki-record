@@ -1,4 +1,5 @@
 import { useState, useEffect } from 'react'
+import { createPortal } from 'react-dom'
 import { X, Calendar as CalendarIcon, MapPin, Users, Image as ImageIcon, FileText, Download, Copy, Edit2, Trash2, Folder, PlayCircle } from 'lucide-react'
 
 interface MemoryPreviewModalProps {
@@ -88,8 +89,8 @@ export default function MemoryPreviewModal({ isOpen, onClose, memory, relationsh
     const currentMedia = visualMedia[slideIndex]
     const isVideo = currentMedia?.match(/\.(mp4|webm|ogg|mov)$/i)
 
-    return (
-      <div className="fixed inset-0 bg-black z-[100] flex flex-col items-center justify-center animate-in fade-in duration-1000">
+    return createPortal(
+      <div className="fixed inset-0 bg-black z-[9999] flex flex-col items-center justify-center animate-in fade-in duration-1000">
         <button onClick={() => setSlideshowActive(false)} className="absolute top-6 right-6 p-3 bg-white/10 hover:bg-white/30 text-white rounded-full backdrop-blur-sm transition-colors z-10">
           <X size={32} />
         </button>
@@ -112,13 +113,17 @@ export default function MemoryPreviewModal({ isOpen, onClose, memory, relationsh
         ) : (
           <div className="text-white text-2xl font-bold">No photos or videos to show.</div>
         )}
-      </div>
+      </div>,
+      document.body
     )
   }
 
-  return (
-    <div className="fixed inset-0 bg-background/90 backdrop-blur-sm z-50 flex items-center justify-center p-4">
-      <div className="bg-card border border-border w-full max-w-5xl h-[92vh] rounded-3xl shadow-2xl flex flex-col overflow-hidden animate-in zoom-in-95 duration-200">
+  return createPortal(
+    <div 
+      className="fixed inset-0 bg-background/90 backdrop-blur-sm z-[9999] flex items-center justify-center p-4"
+      onMouseDown={(e) => e.stopPropagation()}
+    >
+      <div className="bg-card border border-border w-full max-w-3xl h-auto max-h-[85vh] rounded-3xl shadow-2xl flex flex-col overflow-hidden animate-in zoom-in-95 duration-200">
         
         {/* Header */}
         <div className="px-8 py-6 border-b border-border flex justify-between items-start bg-card z-10 shrink-0">
@@ -151,7 +156,7 @@ export default function MemoryPreviewModal({ isOpen, onClose, memory, relationsh
               <div>
                 <h3 className="text-sm font-bold text-muted-foreground uppercase mb-4 flex items-center gap-2 tracking-widest"><FileText size={16}/> Story</h3>
                 <div 
-                  className="prose prose-invert max-w-none prose-sm md:prose-base bg-accent/20 p-8 rounded-3xl border border-border leading-loose" 
+                  className="prose dark:prose-invert text-foreground max-w-none prose-sm md:prose-base bg-accent/20 p-8 rounded-3xl border border-border leading-loose" 
                   dangerouslySetInnerHTML={{ __html: memory.description }} 
                 />
               </div>
@@ -257,7 +262,7 @@ export default function MemoryPreviewModal({ isOpen, onClose, memory, relationsh
 
             {/* Actions */}
             <div className="space-y-3">
-              <button onClick={onEdit} className="w-full flex items-center justify-center gap-2 py-3 bg-primary text-primary-foreground font-bold rounded-xl hover:scale-105 transition-transform shadow-lg shadow-primary/20">
+              <button onClick={onEdit} className="w-full flex items-center justify-center gap-2 py-3 bg-primary text-black font-bold rounded-xl hover:scale-105 transition-transform shadow-lg shadow-primary/20">
                 <Edit2 size={18}/> Edit Memory
               </button>
               <button onClick={onDuplicate} className="w-full flex items-center justify-center gap-2 py-3 bg-accent text-foreground font-bold rounded-xl hover:bg-accent/80 transition-colors">
@@ -275,6 +280,7 @@ export default function MemoryPreviewModal({ isOpen, onClose, memory, relationsh
         </div>
 
       </div>
-    </div>
+    </div>,
+    document.body
   )
 }
