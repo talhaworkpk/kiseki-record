@@ -160,9 +160,11 @@ export default function Dashboard() {
     
     if (savedOrder) {
       const parsed = JSON.parse(savedOrder)
+      // Filter out any stale widget IDs that are no longer in the registry
+      const validParsed = parsed.filter((k: string) => Object.keys(WIDGET_REGISTRY).includes(k))
       // Merge with new widgets that might have been added
-      const missing = Object.keys(WIDGET_REGISTRY).filter(k => !parsed.includes(k))
-      setWidgetOrder([...parsed, ...missing])
+      const missing = Object.keys(WIDGET_REGISTRY).filter(k => !validParsed.includes(k))
+      setWidgetOrder([...validParsed, ...missing])
     }
     
     if (savedVisibility) {
@@ -661,7 +663,7 @@ export default function Dashboard() {
           </div>
 
           {widgetOrder.map(id => {
-            if (!widgetVisibility[id]) return null
+            if (!widgetVisibility[id] || !WIDGET_REGISTRY[id]) return null
             const Component = WIDGET_REGISTRY[id].component
             const gridCol = WIDGET_REGISTRY[id].gridCol
             
