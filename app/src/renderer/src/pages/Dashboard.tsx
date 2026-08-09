@@ -683,7 +683,14 @@ export default function Dashboard() {
                   <svg width="10" height="6" viewBox="0 0 10 6" fill="currentColor" xmlns="http://www.w3.org/2000/svg"><circle cx="2" cy="2" r="1"/><circle cx="5" cy="2" r="1"/><circle cx="8" cy="2" r="1"/><circle cx="2" cy="5" r="1"/><circle cx="5" cy="5" r="1"/><circle cx="8" cy="5" r="1"/></svg>
                   Drag to reorder
                 </div>
-                <Component data={filteredData} />
+                <Component 
+                  data={filteredData} 
+                  calendarMemories={filteredData.calendarMemories}
+                  onOpenMemoryModal={(date: any) => {
+                    setMemoryModalDate(date)
+                    setIsMemoryModalOpen(true)
+                  }}
+                />
               </div>
             )
           })}
