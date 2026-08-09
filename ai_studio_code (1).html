@@ -1,0 +1,113 @@
+<!DOCTYPE html>
+<html>
+<head>
+<style>
+  :root {
+    --bg: #221f42;
+    --stair-color: #ffffff;
+    --stair-shadow: #d1d1d1;
+    --boy: #ffffff;
+    --speed: 1s;
+    /* This defines the diagonal distance of one step */
+    --step-x: 60px;
+    --step-y: 35px;
+  }
+
+  body { margin: 0; background: var(--bg); display: flex; justify-content: center; align-items: center; height: 100vh; overflow: hidden; }
+  svg { width: 800px; height: 600px; }
+
+  /* --- STAIR ANIMATION --- */
+  .stair-group {
+    animation: slide var(--speed) linear infinite;
+  }
+  @keyframes slide {
+    from { transform: translate(0, 0); }
+    to { transform: translate(calc(-1 * var(--step-x)), var(--step-y)); }
+  }
+
+  /* --- BOY ANIMATION --- */
+  .torso-group {
+    animation: bob var(--speed) ease-in-out infinite;
+  }
+  @keyframes bob {
+    0%, 100% { transform: translateY(0); }
+    50% { transform: translateY(-5px); }
+  }
+
+  /* --- SIMPLE LEG CLIMBING --- */
+  .leg { fill: none; stroke: var(--boy); stroke-width: 7; stroke-linecap: round; stroke-linejoin: round; }
+  .leg-back { opacity: 0.4; animation: climb var(--speed) linear infinite; animation-delay: calc(var(--speed) / -2); }
+  .leg-front { animation: climb var(--speed) linear infinite; }
+
+  @keyframes climb {
+    /* 0-50%: Foot is ON the step, sliding down-left */
+    0%   { d: path("M 0,0 L 5,20 L 10,40"); }   /* Start: Foot at front of step */
+    25%  { d: path("M 0,0 L -5,25 L -20,48"); } /* Mid: Foot sliding back */
+    50%  { d: path("M 0,0 L -15,25 L -50,55"); }/* End: Foot at back edge of step */
+
+    /* 50-100%: Foot LIFTS UP and reaches for the next step */
+    65%  { d: path("M 0,0 L 10,10 L 5,0"); }    /* LIFT: High knee to clear step */
+    85%  { d: path("M 0,0 L 25,15 L 45,20"); }   /* REACH: Extending forward */
+    100% { d: path("M 0,0 L 5,20 L 10,40"); }   /* LAND: Back on top */
+  }
+
+  /* --- ARMS (KEEPING THE ONES YOU LIKED) --- */
+  .arm { fill: none; stroke: var(--boy); stroke-width: 5; stroke-linecap: round; }
+  .arm-back { opacity: 0.4; animation: swing var(--speed) ease-in-out infinite; }
+  .arm-front { animation: swing var(--speed) ease-in-out infinite; animation-delay: calc(var(--speed) / -2); }
+
+  @keyframes swing {
+    0%, 100% { transform: rotate(-30deg); }
+    50% { transform: rotate(30deg); }
+  }
+
+</style>
+</head>
+<body>
+
+<svg viewBox="0 0 400 400">
+  <!-- STAIR DEFINITION (Thin Slab Style) -->
+  <defs>
+    <g id="thin-step">
+      <!-- Front Edge -->
+      <rect x="0" y="0" width="60" height="8" fill="var(--stair-shadow)" transform="skewY(-20)" />
+      <!-- Top Surface -->
+      <path d="M 0 0 L 40 -25 L 100 -25 L 60 0 Z" fill="var(--stair-color)" />
+    </g>
+  </defs>
+
+  <!-- MOVING STAIRCASE -->
+  <g class="stair-group">
+    <use href="#thin-step" x="300" y="50" />
+    <use href="#thin-step" x="240" y="85" />
+    <use href="#thin-step" x="180" y="120" />
+    <use href="#thin-step" x="120" y="155" />
+    <use href="#thin-step" x="60" y="190" />
+    <use href="#thin-step" x="0" y="225" />
+    <use href="#thin-step" x="-60" y="260" />
+  </g>
+
+  <!-- THE BOY -->
+  <g transform="translate(200, 145)">
+    
+    <!-- Far Leg -->
+    <path class="leg leg-back" d="M 0,0 L 5,20 L 10,40" />
+    
+    <g class="torso-group">
+      <!-- Head and Body -->
+      <circle cx="0" cy="-60" r="9" fill="var(--boy)" /> 
+      <line x1="0" y1="-51" x2="0" y2="0" stroke="var(--boy)" stroke-width="9" stroke-linecap="round" /> 
+      
+      <!-- Arms -->
+      <line class="arm arm-back" x1="0" y1="-40" x2="0" y2="-15" transform-origin="0 -40" />
+      <line class="arm arm-front" x1="0" y1="-40" x2="0" y2="-15" transform-origin="0 -40" />
+    </g>
+
+    <!-- Near Leg -->
+    <path class="leg leg-front" d="M 0,0 L 5,20 L 10,40" />
+    
+  </g>
+</svg>
+
+</body>
+</html>

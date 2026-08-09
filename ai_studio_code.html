@@ -1,0 +1,118 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <title>Jumping Progress - Contact Fixed</title>
+    <style>
+        :root {
+            --step: 40px; 
+            --speed: 0.8s; 
+            /* Synchronized curve for both stairs and jump */
+            --timing: cubic-bezier(0.45, 0.05, 0.55, 0.95);
+        }
+
+        body {
+            margin: 0;
+            background-color: white;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            height: 100vh;
+            overflow: hidden;
+        }
+
+        .canvas {
+            position: relative;
+            width: 600px;
+            height: 400px;
+            overflow: hidden;
+        }
+
+        /* STAIRS - Synced to the jump movement */
+        .stairs {
+            position: absolute;
+            bottom: -200px;
+            left: -100px;
+            width: 1200px;
+            z-index: 5;
+            animation: moveStairs var(--speed) var(--timing) infinite;
+        }
+
+        @keyframes moveStairs {
+            0%, 20% { transform: translate(0, 0); }
+            80%, 100% { transform: translate(calc(var(--step) * -1), var(--step)); }
+        }
+
+        /* STICK MAN - Height adjusted to touch the surface (176px) */
+        .man {
+            position: absolute;
+            bottom: 176px; 
+            left: 280px;
+            width: 100px;
+            height: 150px;
+        }
+
+        .limb {
+            fill: black;
+            stroke: white;
+            stroke-width: 3px;
+            stroke-linecap: round;
+            stroke-linejoin: round;
+        }
+
+        /* Hiding legs but keeping them in the DOM */
+        .legs-layer { display: none; }
+
+        /* JUMPING BODY - Squash and Stretch for impact */
+        .body-layer { 
+            z-index: 10; 
+            position: absolute; 
+            top: 0; 
+            left: 0; 
+            width: 100%; 
+            height: 100%;
+            transform-origin: bottom center;
+            animation: jump var(--speed) var(--timing) infinite; 
+        }
+
+        @keyframes jump {
+            0%   { transform: translateY(0) scaleY(1); }
+            20%  { transform: translateY(0) scaleY(0.7) scaleX(1.2); }    /* SQUASH on ground */
+            50%  { transform: translateY(-50px) scaleY(1.2) scaleX(0.8); } /* STRETCH in air */
+            80%  { transform: translateY(0) scaleY(0.8) scaleX(1.1); }    /* LAND impact */
+            100% { transform: translateY(0) scaleY(1); }
+        }
+
+        .arm-l { transform-origin: 50px 45px; animation: swing var(--speed) var(--timing) infinite; }
+        .arm-r { transform-origin: 50px 45px; animation: swing var(--speed) var(--timing) infinite reverse; }
+        
+        @keyframes swing {
+            0%, 100% { transform: rotate(-20deg); }
+            50% { transform: rotate(40deg); }
+        }
+    </style>
+</head>
+<body>
+
+<div class="canvas">
+    <!-- STAIRS -->
+    <svg class="stairs" viewBox="0 0 1000 600">
+        <path d="M0,600 L0,560 L40,560 L40,520 L80,520 L80,480 L120,480 L120,440 L160,440 L160,400 L200,400 L200,360 L240,360 L240,320 L280,320 L280,280 L320,280 L320,240 L360,240 L360,200 L400,200 L400,160 L440,160 L440,120 L480,120 L480,80 L520,80 L520,40 L560,40 L560,0 L1200,0 L1200,600 Z" fill="black" />
+    </svg>
+
+    <div class="man">
+        <!-- LEGS (Hidden) -->
+        <svg class="legs-layer" viewBox="0 0 100 150"></svg>
+
+        <!-- BODY -->
+        <svg class="body-layer" viewBox="0 0 100 150">
+            <line class="limb arm-r" x1="50" y1="45" x2="30" y2="85" stroke="black" stroke-width="8" />
+            <rect class="limb" x="43" y="40" width="14" height="45" rx="7" />
+            <circle class="limb" cx="50" cy="22" r="16" />
+            <line class="limb arm-l" x1="50" y1="45" x2="70" y2="85" stroke="black" stroke-width="8" />
+        </svg>
+    </div>
+</div>
+
+</body>
+</html>
