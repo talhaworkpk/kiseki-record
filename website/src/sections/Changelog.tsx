@@ -1,5 +1,5 @@
 import { motion } from 'framer-motion';
-import { GitCommit } from 'lucide-react';
+import { GitCommit, Lightbulb } from 'lucide-react';
 import appConfig from '../config/appConfig';
 
 export default function Changelog() {
@@ -53,6 +53,22 @@ export default function Changelog() {
                     </li>
                   ))}
                 </ul>
+                
+                {entry.tips && entry.tips.length > 0 && (
+                  <div className="mt-6 pt-6 border-t border-border/50">
+                    <div className="flex items-center gap-2 mb-3">
+                      <Lightbulb className="text-yellow-500" size={18} />
+                      <h4 className="font-semibold text-foreground">Pro Tips</h4>
+                    </div>
+                    <ul className="space-y-3">
+                      {entry.tips.map((tip, tipIndex) => (
+                        <li key={tipIndex} className="flex items-start gap-2 text-sm text-muted-foreground bg-accent/30 p-3 rounded-lg border border-border/50">
+                          <span>{tip}</span>
+                        </li>
+                      ))}
+                    </ul>
+                  </div>
+                )}
               </div>
             </motion.div>
           ))}

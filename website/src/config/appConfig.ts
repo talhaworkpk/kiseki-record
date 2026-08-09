@@ -12,6 +12,7 @@ export interface ChangelogEntry {
   version: string;
   date: string;
   changes: string[];
+  tips?: string[];
 }
 
 export const appConfig = {
@@ -92,11 +93,16 @@ export const appConfig = {
       version: '1.2.0',
       date: new Date().toISOString().split('T')[0],
       changes: [
-        'Added rich media (audio/video) support for Journal entries with custom icons',
-        'Added an interactive 3D shooting stars background for the Career Goals page',
-        'Improved Journal Cards to display individual colored tag badges',
-        'Enhanced keyboard navigation (Arrow keys and ESC shortcuts) for search and menus',
-        'Improved dark mode theme integration and icon color syncing',
+        'Added a versatile "New" button in the dashboard for quick additions',
+        'Enhanced "Search" functionality across the application',
+        'Added comprehensive support for Audio & Video rendering in Dashboard Calendar, Records, and Relationships',
+        'Introduced "Recent Vaults" for faster backup management',
+        'Added temporary interactive 3D SVG backgrounds that show up when adding new Certificates, Achievements, or Projects in the dashboard',
+      ],
+      tips: [
+        'Pro Tip: Use the new "New" button on your dashboard for instantly quick-adding entries like journals, habits, or records from anywhere!',
+        'Keep track of your backups easily using the new "Recent Vaults" feature to manage multiple backup files.',
+        'Check out the dynamic background image behind your Skills section to see your progress visualized beautifully!',
       ],
     },
     {

@@ -8945,6 +8945,17 @@ const Clock = createLucideIcon("Clock", [
  * This source code is licensed under the ISC license.
  * See the LICENSE file in the root directory of this source tree.
  */
+const CloudUpload = createLucideIcon("CloudUpload", [
+  ["path", { d: "M12 13v8", key: "1l5pq0" }],
+  ["path", { d: "M4 14.899A7 7 0 1 1 15.71 8h1.79a4.5 4.5 0 0 1 2.5 8.242", key: "1pljnt" }],
+  ["path", { d: "m8 17 4-4 4 4", key: "1quai1" }]
+]);
+/**
+ * @license lucide-react v0.428.0 - ISC
+ *
+ * This source code is licensed under the ISC license.
+ * See the LICENSE file in the root directory of this source tree.
+ */
 const Cloud = createLucideIcon("Cloud", [
   ["path", { d: "M17.5 19H9a7 7 0 1 1 6.71-9h1.79a4.5 4.5 0 1 1 0 9Z", key: "p7xjir" }]
 ]);
@@ -8977,6 +8988,17 @@ const Copy = createLucideIcon("Copy", [
 const Crop = createLucideIcon("Crop", [
   ["path", { d: "M6 2v14a2 2 0 0 0 2 2h14", key: "ron5a4" }],
   ["path", { d: "M18 22V8a2 2 0 0 0-2-2H2", key: "7s9ehn" }]
+]);
+/**
+ * @license lucide-react v0.428.0 - ISC
+ *
+ * This source code is licensed under the ISC license.
+ * See the LICENSE file in the root directory of this source tree.
+ */
+const Database = createLucideIcon("Database", [
+  ["ellipse", { cx: "12", cy: "5", rx: "9", ry: "3", key: "msslwz" }],
+  ["path", { d: "M3 5V19A9 3 0 0 0 21 19V5", key: "1wlel7" }],
+  ["path", { d: "M3 12A9 3 0 0 0 21 12", key: "mv7ke4" }]
 ]);
 /**
  * @license lucide-react v0.428.0 - ISC
@@ -9179,6 +9201,32 @@ const FileText = createLucideIcon("FileText", [
   ["path", { d: "M10 9H8", key: "b1mrlr" }],
   ["path", { d: "M16 13H8", key: "t4e002" }],
   ["path", { d: "M16 17H8", key: "z1uh3a" }]
+]);
+/**
+ * @license lucide-react v0.428.0 - ISC
+ *
+ * This source code is licensed under the ISC license.
+ * See the LICENSE file in the root directory of this source tree.
+ */
+const File = createLucideIcon("File", [
+  ["path", { d: "M15 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V7Z", key: "1rqfz7" }],
+  ["path", { d: "M14 2v4a2 2 0 0 0 2 2h4", key: "tnqrlb" }]
+]);
+/**
+ * @license lucide-react v0.428.0 - ISC
+ *
+ * This source code is licensed under the ISC license.
+ * See the LICENSE file in the root directory of this source tree.
+ */
+const Film = createLucideIcon("Film", [
+  ["rect", { width: "18", height: "18", x: "3", y: "3", rx: "2", key: "afitv7" }],
+  ["path", { d: "M7 3v18", key: "bbkbws" }],
+  ["path", { d: "M3 7.5h4", key: "zfgn84" }],
+  ["path", { d: "M3 12h18", key: "1i2n21" }],
+  ["path", { d: "M3 16.5h4", key: "1230mu" }],
+  ["path", { d: "M17 3v18", key: "in4fa5" }],
+  ["path", { d: "M17 7.5h4", key: "myr1c1" }],
+  ["path", { d: "M17 16.5h4", key: "go4c1d" }]
 ]);
 /**
  * @license lucide-react v0.428.0 - ISC
@@ -35780,6 +35828,17 @@ function normalizeUrl(url) {
   }
   return normalized;
 }
+function getSafeMediaUrl(url) {
+  if (!url) return "";
+  let normalized = url.replace(/\\/g, "/");
+  if (normalized.startsWith("file:///")) {
+    const pathPart = normalized.slice(8);
+    return "local-media://" + encodeURIComponent(pathPart).replace(/%2F/g, "/").replace(/%3A/g, ":");
+  } else if (/^[A-Za-z]:\//.test(normalized)) {
+    return "local-media://" + encodeURIComponent(normalized).replace(/%2F/g, "/").replace(/%3A/g, ":");
+  }
+  return normalized;
+}
 function SafeImage({ src, alt, className, fallbackClassName, onLoad, openOriginal, forceDisplay = false }) {
   const [error, setError] = reactExports.useState(false);
   const [loading, setLoading] = reactExports.useState(true);
@@ -35891,10 +35950,13 @@ function RecordCard({ record, viewMode, isSelectionMode, isSelected, onToggleSel
     if (t2.includes("photo")) return { color: "bg-purple-500/10 text-purple-500", icon: /* @__PURE__ */ jsxRuntimeExports.jsx(Image$2, { size: 14 }) };
     if (t2.includes("journal")) return { color: "bg-orange-500/10 text-orange-500", icon: /* @__PURE__ */ jsxRuntimeExports.jsx(Book, { size: 14 }) };
     if (t2.includes("achievement")) return { color: "bg-yellow-500/10 text-yellow-500", icon: /* @__PURE__ */ jsxRuntimeExports.jsx(Award, { size: 14 }) };
+    if (t2.includes("video")) return { color: "bg-red-500/10 text-red-500", icon: /* @__PURE__ */ jsxRuntimeExports.jsx(Film, { size: 14 }) };
+    if (t2.includes("audio") || t2.includes("voice")) return { color: "bg-cyan-500/10 text-cyan-500", icon: /* @__PURE__ */ jsxRuntimeExports.jsx(Music, { size: 14 }) };
     return { color: "bg-accent text-foreground", icon: /* @__PURE__ */ jsxRuntimeExports.jsx(FileText, { size: 14 }) };
   };
   const typeConfig = getTypeConfig(record.type);
   const firstImage = record.type === "Photo" && record.attachments && record.attachments.length > 0 ? record.attachments[0] : record.attachments?.find((a2) => a2.match(/\.(jpeg|jpg|gif|png|webp|gfif|bmp|tiff|svg|ico|heic|heif|raw|cr2|nef|orf|sr2)$/i));
+  const firstVideo = record.attachments?.find((a2) => a2.match(/\.(mp4|webm|mkv|avi|mov|wmv|flv)$/i));
   const relatedPeople = record.people?.map((personId) => {
     const person = relationships.find((r2) => r2._id === personId);
     return person ? person.name : personId;
@@ -35918,7 +35980,14 @@ function RecordCard({ record, viewMode, isSelectionMode, isSelected, onToggleSel
             }
           ) }),
           viewMode === "grid" && /* @__PURE__ */ jsxRuntimeExports.jsxs("div", { className: "relative h-40 bg-accent/30 rounded-t-2xl border-b border-border overflow-hidden shrink-0 group flex items-center justify-center", children: [
-            firstImage ? /* @__PURE__ */ jsxRuntimeExports.jsx(SafeImage, { src: firstImage, className: "w-full h-full" }) : /* @__PURE__ */ jsxRuntimeExports.jsx("div", { className: "text-muted-foreground/30 scale-[3]", children: typeConfig.icon }),
+            firstImage ? /* @__PURE__ */ jsxRuntimeExports.jsx(SafeImage, { src: firstImage, className: "w-full h-full" }) : firstVideo || record.type === "Video" && record.attachments && record.attachments.length > 0 ? /* @__PURE__ */ jsxRuntimeExports.jsx(
+              "video",
+              {
+                src: getSafeMediaUrl(firstVideo || record.attachments[0]) + "#t=1",
+                preload: "metadata",
+                className: "w-full h-full object-cover"
+              }
+            ) : /* @__PURE__ */ jsxRuntimeExports.jsx("div", { className: "text-muted-foreground/30 scale-[3]", children: typeConfig.icon }),
             /* @__PURE__ */ jsxRuntimeExports.jsxs("div", { className: `absolute top-3 right-3 flex flex-col gap-1.5 opacity-0 group-hover:opacity-100 transition-opacity bg-card/80 backdrop-blur border border-border rounded-lg p-1 shadow-lg ${isSelectionMode ? "hidden" : ""}`, children: [
               /* @__PURE__ */ jsxRuntimeExports.jsx("button", { onClick: () => fireAction("preview"), title: "Preview", className: "p-1.5 hover:bg-primary/20 hover:text-primary rounded text-foreground transition-colors", children: /* @__PURE__ */ jsxRuntimeExports.jsx(Eye, { size: 14 }) }),
               /* @__PURE__ */ jsxRuntimeExports.jsx("button", { onClick: () => fireAction("edit"), title: "Edit", className: "p-1.5 hover:bg-primary/20 hover:text-primary rounded text-foreground transition-colors", children: /* @__PURE__ */ jsxRuntimeExports.jsx(SquarePen, { size: 14 }) }),
@@ -36069,7 +36138,8 @@ function RecordPreviewModal({ record, isOpen, onClose, onPrevious, onNext, onAct
   }, [isOpen, onPrevious, onNext, onClose]);
   if (!isOpen || !record) return null;
   const firstImage = record.type === "Photo" && record.attachments && record.attachments.length > 0 ? record.attachments[0] : record.attachments?.find((a2) => a2.match(/\.(jpeg|jpg|gif|png|webp|gfif|bmp|tiff|svg|ico|heic|heif|raw|cr2|nef|orf|sr2)$/i));
-  const otherAttachments = record.attachments?.filter((a2) => a2 !== firstImage) || [];
+  const firstVideo = record.type === "Video" && record.attachments && record.attachments.length > 0 ? record.attachments[0] : record.attachments?.find((a2) => a2.match(/\.(mp4|webm|mkv|avi|mov|wmv|flv)$/i));
+  const otherAttachments = record.attachments?.filter((a2) => a2 !== firstImage && a2 !== firstVideo) || [];
   const handleMouseDown = (e3) => {
     if (!scrollRef.current) return;
     setIsDragging(true);
@@ -36126,7 +36196,14 @@ function RecordPreviewModal({ record, isOpen, onClose, onPrevious, onNext, onAct
               }
             ),
             /* @__PURE__ */ jsxRuntimeExports.jsx("div", { className: "absolute top-4 left-4 flex gap-2 opacity-0 group-hover:opacity-100 transition-opacity", children: /* @__PURE__ */ jsxRuntimeExports.jsx("button", { onClick: () => window.open(normalizeUrl(firstImage)), className: "p-2 bg-background/80 backdrop-blur rounded-lg text-foreground hover:bg-primary hover:text-white tooltip-trigger", title: "Zoom/Open Original", children: /* @__PURE__ */ jsxRuntimeExports.jsx(Maximize2, { size: 16 }) }) })
-          ] }) : /* @__PURE__ */ jsxRuntimeExports.jsx("div", { className: "w-full h-24 bg-accent/30 flex items-center justify-center text-muted-foreground/20 shrink-0", children: /* @__PURE__ */ jsxRuntimeExports.jsx(FileText, { size: 40 }) }),
+          ] }) : firstVideo ? /* @__PURE__ */ jsxRuntimeExports.jsx("div", { className: "w-full h-[30vh] sm:h-[45vh] relative group bg-black shrink-0", children: /* @__PURE__ */ jsxRuntimeExports.jsx(
+            "video",
+            {
+              src: getSafeMediaUrl(firstVideo),
+              controls: true,
+              className: "w-full h-full object-contain"
+            }
+          ) }) : record.type === "Audio" || record.type === "Voice" ? /* @__PURE__ */ jsxRuntimeExports.jsx("div", { className: "w-full h-32 bg-cyan-500/10 flex items-center justify-center text-cyan-500 shrink-0", children: /* @__PURE__ */ jsxRuntimeExports.jsx(Music, { size: 48 }) }) : /* @__PURE__ */ jsxRuntimeExports.jsx("div", { className: "w-full h-24 bg-accent/30 flex items-center justify-center text-muted-foreground/20 shrink-0", children: /* @__PURE__ */ jsxRuntimeExports.jsx(FileText, { size: 40 }) }),
           /* @__PURE__ */ jsxRuntimeExports.jsxs("div", { className: "p-8 sm:p-16", children: [
             /* @__PURE__ */ jsxRuntimeExports.jsx("div", { className: "flex flex-wrap items-center gap-3 mb-6 text-xs font-bold uppercase tracking-widest text-muted-foreground", children: /* @__PURE__ */ jsxRuntimeExports.jsx("span", { children: new Date(record.date).toLocaleDateString([], { weekday: "long", year: "numeric", month: "long", day: "numeric" }) }) }),
             /* @__PURE__ */ jsxRuntimeExports.jsx("h1", { className: "text-4xl sm:text-5xl font-serif font-black mb-8 leading-tight", children: record.title }),
@@ -36150,11 +36227,19 @@ function RecordPreviewModal({ record, isOpen, onClose, onPrevious, onNext, onAct
             /* @__PURE__ */ jsxRuntimeExports.jsx("div", { className: "prose prose-lg dark:prose-invert prose-p:leading-relaxed prose-headings:font-serif prose-headings:font-bold max-w-none text-foreground/90 leading-relaxed mb-12", children: /* @__PURE__ */ jsxRuntimeExports.jsx("div", { dangerouslySetInnerHTML: { __html: record.description || "<i>No description provided.</i>" } }) }),
             otherAttachments.length > 0 && /* @__PURE__ */ jsxRuntimeExports.jsxs("div", { className: "border-t border-border pt-12 mb-8", children: [
               /* @__PURE__ */ jsxRuntimeExports.jsx("h3", { className: "text-xl font-bold mb-6 font-serif", children: "Attachments" }),
-              /* @__PURE__ */ jsxRuntimeExports.jsx("div", { className: "grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4", children: otherAttachments.map((att, i2) => /* @__PURE__ */ jsxRuntimeExports.jsxs("div", { className: "flex items-center gap-3 p-3 bg-accent/30 border border-border rounded-xl group hover:border-primary/50 transition-colors", children: [
-                /* @__PURE__ */ jsxRuntimeExports.jsx("div", { className: "w-10 h-10 rounded-lg bg-background flex items-center justify-center shrink-0", children: att.match(/\.(jpeg|jpg|gif|png|webp|gfif|bmp|tiff|svg|ico|heic|heif|raw|cr2|nef|orf|sr2)$/i) ? /* @__PURE__ */ jsxRuntimeExports.jsx("img", { src: normalizeUrl(att), className: "w-full h-full object-cover rounded-lg" }) : /* @__PURE__ */ jsxRuntimeExports.jsx(FileText, { size: 16 }) }),
-                /* @__PURE__ */ jsxRuntimeExports.jsx("div", { className: "flex-1 min-w-0", children: /* @__PURE__ */ jsxRuntimeExports.jsx("div", { className: "text-xs font-bold truncate", title: att.split(/[\\/]/).pop(), children: att.split(/[\\/]/).pop() }) }),
-                /* @__PURE__ */ jsxRuntimeExports.jsx("button", { onClick: () => window.open(normalizeUrl(att)), className: "p-2 bg-background rounded-lg text-muted-foreground hover:text-primary tooltip-trigger", title: "Open File", children: /* @__PURE__ */ jsxRuntimeExports.jsx(ExternalLink, { size: 14 }) })
-              ] }, i2)) })
+              /* @__PURE__ */ jsxRuntimeExports.jsx("div", { className: "grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4", children: otherAttachments.map((att, i2) => {
+                const isVideo = att.match(/\.(mp4|webm|mkv|avi|mov|wmv|flv)$/i);
+                const isAudio = att.match(/\.(mp3|wav|ogg|m4a|aac|wma|flac)$/i);
+                const isImage2 = att.match(/\.(jpeg|jpg|gif|png|webp|gfif|bmp|tiff|svg|ico|heic|heif|raw|cr2|nef|orf|sr2)$/i);
+                return /* @__PURE__ */ jsxRuntimeExports.jsxs("div", { className: "flex flex-col gap-2 p-3 bg-accent/30 border border-border rounded-xl group hover:border-primary/50 transition-colors", children: [
+                  /* @__PURE__ */ jsxRuntimeExports.jsxs("div", { className: "flex items-center gap-3", children: [
+                    /* @__PURE__ */ jsxRuntimeExports.jsx("div", { className: `w-10 h-10 rounded-lg flex items-center justify-center shrink-0 ${isVideo ? "bg-red-500/10 text-red-500" : isAudio ? "bg-cyan-500/10 text-cyan-500" : "bg-background"}`, children: isImage2 ? /* @__PURE__ */ jsxRuntimeExports.jsx("img", { src: normalizeUrl(att), className: "w-full h-full object-cover rounded-lg" }) : isVideo ? /* @__PURE__ */ jsxRuntimeExports.jsx(Film, { size: 16 }) : isAudio ? /* @__PURE__ */ jsxRuntimeExports.jsx(Music, { size: 16 }) : /* @__PURE__ */ jsxRuntimeExports.jsx(FileText, { size: 16 }) }),
+                    /* @__PURE__ */ jsxRuntimeExports.jsx("div", { className: "flex-1 min-w-0", children: /* @__PURE__ */ jsxRuntimeExports.jsx("div", { className: "text-xs font-bold truncate", title: att.split(/[\\/]/).pop(), children: att.split(/[\\/]/).pop() }) }),
+                    /* @__PURE__ */ jsxRuntimeExports.jsx("button", { onClick: () => window.open(normalizeUrl(att)), className: "p-2 bg-background rounded-lg text-muted-foreground hover:text-primary tooltip-trigger", title: "Open File", children: /* @__PURE__ */ jsxRuntimeExports.jsx(ExternalLink, { size: 14 }) })
+                  ] }),
+                  (isVideo || isAudio) && /* @__PURE__ */ jsxRuntimeExports.jsx("div", { className: "mt-2", children: isVideo ? /* @__PURE__ */ jsxRuntimeExports.jsx("video", { src: getSafeMediaUrl(att), controls: true, className: "w-full h-32 object-contain bg-black rounded" }) : /* @__PURE__ */ jsxRuntimeExports.jsx("audio", { src: getSafeMediaUrl(att), controls: true, className: "w-full h-10" }) })
+                ] }, i2);
+              }) })
             ] }),
             record.type === "Photo" && record.attachments && record.attachments.length > 1 && /* @__PURE__ */ jsxRuntimeExports.jsxs("div", { className: "border-t border-border pt-12 mb-8", children: [
               /* @__PURE__ */ jsxRuntimeExports.jsx("h3", { className: "text-xl font-bold mb-6 font-serif", children: "Photo Gallery" }),
@@ -36360,6 +36445,7 @@ function Records() {
     dateRange: "all"
   });
   const [isEditing, setIsEditing] = reactExports.useState(false);
+  const [showSuccessOverlay, setShowSuccessOverlay] = reactExports.useState(false);
   const [editForm, setEditForm] = reactExports.useState({});
   const [tagsText, setTagsText] = reactExports.useState("");
   const [previewRecord, setPreviewRecord] = reactExports.useState(null);
@@ -36382,6 +36468,20 @@ function Records() {
   reactExports.useEffect(() => {
     fetchRecords();
   }, []);
+  const location = useLocation();
+  reactExports.useEffect(() => {
+    const highlightId = new URLSearchParams(location.search).get("highlight");
+    if (highlightId && !loading && records.length > 0) {
+      setTimeout(() => {
+        const el2 = document.getElementById(`record-${highlightId}`);
+        if (el2) {
+          el2.scrollIntoView({ behavior: "smooth", block: "center" });
+          el2.classList.add("ring-4", "ring-primary", "shadow-2xl", "shadow-primary/40", "animate-[pulse_2s_ease-in-out_3]", "z-50");
+          setTimeout(() => el2.classList.remove("ring-4", "ring-primary", "shadow-2xl", "shadow-primary/40", "animate-[pulse_2s_ease-in-out_3]", "z-50"), 4e3);
+        }
+      }, 500);
+    }
+  }, [location.search, loading, records.length]);
   reactExports.useEffect(() => {
     const handleKeyDown2 = (e3) => {
       const tag = document.activeElement?.tagName.toLowerCase();
@@ -36657,6 +36757,14 @@ function Records() {
         await window.api.db.insert("records", newRecord);
         NotificationEngine.notify("success", "Record Created", `"${newRecord.title}" was successfully saved.`, "Records");
         NotificationEngine.checkAchievements();
+        fetchRecords();
+        setShowSuccessOverlay(true);
+        setTimeout(() => {
+          setShowSuccessOverlay(false);
+          setIsEditing(false);
+          setEditForm({});
+        }, 3e3);
+        return;
       }
       setIsEditing(false);
       setEditForm({});
@@ -36808,7 +36916,7 @@ function Records() {
         onMouseUp: handleMouseUp,
         onMouseMove: handleMouseMove,
         onContextMenu: handleContextMenu,
-        className: `flex-1 overflow-y-auto p-6 relative z-10 scrollbar-none ${isDragging ? "cursor-grabbing select-none" : ""}`,
+        className: `flex-1 overflow-y-auto p-6 relative z-10 scrollbar-custom ${isDragging ? "cursor-grabbing select-none" : ""}`,
         children: [
           !loading && records.length > 0 && !isSelectionMode && /* @__PURE__ */ jsxRuntimeExports.jsx(RecordsStatistics, { records, setFilters }),
           loading ? /* @__PURE__ */ jsxRuntimeExports.jsx("div", { className: "flex items-center justify-center h-[50vh] text-primary animate-pulse font-bold", children: "Loading..." }) : filteredRecords.length === 0 ? /* @__PURE__ */ jsxRuntimeExports.jsxs("div", { className: "flex flex-col items-center justify-center h-[50vh] text-center max-w-sm mx-auto", children: [
@@ -36820,7 +36928,7 @@ function Records() {
               setTagsText("");
               setIsEditing(true);
             }, className: "px-6 py-2.5 bg-primary text-white rounded-xl font-bold shadow-lg hover:scale-105 transition-transform", children: "Create New Record" })
-          ] }) : /* @__PURE__ */ jsxRuntimeExports.jsx("div", { className: `gap-6 ${viewMode === "grid" ? "grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 2xl:grid-cols-4" : "flex flex-col"}`, children: filteredRecords.map((record) => /* @__PURE__ */ jsxRuntimeExports.jsx(
+          ] }) : /* @__PURE__ */ jsxRuntimeExports.jsx("div", { className: `gap-6 ${viewMode === "grid" ? "grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 2xl:grid-cols-4" : "flex flex-col"}`, children: filteredRecords.map((record) => /* @__PURE__ */ jsxRuntimeExports.jsx("div", { id: `record-${record._id}`, className: "transition-all duration-1000 rounded-2xl", children: /* @__PURE__ */ jsxRuntimeExports.jsx(
             RecordCard,
             {
               record,
@@ -36835,9 +36943,8 @@ function Records() {
               },
               onAction: handleAction,
               relationships
-            },
-            record._id
-          )) })
+            }
+          ) }, record._id)) })
         ]
       }
     ),
@@ -36862,7 +36969,72 @@ function Records() {
         onClear: () => setFilters({ type: "all", mood: "", hasImages: false, hasAttachments: false, isFavorite: false, isArchived: false, dateRange: "all" })
       }
     ),
-    isEditing && /* @__PURE__ */ jsxRuntimeExports.jsx("div", { className: "fixed inset-0 z-[100] bg-background/80 backdrop-blur-sm flex items-center justify-center p-4", children: /* @__PURE__ */ jsxRuntimeExports.jsxs("div", { className: "bg-card border border-border rounded-3xl shadow-2xl w-full max-w-3xl flex flex-col max-h-[90vh] animate-in zoom-in-95 duration-200", children: [
+    isEditing && /* @__PURE__ */ jsxRuntimeExports.jsx("div", { className: "fixed inset-0 z-[100] bg-background/80 backdrop-blur-sm flex items-center justify-center p-4", children: showSuccessOverlay ? /* @__PURE__ */ jsxRuntimeExports.jsxs("div", { className: "fixed inset-0 z-[110] flex items-center justify-center bg-[radial-gradient(ellipse_at_center,_var(--tw-gradient-stops))] from-cyan-500/30 via-background/80 to-background/95 backdrop-blur-sm animate-in fade-in duration-300", children: [
+      /* @__PURE__ */ jsxRuntimeExports.jsx("style", { children: `
+                @keyframes popAndFloatBook {
+                  0% { transform: scale(0) rotate(-15deg); opacity: 0; }
+                  40% { transform: scale(1.1) rotate(5deg); opacity: 1; }
+                  60% { transform: scale(0.95) rotate(-2deg); }
+                  80% { transform: scale(1.05) rotate(2deg); }
+                  100% { transform: scale(1) rotate(0deg); opacity: 1; }
+                }
+                @keyframes floatUpFade {
+                  0% { transform: translate(0, 0) scale(0); opacity: 0; }
+                  20% { opacity: 1; scale: 1; }
+                  100% { transform: translate(var(--tx), var(--ty)) scale(0.5); opacity: 0; }
+                }
+                @keyframes flipPage {
+                  0% { transform: rotateY(0deg) skewY(0deg); }
+                  50% { transform: rotateY(-90deg) skewY(-10deg); opacity: 0.8; }
+                  100% { transform: rotateY(-180deg) skewY(0deg); opacity: 0; }
+                }
+              ` }),
+      /* @__PURE__ */ jsxRuntimeExports.jsxs("div", { className: "relative flex flex-col items-center justify-center gap-8", style: { animation: "popAndFloatBook 1.2s cubic-bezier(0.34, 1.56, 0.64, 1) forwards" }, children: [
+        /* @__PURE__ */ jsxRuntimeExports.jsxs("svg", { width: "240", height: "240", viewBox: "0 0 240 240", fill: "none", xmlns: "http://www.w3.org/2000/svg", className: "drop-shadow-2xl", children: [
+          /* @__PURE__ */ jsxRuntimeExports.jsx("path", { d: "M 40 50 L 120 20 L 200 50 L 200 180 L 120 210 L 40 180 Z", fill: "#0891b2", opacity: "0.4", transform: "translate(10, 15) rotate(-5 120 120)" }),
+          /* @__PURE__ */ jsxRuntimeExports.jsx("path", { d: "M 40 50 L 120 20 L 200 50 L 200 180 L 120 210 L 40 180 Z", fill: "#0e7490", opacity: "0.6", transform: "translate(5, 8) rotate(-2 120 120)" }),
+          /* @__PURE__ */ jsxRuntimeExports.jsx("path", { d: "M 40 50 L 120 20 L 200 50 L 200 180 L 120 210 L 40 180 Z", fill: "#06b6d4" }),
+          /* @__PURE__ */ jsxRuntimeExports.jsx("path", { d: "M 45 55 L 115 30 L 115 195 L 45 170 Z", fill: "#f8fafc" }),
+          /* @__PURE__ */ jsxRuntimeExports.jsx("path", { d: "M 125 30 L 195 55 L 195 170 L 125 195 Z", fill: "#f1f5f9" }),
+          /* @__PURE__ */ jsxRuntimeExports.jsx("path", { d: "M 120 20 L 120 210", stroke: "#0891b2", strokeWidth: "6", strokeLinecap: "round" }),
+          /* @__PURE__ */ jsxRuntimeExports.jsx("path", { d: "M 120 20 L 120 210", stroke: "#22d3ee", strokeWidth: "2", strokeLinecap: "round", opacity: "0.8" }),
+          /* @__PURE__ */ jsxRuntimeExports.jsx("path", { d: "M 55 65 L 105 45 M 55 85 L 105 65 M 55 105 L 105 85", stroke: "#cbd5e1", strokeWidth: "4", strokeLinecap: "round" }),
+          /* @__PURE__ */ jsxRuntimeExports.jsx("path", { d: "M 135 45 L 185 65 M 135 65 L 185 85 M 135 85 L 170 98", stroke: "#94a3b8", strokeWidth: "4", strokeLinecap: "round" }),
+          /* @__PURE__ */ jsxRuntimeExports.jsxs("g", { style: { transformOrigin: "120px 120px", animation: "flipPage 3s infinite ease-in-out", perspective: "1000px" }, children: [
+            /* @__PURE__ */ jsxRuntimeExports.jsx("path", { d: "M 120 25 L 195 52 L 195 168 L 120 193 Z", fill: "#ffffff", opacity: "0.9" }),
+            /* @__PURE__ */ jsxRuntimeExports.jsx("path", { d: "M 130 45 L 180 62 M 130 65 L 180 82 M 130 85 L 165 97", stroke: "#e2e8f0", strokeWidth: "4", strokeLinecap: "round" })
+          ] }),
+          /* @__PURE__ */ jsxRuntimeExports.jsx("circle", { cx: "120", cy: "180", r: "10", fill: "#fef08a" }),
+          /* @__PURE__ */ jsxRuntimeExports.jsx("circle", { cx: "120", cy: "180", r: "6", fill: "#facc15" }),
+          /* @__PURE__ */ jsxRuntimeExports.jsx("path", { d: "M 116 190 L 124 190 L 124 220 L 120 215 L 116 220 Z", fill: "#facc15" }),
+          /* @__PURE__ */ jsxRuntimeExports.jsx("path", { d: "M 120 80 L 125 100 L 145 105 L 125 110 L 120 130 L 115 110 L 95 105 L 115 100 Z", fill: "#cffafe", opacity: "0.9", style: { animation: "floatUpFade 2s infinite alternate" } })
+        ] }),
+        [...Array(15)].map((_2, i2) => {
+          const angle = i2 * 24 * Math.PI / 180;
+          const dist = 100 + Math.random() * 50;
+          const tx = `${Math.cos(angle) * dist}px`;
+          const ty = `${Math.sin(angle) * dist}px`;
+          return /* @__PURE__ */ jsxRuntimeExports.jsx(
+            "svg",
+            {
+              width: "24",
+              height: "24",
+              viewBox: "0 0 24 24",
+              fill: "none",
+              className: `absolute top-1/2 left-1/2 -ml-3 -mt-10 ${i2 % 3 === 0 ? "text-cyan-300" : i2 % 3 === 1 ? "text-blue-400" : "text-teal-400"}`,
+              style: {
+                "--tx": tx,
+                "--ty": ty,
+                animation: `floatUpFade 1.5s ease-out forwards ${0.3 + Math.random() * 0.3}s`
+              },
+              children: i2 % 2 === 0 ? /* @__PURE__ */ jsxRuntimeExports.jsx("path", { d: "M12 21.35l-1.45-1.32C5.4 15.36 2 12.28 2 8.5 2 5.42 4.42 3 7.5 3c1.74 0 3.41.81 4.5 2.09C13.09 3.81 14.76 3 16.5 3 19.58 3 22 5.42 22 8.5c0 3.78-3.4 6.86-8.55 11.54L12 21.35z", fill: "currentColor" }) : /* @__PURE__ */ jsxRuntimeExports.jsx("path", { d: "M12 2L14.39 9.61L22 12L14.39 14.39L12 22L9.61 14.39L2 12L9.61 9.61L12 2Z", fill: "currentColor" })
+            },
+            `star-${i2}`
+          );
+        }),
+        /* @__PURE__ */ jsxRuntimeExports.jsx("h2", { className: "text-4xl font-extrabold text-cyan-500 drop-shadow-lg tracking-tight text-center z-50", children: "Record Created!" })
+      ] })
+    ] }) : /* @__PURE__ */ jsxRuntimeExports.jsxs("div", { className: "bg-card border border-border rounded-3xl shadow-2xl w-full max-w-3xl flex flex-col max-h-[90vh] animate-in zoom-in-95 duration-200", children: [
       /* @__PURE__ */ jsxRuntimeExports.jsxs("div", { className: "px-8 py-5 border-b border-border flex justify-between items-center bg-card shrink-0", children: [
         /* @__PURE__ */ jsxRuntimeExports.jsx("h2", { className: "text-2xl font-black", children: editForm._id ? "Edit Record" : "Create New Record" }),
         /* @__PURE__ */ jsxRuntimeExports.jsx("button", { type: "button", onClick: () => setIsEditing(false), className: "p-2 hover:bg-accent rounded-full text-muted-foreground transition-colors", children: /* @__PURE__ */ jsxRuntimeExports.jsx(X, { size: 20 }) })
@@ -36897,6 +37069,8 @@ function Records() {
               /* @__PURE__ */ jsxRuntimeExports.jsx("option", { children: "Memory" }),
               /* @__PURE__ */ jsxRuntimeExports.jsx("option", { children: "Daily Event" }),
               /* @__PURE__ */ jsxRuntimeExports.jsx("option", { children: "Photo" }),
+              /* @__PURE__ */ jsxRuntimeExports.jsx("option", { children: "Audio" }),
+              /* @__PURE__ */ jsxRuntimeExports.jsx("option", { children: "Video" }),
               /* @__PURE__ */ jsxRuntimeExports.jsx("option", { children: "Achievement" }),
               /* @__PURE__ */ jsxRuntimeExports.jsx("option", { children: "Idea" }),
               /* @__PURE__ */ jsxRuntimeExports.jsx("option", { children: "General" })
@@ -39732,7 +39906,11 @@ function JournalPreviewModal({
               entry.tags.map((tag) => /* @__PURE__ */ jsxRuntimeExports.jsx("span", { className: "px-2.5 py-1 bg-accent/50 text-foreground text-xs font-semibold rounded-md", children: tag }, tag))
             ] })
           ] }),
-          entry.photos && entry.photos.length > 0 && /* @__PURE__ */ jsxRuntimeExports.jsx("div", { className: "mb-12 grid grid-cols-1 sm:grid-cols-2 gap-6", children: entry.photos.map((photo, i2) => /* @__PURE__ */ jsxRuntimeExports.jsx("img", { src: normalizeUrl(photo), alt: `Attached ${i2 + 1}`, className: "w-full h-auto max-h-[500px] rounded-2xl shadow-md border border-border/50 object-cover mx-auto" }, i2)) }),
+          entry.photos && entry.photos.length > 0 && /* @__PURE__ */ jsxRuntimeExports.jsx("div", { className: "mb-12 grid grid-cols-1 sm:grid-cols-2 gap-6", children: entry.photos.map((photo, i2) => {
+            const isVideo = photo.match(/\.(mp4|webm|mkv|avi|mov|wmv|flv)$/i);
+            const isAudio = photo.match(/\.(mp3|wav|ogg|m4a|aac|wma|flac)$/i);
+            return /* @__PURE__ */ jsxRuntimeExports.jsx("div", { className: "w-full flex items-center justify-center bg-accent/10 rounded-2xl p-3 border border-border/50 shadow-sm", children: isVideo ? /* @__PURE__ */ jsxRuntimeExports.jsx("video", { src: getSafeMediaUrl(photo), controls: true, className: "w-full h-auto max-h-[500px] rounded-xl object-contain bg-black" }) : isAudio ? /* @__PURE__ */ jsxRuntimeExports.jsx("audio", { src: getSafeMediaUrl(photo), controls: true, className: "w-full h-12" }) : /* @__PURE__ */ jsxRuntimeExports.jsx("img", { src: normalizeUrl(photo), alt: `Attached ${i2 + 1}`, className: "w-full h-auto max-h-[500px] rounded-xl object-cover" }) }, i2);
+          }) }),
           /* @__PURE__ */ jsxRuntimeExports.jsx("div", { className: "w-full h-px bg-border/50 mb-12" }),
           /* @__PURE__ */ jsxRuntimeExports.jsx(
             "article",
@@ -40053,15 +40231,27 @@ function Journal() {
     }
   };
   reactExports.useEffect(() => {
-    if (entries.length > 0 && location.state?.entryId && !activeEntry) {
-      const target = entries.find((e3) => e3._id === location.state.entryId);
+    const highlightId = new URLSearchParams(location.search).get("highlight");
+    const targetId = location.state?.entryId || highlightId;
+    if (entries.length > 0 && targetId && !activeEntry) {
+      const target = entries.find((e3) => e3._id === targetId);
       if (target) {
         setActiveEntry(target);
         editor?.commands.setContent(target.content);
         navigate(location.pathname, { replace: true, state: {} });
       }
     }
-  }, [entries, location.state, activeEntry, editor, navigate]);
+    if (highlightId && entries.length > 0) {
+      setTimeout(() => {
+        const el2 = document.getElementById(`journal-entry-${highlightId}`);
+        if (el2) {
+          el2.scrollIntoView({ behavior: "smooth", block: "center" });
+          el2.classList.add("ring-4", "ring-primary", "shadow-2xl", "shadow-primary/40", "animate-[pulse_2s_ease-in-out_3]", "z-50");
+          setTimeout(() => el2.classList.remove("ring-4", "ring-primary", "shadow-2xl", "shadow-primary/40", "animate-[pulse_2s_ease-in-out_3]", "z-50"), 4e3);
+        }
+      }, 500);
+    }
+  }, [entries, location.state, location.search, activeEntry, editor, navigate]);
   const saveEntry = async (id2, updates) => {
     try {
       await window.api.db.update("journal", { _id: id2 }, { $set: updates }, {});
@@ -40134,6 +40324,19 @@ function Journal() {
     const photos = [...activeEntry.photos || []];
     photos.splice(idx, 1);
     saveEntry(activeEntry._id, { photos });
+  };
+  const handleAttachMedia = async () => {
+    try {
+      const result = await window.api.attachment.add();
+      if (result.success && result.files && result.files.length > 0) {
+        const filePath = result.files[0].filePath;
+        const currentPhotos = activeEntry?.photos || [];
+        const newPhotos = [...currentPhotos, filePath];
+        saveEntry(activeEntry._id, { photos: newPhotos });
+      }
+    } catch (err) {
+      console.error(err);
+    }
   };
   const runAiTask = async (task) => {
     if (!activeEntry) return;
@@ -40430,10 +40633,26 @@ ${plainText}`;
                 ] })
               ] })
             ] }),
-            activeEntry.photos && activeEntry.photos.length > 0 && /* @__PURE__ */ jsxRuntimeExports.jsx("div", { className: "flex flex-wrap gap-3 mb-8 relative z-10", children: activeEntry.photos.map((photo, i2) => /* @__PURE__ */ jsxRuntimeExports.jsxs("div", { className: "relative group rounded-xl overflow-hidden shadow-sm border border-border", children: [
-              /* @__PURE__ */ jsxRuntimeExports.jsx("img", { src: normalizeUrl(photo), className: "h-32 object-cover" }),
-              /* @__PURE__ */ jsxRuntimeExports.jsx("button", { onClick: () => handlePhotoRemove(i2), className: "absolute top-2 right-2 p-1.5 bg-destructive text-destructive-foreground rounded-full opacity-0 group-hover:opacity-100 transition-opacity", children: /* @__PURE__ */ jsxRuntimeExports.jsx(Trash2, { size: 12 }) })
-            ] }, i2)) }),
+            /* @__PURE__ */ jsxRuntimeExports.jsxs("div", { className: "mb-8 relative z-10", children: [
+              /* @__PURE__ */ jsxRuntimeExports.jsxs("div", { className: "flex justify-between items-center mb-4", children: [
+                /* @__PURE__ */ jsxRuntimeExports.jsx("h3", { className: "text-xs font-bold text-muted-foreground uppercase tracking-widest", children: "Media Gallery" }),
+                /* @__PURE__ */ jsxRuntimeExports.jsxs("button", { onClick: handleAttachMedia, className: "flex items-center gap-2 px-3 py-1.5 text-xs font-bold bg-accent hover:bg-primary/20 hover:text-primary rounded-lg transition-colors border border-border", children: [
+                  /* @__PURE__ */ jsxRuntimeExports.jsx(Paperclip, { size: 14 }),
+                  " Add Media"
+                ] })
+              ] }),
+              activeEntry.photos && activeEntry.photos.length > 0 && /* @__PURE__ */ jsxRuntimeExports.jsx("div", { className: "grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4", children: activeEntry.photos.map((photo, i2) => {
+                const isVideo = photo.match(/\.(mp4|webm|mkv|avi|mov|wmv|flv)$/i);
+                const isAudio = photo.match(/\.(mp3|wav|ogg|m4a|aac|wma|flac)$/i);
+                return /* @__PURE__ */ jsxRuntimeExports.jsxs("div", { className: "relative group rounded-xl overflow-hidden shadow-sm border border-border bg-accent/10 flex items-center justify-center p-2", children: [
+                  isVideo ? /* @__PURE__ */ jsxRuntimeExports.jsx("video", { src: getSafeMediaUrl(photo), controls: true, className: "w-full h-32 object-contain bg-black rounded-lg" }) : isAudio ? /* @__PURE__ */ jsxRuntimeExports.jsxs("div", { className: "w-full flex flex-col items-center justify-center gap-2 py-4", children: [
+                    /* @__PURE__ */ jsxRuntimeExports.jsx(Music, { size: 24, className: "text-cyan-500" }),
+                    /* @__PURE__ */ jsxRuntimeExports.jsx("audio", { src: getSafeMediaUrl(photo), controls: true, className: "w-full h-10" })
+                  ] }) : /* @__PURE__ */ jsxRuntimeExports.jsx("img", { src: normalizeUrl(photo), className: "h-32 w-full object-cover rounded-lg" }),
+                  /* @__PURE__ */ jsxRuntimeExports.jsx("button", { onClick: () => handlePhotoRemove(i2), className: "absolute top-2 right-2 p-1.5 bg-destructive text-destructive-foreground rounded-full opacity-0 group-hover:opacity-100 transition-opacity z-20", children: /* @__PURE__ */ jsxRuntimeExports.jsx(Trash2, { size: 12 }) })
+                ] }, i2);
+              }) })
+            ] }),
             /* @__PURE__ */ jsxRuntimeExports.jsxs("div", { className: "prose prose-lg dark:prose-invert max-w-none prose-a:text-primary relative z-10 w-full h-full flex-1 journal-lines", children: [
               /* @__PURE__ */ jsxRuntimeExports.jsx(EditorContent, { editor, className: "min-h-[400px] outline-none focus:outline-none focus:ring-0 border-none" }),
               editor && /* @__PURE__ */ jsxRuntimeExports.jsxs(BubbleMenu, { editor, tippyOptions: { duration: 100 }, className: "bg-card border border-border shadow-2xl rounded-xl p-1.5 flex items-center gap-1 z-50", children: [
@@ -40521,7 +40740,8 @@ function EntryCard({ entry, active, onClick }) {
   return /* @__PURE__ */ jsxRuntimeExports.jsxs(
     "div",
     {
-      className: "relative group p-[2px] rounded-xl cursor-pointer",
+      id: `journal-entry-${entry._id}`,
+      className: "relative group p-[2px] rounded-xl cursor-pointer transition-all duration-1000",
       onClick,
       children: [
         /* @__PURE__ */ jsxRuntimeExports.jsx(
@@ -40541,7 +40761,17 @@ function EntryCard({ entry, active, onClick }) {
           ] }),
           /* @__PURE__ */ jsxRuntimeExports.jsx("p", { className: "text-xs text-muted-foreground line-clamp-2 leading-relaxed mb-2", children: preview.length > 3 ? preview : "Empty entry" }),
           images.length > 0 && /* @__PURE__ */ jsxRuntimeExports.jsxs("div", { className: "flex gap-1 mb-2 overflow-hidden h-8", children: [
-            images.slice(0, 4).map((src, i2) => /* @__PURE__ */ jsxRuntimeExports.jsx("img", { src, className: "w-8 h-8 rounded-md object-cover border border-border bg-accent/50", alt: "thumbnail" }, i2)),
+            images.slice(0, 4).map((src, i2) => {
+              const isVideo = /\.(mp4|webm|ogg|mov|mkv)$/i.test(src);
+              const isAudio = /\.(mp3|wav|ogg|m4a|aac)$/i.test(src);
+              if (isVideo) {
+                return /* @__PURE__ */ jsxRuntimeExports.jsx("div", { className: "w-8 h-8 rounded-md bg-accent/50 flex items-center justify-center border border-border shrink-0", title: "Video", children: /* @__PURE__ */ jsxRuntimeExports.jsx(Film, { size: 14, className: "text-muted-foreground" }) }, i2);
+              }
+              if (isAudio) {
+                return /* @__PURE__ */ jsxRuntimeExports.jsx("div", { className: "w-8 h-8 rounded-md bg-accent/50 flex items-center justify-center border border-border shrink-0", title: "Audio", children: /* @__PURE__ */ jsxRuntimeExports.jsx(Music, { size: 14, className: "text-muted-foreground" }) }, i2);
+              }
+              return /* @__PURE__ */ jsxRuntimeExports.jsx("img", { src, className: "w-8 h-8 rounded-md object-cover border border-border bg-accent/50 shrink-0", alt: "thumbnail" }, i2);
+            }),
             images.length > 4 && /* @__PURE__ */ jsxRuntimeExports.jsxs("div", { className: "w-8 h-8 rounded-md bg-accent text-[10px] flex items-center justify-center font-bold text-muted-foreground border border-border shrink-0", children: [
               "+",
               images.length - 4
@@ -40553,10 +40783,12 @@ function EntryCard({ entry, active, onClick }) {
               " ",
               entry.photos.length
             ] }),
-            entry.tags && entry.tags.length > 0 && /* @__PURE__ */ jsxRuntimeExports.jsxs("span", { className: "flex items-center gap-1 bg-accent px-1.5 py-0.5 rounded-sm", children: [
-              entry.tags.length,
-              " tag",
-              entry.tags.length > 1 ? "s" : ""
+            entry.tags && entry.tags.length > 0 && /* @__PURE__ */ jsxRuntimeExports.jsxs("div", { className: "flex gap-1 overflow-hidden items-center justify-end", children: [
+              entry.tags.slice(0, 3).map((tag, i2) => /* @__PURE__ */ jsxRuntimeExports.jsx("span", { className: "bg-accent px-1.5 py-0.5 rounded-sm truncate max-w-[70px]", children: tag }, i2)),
+              entry.tags.length > 3 && /* @__PURE__ */ jsxRuntimeExports.jsxs("span", { className: "bg-accent px-1.5 py-0.5 rounded-sm", children: [
+                "+",
+                entry.tags.length - 3
+              ] })
             ] })
           ] })
         ] })
@@ -52480,12 +52712,17 @@ function Settings() {
   reactExports.useEffect(() => {
     setDevMode(localStorage.getItem("developerMode") === "true");
     setTheme(localStorage.getItem("theme") || "system");
-    try {
-      const recent = JSON.parse(localStorage.getItem("recent_vault_exports") || "[]");
-      setRecentExports(recent);
-    } catch (e3) {
-      setRecentExports([]);
-    }
+    const loadBackups = async () => {
+      try {
+        const res = await window.api.vault.listBackups();
+        if (res.success) {
+          setRecentExports(res.backups);
+        }
+      } catch (e3) {
+        console.error("Failed to load backups", e3);
+      }
+    };
+    loadBackups();
     if (window.api.profile) {
       window.api.profile.getCurrent().then((p2) => setCurrentProfile(p2));
     }
@@ -52510,10 +52747,20 @@ function Settings() {
       if (res.success) {
         setExportResult(`Successfully exported to: ${res.filePath}`);
         NotificationEngine.notify("success", "Export Successful", `Data exported to ${res.filePath}`, "Settings");
-        const name2 = res.filePath.split("\\").pop()?.split("/").pop() || "kiseki_backup.kvault";
-        const newRecent = [{ path: res.filePath, name: name2, date: Date.now() }, ...recentExports.filter((r2) => r2.path !== res.filePath)].slice(0, 3);
-        setRecentExports(newRecent);
-        localStorage.setItem("recent_vault_exports", JSON.stringify(newRecent));
+        const listRes = await window.api.vault.listBackups();
+        if (listRes.success) {
+          const backups = listRes.backups;
+          setRecentExports(backups);
+          if (backups.length > 3) {
+            const toDelete = backups.slice(3);
+            for (const old of toDelete) {
+              await window.api.vault.delete({ filePath: old.path }).catch(() => {
+              });
+            }
+            const finalRes = await window.api.vault.listBackups();
+            if (finalRes.success) setRecentExports(finalRes.backups);
+          }
+        }
       } else {
         setExportResult(`Export failed: ${res.error}`);
         NotificationEngine.notify("error", "Export Failed", `Export failed: ${res.error}`, "Settings");
@@ -52556,9 +52803,8 @@ function Settings() {
         if (!confirm("Are you sure you want to permanently delete this backup from your computer?")) return;
         const res = await window.api.vault.delete({ filePath: path2 });
         if (res.success) {
-          const newRecent = recentExports.filter((r2) => r2.path !== path2);
-          setRecentExports(newRecent);
-          localStorage.setItem("recent_vault_exports", JSON.stringify(newRecent));
+          const listRes = await window.api.vault.listBackups();
+          if (listRes.success) setRecentExports(listRes.backups);
           NotificationEngine.notify("info", "Backup Deleted", "The backup file was deleted.");
         } else {
           alert("Failed to delete file: " + res.error);
@@ -52568,9 +52814,8 @@ function Settings() {
         if (!newName) return;
         const res = await window.api.vault.rename({ oldPath: path2, newName });
         if (res.success) {
-          const newRecent = recentExports.map((r2) => r2.path === path2 ? { ...r2, path: res.newPath, name: res.newPath.split("\\").pop()?.split("/").pop() || newName } : r2);
-          setRecentExports(newRecent);
-          localStorage.setItem("recent_vault_exports", JSON.stringify(newRecent));
+          const listRes = await window.api.vault.listBackups();
+          if (listRes.success) setRecentExports(listRes.backups);
           NotificationEngine.notify("success", "Backup Renamed", "The backup file was successfully renamed.");
         } else {
           alert("Failed to rename file: " + res.error);
@@ -52765,11 +53010,6 @@ function DynamicWelcome({ data }) {
   } else {
     greeting = "Welcome back! Here's what happened today.";
     Icon2 = Moon;
-  }
-  const streak = data.habits?.length > 5 ? 24 : 12;
-  if (streak > 20) {
-    greeting = `🔥 Amazing! You're on a ${streak}-day streak.`;
-    Icon2 = Flame;
   }
   return /* @__PURE__ */ jsxRuntimeExports.jsxs("div", { className: "flex items-center gap-4 py-4 mb-2", children: [
     /* @__PURE__ */ jsxRuntimeExports.jsx("div", { className: "w-14 h-14 rounded-2xl bg-primary/10 text-primary flex items-center justify-center shadow-inner", children: /* @__PURE__ */ jsxRuntimeExports.jsx(Icon2, { size: 28 }) }),
@@ -90237,6 +90477,7 @@ function GoalsWidget({ data }) {
 function CalendarMemoryModal({ isOpen, onClose, selectedDate, memories, onSave }) {
   const [activeMemory, setActiveMemory] = reactExports.useState(null);
   const [isEditing, setIsEditing] = reactExports.useState(false);
+  const [showSuccessOverlay, setShowSuccessOverlay] = reactExports.useState(false);
   const [title, setTitle] = reactExports.useState("");
   const [description, setDescription] = reactExports.useState("");
   const [attachments, setAttachments] = reactExports.useState([]);
@@ -90305,11 +90546,15 @@ function CalendarMemoryModal({ isOpen, onClose, selectedDate, memories, onSave }
         await window.api.db.insert("calendarMemories", memoryData);
       }
       onSave();
-      if (activeMemory) {
-        setIsEditing(false);
-      } else {
-        onClose();
-      }
+      setShowSuccessOverlay(true);
+      setTimeout(() => {
+        setShowSuccessOverlay(false);
+        if (activeMemory) {
+          setIsEditing(false);
+        } else {
+          onClose();
+        }
+      }, 3e3);
     } catch (err) {
       console.error(err);
     }
@@ -90329,18 +90574,110 @@ function CalendarMemoryModal({ isOpen, onClose, selectedDate, memories, onSave }
   };
   const isAudio = (path2) => path2.match(/\.(mp3|wav|ogg|m4a|aac|flac)$/i);
   const isImage2 = (path2) => path2.match(/\.(jpeg|jpg|gif|png|webp|bmp)$/i);
-  const isDocument = (path2) => !isAudio(path2) && !isImage2(path2);
-  const toggleAudio = (path2) => {
+  const isVideo = (path2) => path2.match(/\.(mp4|webm|mkv|avi|mov)$/i);
+  const isDocument = (path2) => !isAudio(path2) && !isImage2(path2) && !isVideo(path2);
+  const getSafeUrl = (url) => {
+    if (!url) return "";
+    if (url.startsWith("file:///")) {
+      const pathPart = url.slice(8);
+      return "local-media://" + encodeURIComponent(pathPart).replace(/%2F/g, "/").replace(/%3A/g, ":");
+    }
+    return url;
+  };
+  const toggleAudio = (path2, index2) => {
+    const audioEl = document.getElementById(`audio-${index2}`);
+    if (!audioEl) return;
     if (playingAudio === path2) {
+      audioEl.pause();
       setPlayingAudio(null);
     } else {
+      if (playingAudio) {
+        const currentIndex = attachments.filter(isAudio).indexOf(playingAudio);
+        const currentEl = document.getElementById(`audio-${currentIndex}`);
+        if (currentEl) currentEl.pause();
+      }
       setPlayingAudio(path2);
+      audioEl.play().catch((e3) => {
+        console.error("Audio play failed:", e3);
+        setPlayingAudio(null);
+      });
+      audioEl.onended = () => setPlayingAudio(null);
     }
   };
   if (!isOpen) return null;
   const monthName = selectedDate ? new Date(2024, selectedDate.month - 1).toLocaleString("default", { month: "long" }) : "";
   const displayDate = selectedDate ? `${monthName} ${selectedDate.day}` : "";
   return /* @__PURE__ */ jsxRuntimeExports.jsx("div", { className: "fixed inset-0 bg-background/80 backdrop-blur-sm z-[9999] flex items-center justify-center p-4", children: /* @__PURE__ */ jsxRuntimeExports.jsxs("div", { className: "bg-card border border-border w-full max-w-2xl max-h-[90vh] rounded-3xl shadow-2xl flex flex-col overflow-hidden animate-in zoom-in-95 duration-200", children: [
+    showSuccessOverlay ? /* @__PURE__ */ jsxRuntimeExports.jsxs("div", { className: "absolute inset-0 z-[100] flex items-center justify-center bg-[radial-gradient(ellipse_at_center,_var(--tw-gradient-stops))] from-primary/30 via-background/90 to-background/95 backdrop-blur-md animate-in fade-in duration-300", children: [
+      /* @__PURE__ */ jsxRuntimeExports.jsx("style", { children: `
+              @keyframes bounceCalendar {
+                0% { transform: scale(0) translateY(50px); opacity: 0; }
+                50% { transform: scale(1.1) translateY(-10px); opacity: 1; }
+                70% { transform: scale(0.95) translateY(5px); }
+                100% { transform: scale(1) translateY(0); opacity: 1; }
+              }
+              @keyframes floatUpFade {
+                0% { transform: translate(0, 0) scale(0); opacity: 0; }
+                20% { opacity: 1; scale: 1; }
+                100% { transform: translate(var(--tx), var(--ty)) scale(0.5); opacity: 0; }
+              }
+              @keyframes heartBeat {
+                0% { transform: scale(1); }
+                15% { transform: scale(1.3); }
+                30% { transform: scale(1); }
+                45% { transform: scale(1.3); }
+                60% { transform: scale(1); }
+              }
+              @keyframes pageFlip {
+                0% { transform: rotateX(0deg); opacity: 1; }
+                50% { transform: rotateX(-90deg); opacity: 0.5; }
+                100% { transform: rotateX(-180deg); opacity: 0; }
+              }
+            ` }),
+      /* @__PURE__ */ jsxRuntimeExports.jsxs("div", { className: "relative flex flex-col items-center justify-center gap-8", style: { animation: "bounceCalendar 0.8s cubic-bezier(0.34, 1.56, 0.64, 1) forwards" }, children: [
+        /* @__PURE__ */ jsxRuntimeExports.jsxs("svg", { width: "220", height: "220", viewBox: "0 0 240 240", fill: "none", xmlns: "http://www.w3.org/2000/svg", className: "drop-shadow-2xl", children: [
+          /* @__PURE__ */ jsxRuntimeExports.jsx("rect", { x: "30", y: "50", width: "180", height: "170", rx: "20", fill: "#312e81", opacity: "0.4", transform: "translate(10, 15) rotate(-5 120 120)" }),
+          /* @__PURE__ */ jsxRuntimeExports.jsx("rect", { x: "30", y: "50", width: "180", height: "170", rx: "20", fill: "#f8fafc" }),
+          /* @__PURE__ */ jsxRuntimeExports.jsx("rect", { x: "35", y: "100", width: "170", height: "115", rx: "15", fill: "#f1f5f9" }),
+          /* @__PURE__ */ jsxRuntimeExports.jsx("path", { d: "M 30 70 C 30 58.95 38.95 50 50 50 L 190 50 C 201.05 50 210 58.95 210 70 L 210 95 L 30 95 L 30 70 Z", fill: "hsl(var(--primary))" }),
+          [60, 100, 140, 180].map((cx, i2) => /* @__PURE__ */ jsxRuntimeExports.jsxs("g", { children: [
+            /* @__PURE__ */ jsxRuntimeExports.jsx("rect", { x: cx - 5, y: "35", width: "10", height: "30", rx: "5", fill: "#94a3b8" }),
+            /* @__PURE__ */ jsxRuntimeExports.jsx("rect", { x: cx - 3, y: "37", width: "6", height: "26", rx: "3", fill: "#cbd5e1" }),
+            /* @__PURE__ */ jsxRuntimeExports.jsx("circle", { cx, cy: "60", r: "4", fill: "#0f172a", opacity: "0.3" })
+          ] }, i2)),
+          /* @__PURE__ */ jsxRuntimeExports.jsx("g", { style: { transformOrigin: "120px 95px", animation: "pageFlip 2.5s infinite ease-in-out", perspective: "1000px" }, children: /* @__PURE__ */ jsxRuntimeExports.jsx("rect", { x: "30", y: "95", width: "180", height: "125", rx: "20", fill: "#ffffff", stroke: "#e2e8f0", strokeWidth: "2" }) }),
+          /* @__PURE__ */ jsxRuntimeExports.jsx("g", { opacity: "0.5", children: [120, 150, 180].map((y2, yi2) => [60, 95, 130, 165].map((x2, xi2) => /* @__PURE__ */ jsxRuntimeExports.jsx("rect", { x: x2, y: y2, width: "15", height: "15", rx: "3", fill: "#cbd5e1" }, `${yi2}-${xi2}`))) }),
+          /* @__PURE__ */ jsxRuntimeExports.jsxs("g", { style: { transformOrigin: "120px 150px", animation: "heartBeat 2s infinite ease-in-out 1s" }, children: [
+            /* @__PURE__ */ jsxRuntimeExports.jsx("rect", { x: "110", y: "140", width: "30", height: "30", rx: "8", fill: "hsl(var(--primary))", opacity: "0.2" }),
+            /* @__PURE__ */ jsxRuntimeExports.jsx("path", { d: "M125 162L123.55 160.68C118.3 155.91 115 152.92 115 149.25C115 146.26 117.36 143.9 120.35 143.9C122.04 143.9 123.66 144.69 125 145.92C126.34 144.69 127.96 143.9 129.65 143.9C132.64 143.9 135 146.26 135 149.25C135 152.92 131.7 155.91 126.45 160.69L125 162Z", fill: "hsl(var(--primary))" })
+          ] })
+        ] }),
+        [...Array(12)].map((_2, i2) => {
+          const angle = i2 * 30 * Math.PI / 180;
+          const dist = 90 + Math.random() * 40;
+          const tx = `${Math.cos(angle) * dist}px`;
+          const ty = `${Math.sin(angle) * dist}px`;
+          return /* @__PURE__ */ jsxRuntimeExports.jsx(
+            "svg",
+            {
+              width: "24",
+              height: "24",
+              viewBox: "0 0 24 24",
+              fill: "none",
+              className: "absolute top-1/2 left-1/2 -ml-3 -mt-10 text-primary",
+              style: {
+                "--tx": tx,
+                "--ty": ty,
+                animation: `floatUpFade 1.2s ease-out forwards ${0.2 + Math.random() * 0.3}s`
+              },
+              children: i2 % 2 === 0 ? /* @__PURE__ */ jsxRuntimeExports.jsx("path", { d: "M12 2L14.39 9.61L22 12L14.39 14.39L12 22L9.61 14.39L2 12L9.61 9.61L12 2Z", fill: "currentColor" }) : /* @__PURE__ */ jsxRuntimeExports.jsx("circle", { cx: "12", cy: "12", r: "4", fill: "currentColor", opacity: "0.6" })
+            },
+            `star-${i2}`
+          );
+        }),
+        /* @__PURE__ */ jsxRuntimeExports.jsx("h2", { className: "text-4xl font-extrabold text-primary drop-shadow-lg tracking-tight text-center z-50", children: "Memory Saved!" })
+      ] })
+    ] }) : null,
     /* @__PURE__ */ jsxRuntimeExports.jsxs("div", { className: "px-6 py-4 border-b border-border flex justify-between items-center bg-card z-10 shrink-0", children: [
       /* @__PURE__ */ jsxRuntimeExports.jsxs("h2", { className: "text-xl font-bold flex items-center gap-2", children: [
         /* @__PURE__ */ jsxRuntimeExports.jsx(Calendar, { size: 20, className: "text-primary" }),
@@ -90390,7 +90727,7 @@ function CalendarMemoryModal({ isOpen, onClose, selectedDate, memories, onSave }
           /* @__PURE__ */ jsxRuntimeExports.jsxs("div", { className: "flex flex-wrap gap-2", children: [
             attachments.map((a2, i2) => /* @__PURE__ */ jsxRuntimeExports.jsxs("div", { className: "relative group w-20 h-20 rounded-xl border border-border overflow-hidden bg-accent flex items-center justify-center", children: [
               isImage2(a2) ? /* @__PURE__ */ jsxRuntimeExports.jsx("img", { src: a2, className: "w-full h-full object-cover" }) : /* @__PURE__ */ jsxRuntimeExports.jsxs("div", { className: "flex flex-col items-center p-2 text-center", children: [
-                isAudio(a2) ? /* @__PURE__ */ jsxRuntimeExports.jsx(Music, { size: 20, className: "text-blue-500 mb-1" }) : /* @__PURE__ */ jsxRuntimeExports.jsx(FileText, { size: 20, className: "text-orange-500 mb-1" }),
+                isAudio(a2) ? /* @__PURE__ */ jsxRuntimeExports.jsx(Music, { size: 20, className: "text-blue-500 mb-1" }) : isVideo(a2) ? /* @__PURE__ */ jsxRuntimeExports.jsx(Film, { size: 20, className: "text-purple-500 mb-1" }) : /* @__PURE__ */ jsxRuntimeExports.jsx(FileText, { size: 20, className: "text-orange-500 mb-1" }),
                 /* @__PURE__ */ jsxRuntimeExports.jsx("span", { className: "text-[10px] font-bold break-all line-clamp-2 leading-tight", children: a2.split(/[\/\\]/).pop() })
               ] }),
               /* @__PURE__ */ jsxRuntimeExports.jsx("button", { type: "button", onClick: () => setAttachments(attachments.filter((_2, idx) => idx !== i2)), className: "absolute inset-0 bg-red-500/80 text-white flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity", children: /* @__PURE__ */ jsxRuntimeExports.jsx(X, { size: 16 }) })
@@ -90431,7 +90768,7 @@ function CalendarMemoryModal({ isOpen, onClose, selectedDate, memories, onSave }
             ] }),
             /* @__PURE__ */ jsxRuntimeExports.jsx("div", { className: "grid grid-cols-2 sm:grid-cols-3 gap-3", children: attachments.filter(isImage2).map((img, i2) => /* @__PURE__ */ jsxRuntimeExports.jsx("div", { className: "aspect-square rounded-xl overflow-hidden border border-border shadow-sm cursor-pointer hover:opacity-90 transition-opacity", onClick: () => {
               if (window.api && window.api.fs) window.api.fs.open(img);
-            }, children: /* @__PURE__ */ jsxRuntimeExports.jsx("img", { src: img, className: "w-full h-full object-cover" }) }, i2)) })
+            }, children: /* @__PURE__ */ jsxRuntimeExports.jsx("img", { src: getSafeUrl(img), className: "w-full h-full object-cover" }) }, i2)) })
           ] }),
           attachments.filter(isAudio).length > 0 && /* @__PURE__ */ jsxRuntimeExports.jsxs("div", { children: [
             /* @__PURE__ */ jsxRuntimeExports.jsxs("h4", { className: "text-sm font-bold text-muted-foreground uppercase mb-3 flex items-center gap-2", children: [
@@ -90441,11 +90778,18 @@ function CalendarMemoryModal({ isOpen, onClose, selectedDate, memories, onSave }
             /* @__PURE__ */ jsxRuntimeExports.jsx("div", { className: "grid gap-2", children: attachments.filter(isAudio).map((aud, i2) => {
               const filename = aud.split(/[\/\\]/).pop();
               return /* @__PURE__ */ jsxRuntimeExports.jsxs("div", { className: "flex items-center gap-3 p-3 rounded-xl border border-border bg-accent/30", children: [
-                /* @__PURE__ */ jsxRuntimeExports.jsx("button", { onClick: () => toggleAudio(aud), className: "w-10 h-10 rounded-full bg-primary text-primary-foreground flex items-center justify-center shrink-0 shadow-md hover:scale-105 transition-transform", children: playingAudio === aud ? /* @__PURE__ */ jsxRuntimeExports.jsx(Pause, { size: 16, fill: "currentColor" }) : /* @__PURE__ */ jsxRuntimeExports.jsx(Play, { size: 16, fill: "currentColor", className: "ml-1" }) }),
+                /* @__PURE__ */ jsxRuntimeExports.jsx("button", { onClick: () => toggleAudio(aud, i2), className: "w-10 h-10 rounded-full bg-primary text-primary-foreground flex items-center justify-center shrink-0 shadow-md hover:scale-105 transition-transform", children: playingAudio === aud ? /* @__PURE__ */ jsxRuntimeExports.jsx(Pause, { size: 16, fill: "currentColor" }) : /* @__PURE__ */ jsxRuntimeExports.jsx(Play, { size: 16, fill: "currentColor", className: "ml-1" }) }),
                 /* @__PURE__ */ jsxRuntimeExports.jsx("div", { className: "flex-1 min-w-0", children: /* @__PURE__ */ jsxRuntimeExports.jsx("p", { className: "text-sm font-bold truncate", children: filename }) }),
-                /* @__PURE__ */ jsxRuntimeExports.jsx("audio", { src: aud, className: "hidden", id: `audio-${i2}` })
+                /* @__PURE__ */ jsxRuntimeExports.jsx("audio", { src: getSafeUrl(aud), className: "hidden", id: `audio-${i2}` })
               ] }, i2);
             }) })
+          ] }),
+          attachments.filter(isVideo).length > 0 && /* @__PURE__ */ jsxRuntimeExports.jsxs("div", { children: [
+            /* @__PURE__ */ jsxRuntimeExports.jsxs("h4", { className: "text-sm font-bold text-muted-foreground uppercase mb-3 flex items-center gap-2", children: [
+              /* @__PURE__ */ jsxRuntimeExports.jsx(Film, { size: 16 }),
+              " Video"
+            ] }),
+            /* @__PURE__ */ jsxRuntimeExports.jsx("div", { className: "grid grid-cols-1 sm:grid-cols-2 gap-3", children: attachments.filter(isVideo).map((vid, i2) => /* @__PURE__ */ jsxRuntimeExports.jsx("div", { className: "rounded-xl overflow-hidden border border-border shadow-sm bg-black", children: /* @__PURE__ */ jsxRuntimeExports.jsx("video", { src: getSafeUrl(vid), controls: true, className: "w-full h-auto max-h-[300px] object-contain" }) }, i2)) })
           ] }),
           attachments.filter(isDocument).length > 0 && /* @__PURE__ */ jsxRuntimeExports.jsxs("div", { children: [
             /* @__PURE__ */ jsxRuntimeExports.jsxs("h4", { className: "text-sm font-bold text-muted-foreground uppercase mb-3 flex items-center gap-2", children: [
@@ -90484,6 +90828,411 @@ function CalendarMemoryModal({ isOpen, onClose, selectedDate, memories, onSave }
         " Edit Memory"
       ] })
     ] }) : null
+  ] }) });
+}
+const TYPE_OPTIONS = [
+  { value: "journal", label: "Journal Entry" },
+  { value: "records", label: "Record" },
+  { value: "goals", label: "Goal" },
+  { value: "relationships", label: "Person" },
+  { value: "habits", label: "Habit" },
+  { value: "education", label: "Education" },
+  { value: "jobs", label: "Job" },
+  { value: "projects", label: "Project" },
+  { value: "skills", label: "Skill" },
+  { value: "certificates", label: "Certificate" },
+  { value: "achievements", label: "Achievement" }
+];
+function QuickAddModal({ isOpen, onClose, onSuccess }) {
+  const [type, setType] = reactExports.useState("journal");
+  const [formData, setFormData] = reactExports.useState({});
+  const [files, setFiles] = reactExports.useState([]);
+  const [profileImage, setProfileImage] = reactExports.useState(null);
+  const [isSaving, setIsSaving] = reactExports.useState(false);
+  const [savedRelationships, setSavedRelationships] = reactExports.useState([]);
+  const [targetPersonId, setTargetPersonId] = reactExports.useState("new");
+  const fileInputRef = reactExports.useRef(null);
+  const profileInputRef = reactExports.useRef(null);
+  reactExports.useEffect(() => {
+    if (isOpen) {
+      window.api.db.find("relationships", {}).then(setSavedRelationships).catch(console.error);
+    }
+  }, [isOpen]);
+  if (!isOpen) return null;
+  const handleDragOver = (e3) => {
+    e3.preventDefault();
+  };
+  const handleDrop2 = (e3) => {
+    e3.preventDefault();
+    if (e3.dataTransfer.files && e3.dataTransfer.files.length > 0) {
+      setFiles((prev) => [...prev, ...Array.from(e3.dataTransfer.files)]);
+    }
+  };
+  const removeFile = (index2) => {
+    setFiles((prev) => prev.filter((_2, i2) => i2 !== index2));
+  };
+  const handleSave = async () => {
+    setIsSaving(true);
+    try {
+      const uploadedPaths = [];
+      for (const file of files) {
+        try {
+          let res;
+          if (file.path && window.api.attachment.saveFile) {
+            res = await window.api.attachment.saveFile(file.path);
+          } else {
+            const base64 = await new Promise((resolve, reject) => {
+              const reader = new FileReader();
+              reader.onload = () => resolve(reader.result);
+              reader.onerror = (error) => reject(error);
+              reader.readAsDataURL(file);
+            });
+            res = await window.api.attachment.saveBase64(base64);
+          }
+          if (res && res.success && res.filePath) {
+            let fileType = "file";
+            if (file.type.startsWith("image/") || file.name.match(/\.(jpg|jpeg|png|gif|webp)$/i)) fileType = "image";
+            else if (file.type.startsWith("audio/") || file.name.match(/\.(mp3|wav|ogg|m4a|mpeg)$/i)) fileType = "audio";
+            else if (file.type.startsWith("video/") || file.name.match(/\.(mp4|webm|mov|mkv|avi|wmv|flv)$/i)) fileType = "video";
+            uploadedPaths.push({ type: fileType, path: res.filePath });
+          }
+        } catch (err) {
+          console.error("Failed to upload file:", err);
+        }
+      }
+      const now2 = Date.now();
+      const todayStr2 = (/* @__PURE__ */ new Date()).toISOString().split("T")[0];
+      let entry = { createdAt: now2, updatedAt: now2 };
+      let finalProfilePicture = "";
+      if (profileImage) {
+        try {
+          const base64 = await new Promise((resolve, reject) => {
+            const reader = new FileReader();
+            reader.onload = () => resolve(reader.result);
+            reader.onerror = (error) => reject(error);
+            reader.readAsDataURL(profileImage);
+          });
+          const res = await window.api.attachment.saveBase64(base64);
+          if (res.success && res.filePath) {
+            finalProfilePicture = res.filePath;
+          }
+        } catch (err) {
+          console.error("Failed to upload profile picture:", err);
+        }
+      }
+      const photos = uploadedPaths.filter((p2) => p2.type === "image").map((p2) => p2.path);
+      const attachments = uploadedPaths.map((p2) => p2.path);
+      const audios = uploadedPaths.filter((p2) => p2.type === "audio").map((p2) => p2.path);
+      const videos = uploadedPaths.filter((p2) => p2.type === "video").map((p2) => p2.path);
+      let shouldInsert = true;
+      if (type === "journal") {
+        entry = { ...entry, ...formData, date: todayStr2, tags: [], isPrivate: false, photos, fileAttachments: attachments, voiceNotes: audios };
+      } else if (type === "records") {
+        entry = { ...entry, ...formData, type: formData.type || "Event", date: formData.date || todayStr2, tags: [], privacyLevel: "private", importance: 3, attachments };
+      } else if (type === "goals") {
+        entry = { ...entry, ...formData, category: "Career", priority: formData.priority || "medium", status: formData.status || "Active", startDate: formData.startDate || todayStr2, targetDate: formData.targetDate || todayStr2, progress: Number(formData.progress) || 0 };
+      } else if (type === "relationships") {
+        if (targetPersonId === "new") {
+          entry = { ...entry, ...formData, tags: [], relationshipScore: 50, relationshipType: formData.relationshipType || "Friend", profilePicture: finalProfilePicture || photos[0], photos, audio: audios, video: videos, attachments };
+        } else {
+          shouldInsert = false;
+          const existingPerson = savedRelationships.find((r2) => r2._id === targetPersonId);
+          if (existingPerson) {
+            const updatePayload = {
+              photos: [...existingPerson.photos || [], ...photos],
+              audio: [...existingPerson.audio || [], ...audios],
+              video: [...existingPerson.video || [], ...videos],
+              attachments: [...existingPerson.attachments || [], ...attachments]
+            };
+            if (finalProfilePicture) updatePayload.profilePicture = finalProfilePicture;
+            await window.api.db.update("relationships", { _id: targetPersonId }, { $set: updatePayload }, {});
+          }
+        }
+      } else if (type === "habits") {
+        entry = { ...entry, ...formData, priority: formData.priority || "medium", scheduleType: formData.scheduleType || "daily", isTimerEnabled: false, startDate: todayStr2, archived: false, icon: formData.icon !== void 0 ? formData.icon : "🌟" };
+      } else if (type === "education") {
+        entry = { ...entry, ...formData, status: formData.status || "Current", startDate: formData.startDate || todayStr2, photos, attachments };
+      } else if (type === "jobs") {
+        entry = { ...entry, ...formData, isCurrent: formData.isCurrent ?? true, startDate: formData.startDate || todayStr2, attachments };
+      } else if (type === "projects") {
+        const techArray = formData.technologies ? formData.technologies.split(",").map((t2) => t2.trim()) : [];
+        entry = { ...entry, ...formData, status: formData.status || "Planning", startDate: formData.startDate || todayStr2, technologies: techArray, screenshots: photos, attachments };
+      } else if (type === "skills") {
+        entry = { ...entry, ...formData, level: Number(formData.level) || 50, yearsOfExperience: Number(formData.yearsOfExperience) || 1, backgroundImage: photos[0] };
+      } else if (type === "certificates") {
+        entry = { ...entry, ...formData, issueDate: formData.issueDate || todayStr2, imageAttachment: photos[0], pdfAttachment: attachments.find((a2) => a2.endsWith(".pdf")) };
+      } else if (type === "achievements") {
+        entry = { ...entry, ...formData, date: formData.date || todayStr2, photos, attachments };
+      }
+      if (shouldInsert) {
+        const collectionName = type === "jobs" ? "career" : type;
+        await window.api.db.insert(collectionName, entry);
+      }
+      onSuccess();
+    } catch (err) {
+      console.error("Save failed", err);
+    } finally {
+      setIsSaving(false);
+    }
+  };
+  const renderInput = (key, label, inputType = "text", placeholder = "", isFirst = false) => /* @__PURE__ */ jsxRuntimeExports.jsxs("div", { children: [
+    /* @__PURE__ */ jsxRuntimeExports.jsx("label", { className: "text-sm font-medium text-muted-foreground mb-1 block", children: label }),
+    inputType === "textarea" ? /* @__PURE__ */ jsxRuntimeExports.jsx(
+      "textarea",
+      {
+        autoFocus: isFirst,
+        value: formData[key] || "",
+        onChange: (e3) => setFormData({ ...formData, [key]: e3.target.value }),
+        className: "w-full p-2 bg-background border border-border rounded-xl focus:outline-none focus:ring-2 focus:ring-primary/50 min-h-[100px]",
+        placeholder
+      }
+    ) : /* @__PURE__ */ jsxRuntimeExports.jsx(
+      "input",
+      {
+        autoFocus: isFirst,
+        type: inputType,
+        value: formData[key] || "",
+        onChange: (e3) => setFormData({ ...formData, [key]: e3.target.value }),
+        className: "w-full p-2 bg-background border border-border rounded-xl focus:outline-none focus:ring-2 focus:ring-primary/50",
+        placeholder
+      }
+    )
+  ] }, `${type}-${key}`);
+  const renderSelect = (key, label, options) => /* @__PURE__ */ jsxRuntimeExports.jsxs("div", { children: [
+    /* @__PURE__ */ jsxRuntimeExports.jsx("label", { className: "text-sm font-medium text-muted-foreground mb-1 block", children: label }),
+    /* @__PURE__ */ jsxRuntimeExports.jsx(
+      "select",
+      {
+        value: formData[key] || (typeof options[0] === "string" ? options[0] : options[0].value),
+        onChange: (e3) => setFormData({ ...formData, [key]: e3.target.value }),
+        className: "w-full p-2 bg-background border border-border rounded-xl focus:outline-none focus:ring-2 focus:ring-primary/50",
+        children: options.map((o2, i2) => /* @__PURE__ */ jsxRuntimeExports.jsx("option", { value: typeof o2 === "string" ? o2 : o2.value, children: typeof o2 === "string" ? o2 : o2.label }, i2))
+      }
+    )
+  ] });
+  return /* @__PURE__ */ jsxRuntimeExports.jsx("div", { className: "fixed inset-0 z-[110] bg-background/80 backdrop-blur-sm flex items-center justify-center p-4", children: /* @__PURE__ */ jsxRuntimeExports.jsxs("div", { className: "bg-card border border-border rounded-2xl shadow-2xl max-w-2xl w-full max-h-[90vh] flex flex-col animate-in zoom-in-95", children: [
+    /* @__PURE__ */ jsxRuntimeExports.jsxs("div", { className: "px-6 py-4 border-b border-border flex items-center justify-between", children: [
+      /* @__PURE__ */ jsxRuntimeExports.jsx("h3", { className: "font-bold text-xl", children: "Quick Add" }),
+      /* @__PURE__ */ jsxRuntimeExports.jsx("button", { onClick: onClose, className: "p-2 hover:bg-accent rounded-full transition-colors text-muted-foreground hover:text-foreground", children: /* @__PURE__ */ jsxRuntimeExports.jsx(X, { size: 20 }) })
+    ] }),
+    /* @__PURE__ */ jsxRuntimeExports.jsxs("div", { className: "p-6 overflow-y-auto flex-1 space-y-6", children: [
+      /* @__PURE__ */ jsxRuntimeExports.jsxs("div", { children: [
+        /* @__PURE__ */ jsxRuntimeExports.jsx("label", { className: "text-sm font-medium text-muted-foreground mb-1 block", children: "Type" }),
+        /* @__PURE__ */ jsxRuntimeExports.jsx(
+          "select",
+          {
+            value: type,
+            onChange: (e3) => {
+              setType(e3.target.value);
+              setFormData({});
+              setFiles([]);
+              setProfileImage(null);
+            },
+            className: "w-full p-3 bg-background border-2 border-primary/20 rounded-xl focus:outline-none focus:border-primary focus:ring-2 focus:ring-primary/50 font-medium",
+            children: TYPE_OPTIONS.map((o2) => /* @__PURE__ */ jsxRuntimeExports.jsx("option", { value: o2.value, children: o2.label }, o2.value))
+          }
+        )
+      ] }),
+      /* @__PURE__ */ jsxRuntimeExports.jsxs("div", { className: "grid grid-cols-1 md:grid-cols-2 gap-4", children: [
+        (type === "journal" || type === "records" || type === "goals" || type === "habits" || type === "projects" || type === "achievements") && /* @__PURE__ */ jsxRuntimeExports.jsx("div", { className: "col-span-1 md:col-span-2", children: renderInput("title", "Title", "text", "Enter title...", true) }),
+        (type === "journal" || type === "records" || type === "goals" || type === "projects" || type === "achievements") && /* @__PURE__ */ jsxRuntimeExports.jsxs("div", { className: "col-span-1 md:col-span-2", children: [
+          renderInput(type === "journal" ? "content" : "description", type === "goals" ? "Notes / Content" : "Description", "textarea", type === "goals" ? "Add any additional notes, details, or content related to this goal..." : "Add details..."),
+          type === "journal" && /* @__PURE__ */ jsxRuntimeExports.jsx(
+            "button",
+            {
+              onClick: () => {
+                onClose();
+                window.location.hash = "#/journal";
+              },
+              className: "mt-2 text-sm text-primary font-medium hover:underline flex items-center gap-1",
+              children: "Open Full Journal Editor →"
+            }
+          )
+        ] }),
+        type === "records" && /* @__PURE__ */ jsxRuntimeExports.jsxs(jsxRuntimeExports.Fragment, { children: [
+          renderSelect("type", "Record Sub-type", ["Event", "Memory", "Thought", "Photo", "Video", "Document"]),
+          renderInput("date", "Date", "date")
+        ] }),
+        type === "goals" && /* @__PURE__ */ jsxRuntimeExports.jsxs(jsxRuntimeExports.Fragment, { children: [
+          renderInput("progress", "Progress (0-100)", "number"),
+          renderSelect("status", "Status", ["Active", "Planned", "Paused", "Completed", "Cancelled"]),
+          renderInput("startDate", "Start Date", "date"),
+          renderInput("targetDate", "Target Date", "date")
+        ] }),
+        type === "relationships" && /* @__PURE__ */ jsxRuntimeExports.jsxs(jsxRuntimeExports.Fragment, { children: [
+          /* @__PURE__ */ jsxRuntimeExports.jsxs("div", { className: "col-span-1 md:col-span-2 mb-2", children: [
+            /* @__PURE__ */ jsxRuntimeExports.jsx("label", { className: "text-sm font-medium text-muted-foreground mb-2 block", children: "Action" }),
+            /* @__PURE__ */ jsxRuntimeExports.jsxs(
+              "select",
+              {
+                value: targetPersonId,
+                onChange: (e3) => setTargetPersonId(e3.target.value),
+                className: "w-full p-2 bg-background border border-border rounded-xl focus:outline-none focus:ring-2 focus:ring-primary/50 font-medium",
+                children: [
+                  /* @__PURE__ */ jsxRuntimeExports.jsx("option", { value: "new", children: "✨ Create New Person" }),
+                  savedRelationships.map((rel) => /* @__PURE__ */ jsxRuntimeExports.jsxs("option", { value: rel._id, children: [
+                    "👤 Add Media to: ",
+                    rel.name
+                  ] }, rel._id))
+                ]
+              }
+            )
+          ] }),
+          /* @__PURE__ */ jsxRuntimeExports.jsxs("div", { className: "col-span-1 md:col-span-2 flex flex-col items-center mb-2", children: [
+            /* @__PURE__ */ jsxRuntimeExports.jsx("label", { className: "text-sm font-medium text-muted-foreground mb-2 block", children: "Profile Picture (Optional)" }),
+            /* @__PURE__ */ jsxRuntimeExports.jsxs(
+              "div",
+              {
+                onClick: () => profileInputRef.current?.click(),
+                className: "w-24 h-24 rounded-full border-2 border-dashed border-border flex items-center justify-center cursor-pointer hover:border-primary/50 hover:bg-primary/5 transition-all overflow-hidden relative group bg-accent/30",
+                children: [
+                  profileImage ? /* @__PURE__ */ jsxRuntimeExports.jsx("img", { src: URL.createObjectURL(profileImage), alt: "Profile", className: "w-full h-full object-cover" }) : /* @__PURE__ */ jsxRuntimeExports.jsx(User, { size: 32, className: "text-muted-foreground group-hover:text-primary transition-colors" }),
+                  /* @__PURE__ */ jsxRuntimeExports.jsx("div", { className: "absolute inset-0 bg-black/40 flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity", children: /* @__PURE__ */ jsxRuntimeExports.jsx(CloudUpload, { size: 20, className: "text-white" }) })
+                ]
+              }
+            ),
+            /* @__PURE__ */ jsxRuntimeExports.jsx(
+              "input",
+              {
+                type: "file",
+                accept: "image/*",
+                ref: profileInputRef,
+                className: "hidden",
+                onChange: (e3) => {
+                  if (e3.target.files && e3.target.files.length > 0) {
+                    setProfileImage(e3.target.files[0]);
+                  }
+                }
+              }
+            ),
+            profileImage && /* @__PURE__ */ jsxRuntimeExports.jsx("button", { onClick: () => setProfileImage(null), className: "text-xs text-destructive mt-2 hover:underline", children: "Remove" })
+          ] }),
+          targetPersonId === "new" && /* @__PURE__ */ jsxRuntimeExports.jsxs(jsxRuntimeExports.Fragment, { children: [
+            /* @__PURE__ */ jsxRuntimeExports.jsx("div", { className: "col-span-1 md:col-span-2", children: renderInput("name", "Name", "text", "", true) }),
+            renderInput("relationshipType", "Relationship Type", "text", "e.g., Friend, Family"),
+            /* @__PURE__ */ jsxRuntimeExports.jsx("div", { className: "col-span-1 md:col-span-2", children: renderInput("bio", "Bio", "textarea") })
+          ] })
+        ] }),
+        type === "habits" && /* @__PURE__ */ jsxRuntimeExports.jsxs(jsxRuntimeExports.Fragment, { children: [
+          renderInput("category", "Category", "text", "e.g., Health"),
+          renderSelect("priority", "Priority", ["low", "medium", "high"]),
+          renderSelect("scheduleType", "Schedule", [
+            { label: "Everyday", value: "daily" },
+            { label: "Weekdays", value: "weekdays" },
+            { label: "Weekends", value: "weekends" },
+            { label: "Specific Days", value: "specific_days" }
+          ]),
+          formData.scheduleType === "specific_days" && /* @__PURE__ */ jsxRuntimeExports.jsx("div", { className: "col-span-1 md:col-span-2 flex justify-between gap-1 mt-2", children: ["S", "M", "T", "W", "T", "F", "S"].map((day, idx) => /* @__PURE__ */ jsxRuntimeExports.jsx(
+            "button",
+            {
+              type: "button",
+              onClick: () => {
+                const days = formData.scheduleDays || [];
+                if (days.includes(idx)) {
+                  setFormData({ ...formData, scheduleDays: days.filter((d2) => d2 !== idx) });
+                } else {
+                  setFormData({ ...formData, scheduleDays: [...days, idx].sort() });
+                }
+              },
+              className: `w-10 h-10 rounded-full flex items-center justify-center font-bold text-sm transition-colors ${(formData.scheduleDays || []).includes(idx) ? "bg-primary text-primary-foreground" : "bg-accent text-muted-foreground hover:bg-accent/80"}`,
+              children: day
+            },
+            idx
+          )) })
+        ] }),
+        type === "education" && /* @__PURE__ */ jsxRuntimeExports.jsxs(jsxRuntimeExports.Fragment, { children: [
+          renderInput("school", "Institute Name", "text", "", true),
+          renderInput("degree", "Degree"),
+          renderInput("field", "Field of Study"),
+          renderSelect("status", "Status", ["Current", "Graduated", "Dropped"]),
+          renderInput("startDate", "Start Date", "date")
+        ] }),
+        type === "jobs" && /* @__PURE__ */ jsxRuntimeExports.jsxs(jsxRuntimeExports.Fragment, { children: [
+          renderInput("company", "Company", "text", "", true),
+          renderInput("position", "Position"),
+          renderInput("employmentType", "Employment Type", "text", "e.g., Full-time"),
+          renderInput("startDate", "Start Date", "date")
+        ] }),
+        type === "projects" && /* @__PURE__ */ jsxRuntimeExports.jsx("div", { className: "col-span-1 md:col-span-2", children: renderInput("technologies", "Language / Technologies", "text", "html, Node.js, Electron") }),
+        type === "skills" && /* @__PURE__ */ jsxRuntimeExports.jsxs(jsxRuntimeExports.Fragment, { children: [
+          /* @__PURE__ */ jsxRuntimeExports.jsx("div", { className: "col-span-1 md:col-span-2", children: renderInput("name", "Skill Name", "text", "", true) }),
+          renderInput("level", "Level (1-100)", "number"),
+          renderInput("yearsOfExperience", "Years of Experience", "number")
+        ] }),
+        type === "certificates" && /* @__PURE__ */ jsxRuntimeExports.jsxs(jsxRuntimeExports.Fragment, { children: [
+          /* @__PURE__ */ jsxRuntimeExports.jsx("div", { className: "col-span-1 md:col-span-2", children: renderInput("name", "Certificate Name", "text", "", true) }),
+          renderInput("organization", "Organization"),
+          renderInput("issueDate", "Issue Date", "date")
+        ] }),
+        type === "achievements" && renderInput("date", "Date", "date")
+      ] }),
+      type !== "goals" && (type === "habits" ? /* @__PURE__ */ jsxRuntimeExports.jsxs("div", { children: [
+        /* @__PURE__ */ jsxRuntimeExports.jsx("label", { className: "text-sm font-medium text-muted-foreground mb-2 block", children: "Drop Emoji" }),
+        /* @__PURE__ */ jsxRuntimeExports.jsx(
+          "input",
+          {
+            type: "text",
+            value: formData.icon !== void 0 ? formData.icon : "🌟",
+            onChange: (e3) => setFormData({ ...formData, icon: e3.target.value }),
+            className: "w-full p-4 bg-background border border-border rounded-xl text-3xl text-center focus:outline-none focus:ring-2 focus:ring-primary/50",
+            placeholder: "Drop an emoji here..."
+          }
+        )
+      ] }) : /* @__PURE__ */ jsxRuntimeExports.jsxs("div", { children: [
+        /* @__PURE__ */ jsxRuntimeExports.jsx("label", { className: "text-sm font-medium text-muted-foreground mb-2 block", children: type === "skills" ? "Add Background Img" : type === "certificates" ? "Add Certificate Photo & File" : type === "relationships" ? "Media (Photos, Audio, Video, Files)" : "Attachments (Photos, Audio, Video, Files)" }),
+        /* @__PURE__ */ jsxRuntimeExports.jsxs(
+          "div",
+          {
+            onDragOver: handleDragOver,
+            onDrop: handleDrop2,
+            onClick: () => fileInputRef.current?.click(),
+            className: "border-2 border-dashed border-border rounded-xl p-8 flex flex-col items-center justify-center text-center cursor-pointer hover:border-primary/50 hover:bg-primary/5 transition-all group",
+            children: [
+              /* @__PURE__ */ jsxRuntimeExports.jsx(CloudUpload, { size: 40, className: "text-muted-foreground group-hover:text-primary transition-colors mb-3" }),
+              /* @__PURE__ */ jsxRuntimeExports.jsx("p", { className: "font-medium text-sm", children: "Drag and drop files here" }),
+              /* @__PURE__ */ jsxRuntimeExports.jsx("p", { className: "text-xs text-muted-foreground mt-1", children: "or click to browse from your computer" }),
+              /* @__PURE__ */ jsxRuntimeExports.jsx(
+                "input",
+                {
+                  type: "file",
+                  multiple: true,
+                  ref: fileInputRef,
+                  className: "hidden",
+                  onChange: (e3) => {
+                    if (e3.target.files) setFiles((prev) => [...prev, ...Array.from(e3.target.files)]);
+                  }
+                }
+              )
+            ]
+          }
+        ),
+        files.length > 0 && /* @__PURE__ */ jsxRuntimeExports.jsx("div", { className: "mt-4 space-y-2", children: files.map((file, idx) => {
+          let Icon2 = File;
+          if (file.type.startsWith("image/")) Icon2 = Image$2;
+          else if (file.type.startsWith("audio/")) Icon2 = Music;
+          else if (file.type.startsWith("video/")) Icon2 = Video;
+          const isImage2 = file.type.startsWith("image/");
+          const previewUrl = isImage2 ? URL.createObjectURL(file) : null;
+          return /* @__PURE__ */ jsxRuntimeExports.jsxs("div", { className: "flex items-center justify-between bg-accent p-2 rounded-lg text-sm", children: [
+            /* @__PURE__ */ jsxRuntimeExports.jsxs("div", { className: "flex items-center gap-3 overflow-hidden", children: [
+              isImage2 && previewUrl ? /* @__PURE__ */ jsxRuntimeExports.jsx("img", { src: previewUrl, alt: "preview", className: "w-8 h-8 rounded object-cover flex-shrink-0" }) : /* @__PURE__ */ jsxRuntimeExports.jsx(Icon2, { size: 16, className: "text-primary flex-shrink-0" }),
+              /* @__PURE__ */ jsxRuntimeExports.jsx("span", { className: "truncate", children: file.name })
+            ] }),
+            /* @__PURE__ */ jsxRuntimeExports.jsx("button", { onClick: (e3) => {
+              e3.stopPropagation();
+              removeFile(idx);
+            }, className: "p-1 hover:bg-background rounded text-muted-foreground hover:text-destructive", children: /* @__PURE__ */ jsxRuntimeExports.jsx(X, { size: 14 }) })
+          ] }, idx);
+        }) })
+      ] }))
+    ] }),
+    /* @__PURE__ */ jsxRuntimeExports.jsxs("div", { className: "px-6 py-4 border-t border-border flex justify-end gap-3 bg-card/50", children: [
+      /* @__PURE__ */ jsxRuntimeExports.jsx("button", { onClick: onClose, disabled: isSaving, className: "px-5 py-2.5 bg-accent hover:bg-accent/80 rounded-xl font-medium transition-colors disabled:opacity-50", children: "Cancel" }),
+      /* @__PURE__ */ jsxRuntimeExports.jsx("button", { onClick: handleSave, disabled: isSaving, className: "px-5 py-2.5 bg-primary text-primary-foreground hover:bg-primary/90 rounded-xl font-bold shadow-lg shadow-primary/20 transition-all active:scale-95 flex items-center gap-2 disabled:opacity-75 disabled:active:scale-100", children: isSaving ? /* @__PURE__ */ jsxRuntimeExports.jsxs(jsxRuntimeExports.Fragment, { children: [
+        /* @__PURE__ */ jsxRuntimeExports.jsx(LoaderCircle, { size: 18, className: "animate-spin" }),
+        " Saving..."
+      ] }) : "Save Entry" })
+    ] })
   ] }) });
 }
 function BirthdayBackground() {
@@ -90617,6 +91366,16 @@ function BirthdayWidget({ userProfile }) {
     ] })
   ] });
 }
+const stripHtml = (html2) => html2 ? html2.replace(/<[^>]*>?/gm, "") : "";
+const HighlightText = ({ text: text2, highlight: highlight2 }) => {
+  if (!text2) return null;
+  const str = stripHtml(String(text2));
+  if (!highlight2.trim()) return /* @__PURE__ */ jsxRuntimeExports.jsx(jsxRuntimeExports.Fragment, { children: str });
+  const parts = str.split(new RegExp(`(${highlight2})`, "gi"));
+  return /* @__PURE__ */ jsxRuntimeExports.jsx(jsxRuntimeExports.Fragment, { children: parts.map(
+    (part, i2) => part.toLowerCase() === highlight2.toLowerCase() ? /* @__PURE__ */ jsxRuntimeExports.jsx("span", { className: "bg-primary/20 text-primary font-bold rounded-[3px] px-0.5 border border-primary/20 shadow-sm", children: part }, i2) : part
+  ) });
+};
 const WIDGET_REGISTRY = {
   summary: { component: SummaryWidget, label: "Today's Progress", defaultVisible: true, gridCol: "col-span-1 md:col-span-2 xl:col-span-3" },
   ai: { component: AiInsightWidget, label: "AI Insights", defaultVisible: true, gridCol: "col-span-1 md:col-span-2 xl:col-span-3" },
@@ -90627,6 +91386,18 @@ const WIDGET_REGISTRY = {
   relationships: { component: RelationshipsWidget, label: "Relationship Updates", defaultVisible: true, gridCol: "col-span-1" },
   goals: { component: GoalsWidget, label: "Goals", defaultVisible: true, gridCol: "col-span-1" }
 };
+const SearchSectionHeader = ({ icon: Icon2, title }) => /* @__PURE__ */ jsxRuntimeExports.jsxs("div", { className: "sticky top-0 bg-card/95 backdrop-blur-md z-10 px-2 py-2 mb-2 border-b border-border/50 flex items-center gap-2", children: [
+  /* @__PURE__ */ jsxRuntimeExports.jsx(Icon2, { size: 14, className: "text-muted-foreground" }),
+  /* @__PURE__ */ jsxRuntimeExports.jsx("h3", { className: "text-xs font-bold text-muted-foreground uppercase tracking-wider", children: title })
+] });
+const SearchResultItem = ({ icon: Icon2, title, desc, onClick, highlight: highlight2, isSelected, id: id2 }) => /* @__PURE__ */ jsxRuntimeExports.jsxs("div", { id: id2, onClick, className: `p-3 rounded-xl cursor-pointer flex items-center gap-4 transition-all duration-300 border group ${isSelected ? "bg-accent shadow-md -translate-y-0.5 border-border" : "hover:bg-accent hover:shadow-md hover:-translate-y-0.5 border-transparent hover:border-border"}`, children: [
+  /* @__PURE__ */ jsxRuntimeExports.jsx("div", { className: "w-10 h-10 rounded-xl bg-primary/5 text-primary flex items-center justify-center shrink-0 group-hover:bg-primary group-hover:text-primary-foreground transition-colors shadow-sm border border-primary/10", children: typeof Icon2 === "string" ? /* @__PURE__ */ jsxRuntimeExports.jsx("span", { className: "text-lg font-bold", children: Icon2 }) : /* @__PURE__ */ jsxRuntimeExports.jsx(Icon2, { size: 20 }) }),
+  /* @__PURE__ */ jsxRuntimeExports.jsxs("div", { className: "flex-1 min-w-0", children: [
+    /* @__PURE__ */ jsxRuntimeExports.jsx("div", { className: "text-sm font-bold text-foreground mb-0.5", children: /* @__PURE__ */ jsxRuntimeExports.jsx(HighlightText, { text: title, highlight: highlight2 }) }),
+    desc && /* @__PURE__ */ jsxRuntimeExports.jsx("div", { className: "text-xs text-muted-foreground truncate", children: /* @__PURE__ */ jsxRuntimeExports.jsx(HighlightText, { text: desc, highlight: highlight2 }) })
+  ] }),
+  /* @__PURE__ */ jsxRuntimeExports.jsx(ChevronRight, { size: 16, className: `text-muted-foreground transition-all duration-300 ${isSelected ? "opacity-100 translate-x-0" : "opacity-0 -translate-x-2 group-hover:opacity-100 group-hover:translate-x-0"}` })
+] });
 function Dashboard$1() {
   const [data, setData] = reactExports.useState({
     records: [],
@@ -90635,9 +91406,17 @@ function Dashboard$1() {
     relationships: [],
     journal: [],
     calendarMemories: [],
-    userProfile: null
+    userProfile: null,
+    achievements: [],
+    skills: [],
+    projects: [],
+    memoryCapsules: [],
+    certificates: [],
+    career: [],
+    education: []
   });
   const location = useLocation();
+  const navigate = useNavigate();
   const [loading, setLoading] = reactExports.useState(true);
   const [searchQuery, setSearchQuery] = reactExports.useState("");
   const [showSettings, setShowSettings] = reactExports.useState(false);
@@ -90645,11 +91424,61 @@ function Dashboard$1() {
   const [dragStartY, setDragStartY] = reactExports.useState(0);
   const [scrollTop, setScrollTop] = reactExports.useState(0);
   const scrollContainerRef = reactExports.useRef(null);
+  const searchInputRef = reactExports.useRef(null);
+  const searchDropdownRef = reactExports.useRef(null);
+  const [selectedIndex, setSelectedIndex] = reactExports.useState(-1);
+  const [isSearchDragging, setIsSearchDragging] = reactExports.useState(false);
+  const [searchDragStartY, setSearchDragStartY] = reactExports.useState(0);
+  const [searchScrollTop, setSearchScrollTop] = reactExports.useState(0);
+  reactExports.useEffect(() => {
+    const handleGlobalKeyDown = (e3) => {
+      if (e3.ctrlKey && e3.shiftKey && e3.key.toLowerCase() === "s") {
+        e3.preventDefault();
+        searchInputRef.current?.focus();
+      }
+    };
+    window.addEventListener("keydown", handleGlobalKeyDown);
+    return () => window.removeEventListener("keydown", handleGlobalKeyDown);
+  }, []);
   const [memoryModalDate, setMemoryModalDate] = reactExports.useState(null);
   const [isMemoryModalOpen, setIsMemoryModalOpen] = reactExports.useState(false);
   const [widgetOrder, setWidgetOrder] = reactExports.useState(Object.keys(WIDGET_REGISTRY));
   const [widgetVisibility, setWidgetVisibility] = reactExports.useState({});
   const [draggedWidget, setDraggedWidget] = reactExports.useState(null);
+  const [isNewModalOpen, setIsNewModalOpen] = reactExports.useState(false);
+  const [showSuccessOverlay, setShowSuccessOverlay] = reactExports.useState(false);
+  const loadDashboard = async () => {
+    try {
+      const todayStr2 = (/* @__PURE__ */ new Date()).toISOString().split("T")[0];
+      const [records, goals, rawHabits, relationships, journal, habitRecords, calendarMemories, profiles, achievements, skills, projects, memoryCapsules, certificates, career, education] = await Promise.all([
+        window.api.db.find("records", {}),
+        window.api.db.find("goals", {}),
+        window.api.db.find("habits", {}),
+        window.api.db.find("relationships", {}),
+        window.api.db.find("journal", {}),
+        window.api.db.find("habitLogs", { date: todayStr2 }),
+        window.api.db.find("calendarMemories", {}),
+        window.api.db.find("userProfile", {}),
+        window.api.db.find("achievements", {}),
+        window.api.db.find("skills", {}),
+        window.api.db.find("projects", {}),
+        window.api.db.find("memoryCapsules", {}),
+        window.api.db.find("certificates", {}),
+        window.api.db.find("career", {}),
+        window.api.db.find("education", {})
+      ]);
+      const userProfile = profiles && profiles.length > 0 ? profiles[0] : null;
+      const habits = rawHabits.filter((h2) => h2.archived !== true).map((h2) => ({
+        ...h2,
+        completedToday: habitRecords.some((r2) => r2.habitId === h2._id && r2.status === "completed")
+      }));
+      setData({ records, goals, habits, relationships, journal, calendarMemories, userProfile, achievements, skills, projects, memoryCapsules, certificates, career, education });
+    } catch (err) {
+      console.error("Dashboard fetch error:", err);
+    } finally {
+      setLoading(false);
+    }
+  };
   reactExports.useEffect(() => {
     const savedOrder = localStorage.getItem("dashboard_widget_order");
     const savedVisibility = localStorage.getItem("dashboard_widget_visibility");
@@ -90666,31 +91495,6 @@ function Dashboard$1() {
         initialVisibility[k2] = WIDGET_REGISTRY[k2].defaultVisible;
       });
       setWidgetVisibility(initialVisibility);
-    }
-    async function loadDashboard() {
-      try {
-        const todayStr2 = (/* @__PURE__ */ new Date()).toISOString().split("T")[0];
-        const [records, goals, rawHabits, relationships, journal, habitRecords, calendarMemories, profiles] = await Promise.all([
-          window.api.db.find("records", {}),
-          window.api.db.find("goals", {}),
-          window.api.db.find("habits", {}),
-          window.api.db.find("relationships", {}),
-          window.api.db.find("journal", {}),
-          window.api.db.find("habitLogs", { date: todayStr2 }),
-          window.api.db.find("calendarMemories", {}),
-          window.api.db.find("userProfile", {})
-        ]);
-        const userProfile = profiles && profiles.length > 0 ? profiles[0] : null;
-        const habits = rawHabits.filter((h2) => h2.archived !== true).map((h2) => ({
-          ...h2,
-          completedToday: habitRecords.some((r2) => r2.habitId === h2._id && r2.status === "completed")
-        }));
-        setData({ records, goals, habits, relationships, journal, calendarMemories, userProfile });
-      } catch (err) {
-        console.error("Dashboard fetch error:", err);
-      } finally {
-        setLoading(false);
-      }
     }
     loadDashboard();
     window.addEventListener("calendar-memories-updated", loadDashboard);
@@ -90784,6 +91588,52 @@ function Dashboard$1() {
     const today = /* @__PURE__ */ new Date();
     return birthMonth === today.getMonth() + 1 && birthDay === today.getDate();
   }, [data.userProfile]);
+  const filteredData = reactExports.useMemo(() => {
+    if (!searchQuery.trim()) return data;
+    const q2 = searchQuery.toLowerCase();
+    const matches2 = (str) => typeof str === "string" && str.toLowerCase().includes(q2);
+    return {
+      ...data,
+      records: data.records?.filter((x2) => matches2(x2.title) || matches2(x2.description)) || [],
+      goals: data.goals?.filter((x2) => matches2(x2.title) || matches2(x2.description)) || [],
+      habits: data.habits?.filter((x2) => matches2(x2.title) || matches2(x2.description)) || [],
+      relationships: data.relationships?.filter((x2) => matches2(x2.name) || matches2(x2.bio) || matches2(x2.relationshipType)) || [],
+      journal: data.journal?.filter((x2) => matches2(x2.title) || matches2(x2.content)) || [],
+      achievements: data.achievements?.filter((x2) => matches2(x2.title) || matches2(x2.description)) || [],
+      skills: data.skills?.filter((x2) => matches2(x2.name) || matches2(x2.description)) || [],
+      projects: data.projects?.filter((x2) => matches2(x2.title) || matches2(x2.description) || matches2(x2.role)) || [],
+      memoryCapsules: data.memoryCapsules?.filter((x2) => matches2(x2.title) || matches2(x2.message)) || [],
+      certificates: data.certificates?.filter((x2) => matches2(x2.name) || matches2(x2.organization)) || [],
+      career: data.career?.filter((x2) => matches2(x2.company) || matches2(x2.position) || matches2(x2.description)) || [],
+      education: data.education?.filter((x2) => matches2(x2.school) || matches2(x2.degree) || matches2(x2.fieldOfStudy) || matches2(x2.description)) || []
+    };
+  }, [data, searchQuery]);
+  const flattenedResults = reactExports.useMemo(() => {
+    if (!searchQuery.trim()) return [];
+    const fl2 = [];
+    filteredData.relationships.slice(0, 5).forEach((x2) => fl2.push({ ...x2, nav: `/relationships/${x2._id}` }));
+    filteredData.records.slice(0, 5).forEach((x2) => fl2.push({ ...x2, nav: `/records?highlight=${x2._id}` }));
+    filteredData.journal.slice(0, 5).forEach((x2) => fl2.push({ ...x2, nav: `/journal?highlight=${x2._id}` }));
+    filteredData.habits.slice(0, 5).forEach((x2) => fl2.push({ ...x2, nav: `/habits?highlight=${x2._id}` }));
+    filteredData.goals.slice(0, 5).forEach((x2) => fl2.push({ ...x2, nav: `/career/goals?highlight=${x2._id}` }));
+    filteredData.achievements.slice(0, 5).forEach((x2) => fl2.push({ ...x2, nav: `/career/achievements?highlight=${x2._id}` }));
+    filteredData.skills.slice(0, 5).forEach((x2) => fl2.push({ ...x2, nav: `/career/skills?highlight=${x2._id}` }));
+    filteredData.projects.slice(0, 5).forEach((x2) => fl2.push({ ...x2, nav: `/career/projects?highlight=${x2._id}` }));
+    filteredData.memoryCapsules.slice(0, 5).forEach((x2) => fl2.push({ ...x2, nav: `/memory-capsules?highlight=${x2._id}` }));
+    filteredData.certificates.slice(0, 5).forEach((x2) => fl2.push({ ...x2, nav: `/career/certificates?highlight=${x2._id}` }));
+    filteredData.career.slice(0, 5).forEach((x2) => fl2.push({ ...x2, nav: `/career/career?highlight=${x2._id}` }));
+    filteredData.education.slice(0, 5).forEach((x2) => fl2.push({ ...x2, nav: `/career/education?highlight=${x2._id}` }));
+    return fl2;
+  }, [filteredData, searchQuery]);
+  reactExports.useEffect(() => {
+    setSelectedIndex(-1);
+  }, [searchQuery]);
+  reactExports.useEffect(() => {
+    if (selectedIndex >= 0) {
+      const el2 = document.getElementById(`search-result-${selectedIndex}`);
+      if (el2) el2.scrollIntoView({ block: "nearest", behavior: "smooth" });
+    }
+  }, [selectedIndex]);
   if (loading) return /* @__PURE__ */ jsxRuntimeExports.jsx("div", { className: "p-8 flex justify-center items-center h-full", children: /* @__PURE__ */ jsxRuntimeExports.jsx("div", { className: "animate-spin rounded-full h-8 w-8 border-b-2 border-primary" }) });
   return /* @__PURE__ */ jsxRuntimeExports.jsxs("div", { className: "h-full flex flex-col bg-background animate-in fade-in duration-500 relative overflow-hidden", children: [
     isBirthday && /* @__PURE__ */ jsxRuntimeExports.jsx(BirthdayBackground, {}),
@@ -90793,13 +91643,168 @@ function Dashboard$1() {
         /* @__PURE__ */ jsxRuntimeExports.jsx(
           "input",
           {
+            ref: searchInputRef,
             value: searchQuery,
             onChange: (e3) => setSearchQuery(e3.target.value),
+            onKeyDown: (e3) => {
+              if (e3.key === "Escape") {
+                setSearchQuery("");
+              } else if (e3.key === "ArrowDown") {
+                e3.preventDefault();
+                setSelectedIndex((prev) => prev < flattenedResults.length - 1 ? prev + 1 : prev);
+              } else if (e3.key === "ArrowUp") {
+                e3.preventDefault();
+                setSelectedIndex((prev) => prev > 0 ? prev - 1 : prev);
+              } else if (e3.key === "Enter") {
+                if (selectedIndex >= 0 && selectedIndex < flattenedResults.length) {
+                  navigate(flattenedResults[selectedIndex].nav);
+                  setSearchQuery("");
+                }
+              }
+            },
             type: "text",
             placeholder: "Search People, Records, Journal, Goals, Photos...",
             className: "w-full pl-9 pr-4 py-2 bg-card border border-border rounded-full text-sm font-medium focus:ring-2 focus:ring-primary/50 outline-none shadow-sm"
           }
-        )
+        ),
+        searchQuery.trim() && (() => {
+          let currentIndex = 0;
+          return /* @__PURE__ */ jsxRuntimeExports.jsxs(
+            "div",
+            {
+              ref: searchDropdownRef,
+              onMouseDown: (e3) => {
+                if (e3.button === 2) {
+                  e3.preventDefault();
+                  setIsSearchDragging(true);
+                  setSearchDragStartY(e3.clientY);
+                  setSearchScrollTop(searchDropdownRef.current?.scrollTop || 0);
+                }
+              },
+              onMouseMove: (e3) => {
+                if (!isSearchDragging) return;
+                e3.preventDefault();
+                const deltaY = e3.clientY - searchDragStartY;
+                if (searchDropdownRef.current) {
+                  searchDropdownRef.current.scrollTop = searchScrollTop - deltaY;
+                }
+              },
+              onMouseUp: () => setIsSearchDragging(false),
+              onMouseLeave: () => setIsSearchDragging(false),
+              onContextMenu: (e3) => {
+                if (isSearchDragging) e3.preventDefault();
+              },
+              className: "absolute top-full left-0 right-0 mt-3 bg-card/95 backdrop-blur-xl border border-border/60 rounded-2xl shadow-2xl z-50 max-h-[70vh] overflow-y-auto overflow-x-hidden p-3 custom-scrollbar ring-1 ring-black/5 flex flex-col gap-2",
+              children: [
+                filteredData.relationships.length > 0 && /* @__PURE__ */ jsxRuntimeExports.jsxs("div", { className: "relative", children: [
+                  /* @__PURE__ */ jsxRuntimeExports.jsx(SearchSectionHeader, { icon: Users, title: "People" }),
+                  /* @__PURE__ */ jsxRuntimeExports.jsx("div", { className: "grid grid-cols-1 md:grid-cols-2 gap-2", children: filteredData.relationships.slice(0, 5).map((r2) => {
+                    const isSelected = currentIndex === selectedIndex;
+                    currentIndex++;
+                    return /* @__PURE__ */ jsxRuntimeExports.jsx(SearchResultItem, { onClick: () => navigate(`/relationships/${r2._id}`), icon: r2.name ? r2.name.substring(0, 2).toUpperCase() : "?", title: r2.name, desc: r2.relationshipType || r2.bio, highlight: searchQuery, isSelected, id: `search-result-${currentIndex - 1}` }, r2._id);
+                  }) })
+                ] }),
+                filteredData.records.length > 0 && /* @__PURE__ */ jsxRuntimeExports.jsxs("div", { className: "relative", children: [
+                  /* @__PURE__ */ jsxRuntimeExports.jsx(SearchSectionHeader, { icon: Database, title: "Records & Memories" }),
+                  /* @__PURE__ */ jsxRuntimeExports.jsx("div", { className: "grid grid-cols-1 md:grid-cols-2 gap-2", children: filteredData.records.slice(0, 5).map((r2) => {
+                    const isSelected = currentIndex === selectedIndex;
+                    currentIndex++;
+                    return /* @__PURE__ */ jsxRuntimeExports.jsx(SearchResultItem, { onClick: () => navigate(`/records?highlight=${r2._id}`), icon: Database, title: r2.title, desc: r2.description || r2.type, highlight: searchQuery, isSelected, id: `search-result-${currentIndex - 1}` }, r2._id);
+                  }) })
+                ] }),
+                filteredData.journal.length > 0 && /* @__PURE__ */ jsxRuntimeExports.jsxs("div", { className: "relative", children: [
+                  /* @__PURE__ */ jsxRuntimeExports.jsx(SearchSectionHeader, { icon: Book, title: "Journal" }),
+                  /* @__PURE__ */ jsxRuntimeExports.jsx("div", { className: "grid grid-cols-1 md:grid-cols-2 gap-2", children: filteredData.journal.slice(0, 5).map((j2) => {
+                    const isSelected = currentIndex === selectedIndex;
+                    currentIndex++;
+                    return /* @__PURE__ */ jsxRuntimeExports.jsx(SearchResultItem, { onClick: () => navigate(`/journal?highlight=${j2._id}`), icon: Book, title: j2.title || "Journal Entry", desc: j2.content?.substring(0, 50), highlight: searchQuery, isSelected, id: `search-result-${currentIndex - 1}` }, j2._id);
+                  }) })
+                ] }),
+                filteredData.habits.length > 0 && /* @__PURE__ */ jsxRuntimeExports.jsxs("div", { className: "relative", children: [
+                  /* @__PURE__ */ jsxRuntimeExports.jsx(SearchSectionHeader, { icon: Activity, title: "Habits" }),
+                  /* @__PURE__ */ jsxRuntimeExports.jsx("div", { className: "grid grid-cols-1 md:grid-cols-2 gap-2", children: filteredData.habits.slice(0, 5).map((h2) => {
+                    const isSelected = currentIndex === selectedIndex;
+                    currentIndex++;
+                    return /* @__PURE__ */ jsxRuntimeExports.jsx(SearchResultItem, { onClick: () => navigate(`/habits?highlight=${h2._id}`), icon: h2.icon || "✨", title: h2.title, desc: h2.description, highlight: searchQuery, isSelected, id: `search-result-${currentIndex - 1}` }, h2._id);
+                  }) })
+                ] }),
+                filteredData.goals.length > 0 && /* @__PURE__ */ jsxRuntimeExports.jsxs("div", { className: "relative", children: [
+                  /* @__PURE__ */ jsxRuntimeExports.jsx(SearchSectionHeader, { icon: Target, title: "Goals" }),
+                  /* @__PURE__ */ jsxRuntimeExports.jsx("div", { className: "grid grid-cols-1 md:grid-cols-2 gap-2", children: filteredData.goals.slice(0, 5).map((g2) => {
+                    const isSelected = currentIndex === selectedIndex;
+                    currentIndex++;
+                    return /* @__PURE__ */ jsxRuntimeExports.jsx(SearchResultItem, { onClick: () => navigate(`/career/goals?highlight=${g2._id}`), icon: Target, title: g2.title, desc: g2.description, highlight: searchQuery, isSelected, id: `search-result-${currentIndex - 1}` }, g2._id);
+                  }) })
+                ] }),
+                filteredData.achievements.length > 0 && /* @__PURE__ */ jsxRuntimeExports.jsxs("div", { className: "relative", children: [
+                  /* @__PURE__ */ jsxRuntimeExports.jsx(SearchSectionHeader, { icon: Award, title: "Achievements" }),
+                  /* @__PURE__ */ jsxRuntimeExports.jsx("div", { className: "grid grid-cols-1 md:grid-cols-2 gap-2", children: filteredData.achievements.slice(0, 5).map((a2) => {
+                    const isSelected = currentIndex === selectedIndex;
+                    currentIndex++;
+                    return /* @__PURE__ */ jsxRuntimeExports.jsx(SearchResultItem, { onClick: () => navigate(`/career/achievements?highlight=${a2._id}`), icon: Award, title: a2.title, desc: a2.description, highlight: searchQuery, isSelected, id: `search-result-${currentIndex - 1}` }, a2._id);
+                  }) })
+                ] }),
+                filteredData.skills.length > 0 && /* @__PURE__ */ jsxRuntimeExports.jsxs("div", { className: "relative", children: [
+                  /* @__PURE__ */ jsxRuntimeExports.jsx(SearchSectionHeader, { icon: Sparkles, title: "Skills" }),
+                  /* @__PURE__ */ jsxRuntimeExports.jsx("div", { className: "grid grid-cols-1 md:grid-cols-2 gap-2", children: filteredData.skills.slice(0, 5).map((s3) => {
+                    const isSelected = currentIndex === selectedIndex;
+                    currentIndex++;
+                    return /* @__PURE__ */ jsxRuntimeExports.jsx(SearchResultItem, { onClick: () => navigate(`/career/skills?highlight=${s3._id}`), icon: Sparkles, title: s3.name, desc: s3.description, highlight: searchQuery, isSelected, id: `search-result-${currentIndex - 1}` }, s3._id);
+                  }) })
+                ] }),
+                filteredData.projects.length > 0 && /* @__PURE__ */ jsxRuntimeExports.jsxs("div", { className: "relative", children: [
+                  /* @__PURE__ */ jsxRuntimeExports.jsx(SearchSectionHeader, { icon: FolderGit2, title: "Projects" }),
+                  /* @__PURE__ */ jsxRuntimeExports.jsx("div", { className: "grid grid-cols-1 md:grid-cols-2 gap-2", children: filteredData.projects.slice(0, 5).map((p2) => {
+                    const isSelected = currentIndex === selectedIndex;
+                    currentIndex++;
+                    return /* @__PURE__ */ jsxRuntimeExports.jsx(SearchResultItem, { onClick: () => navigate(`/career/projects?highlight=${p2._id}`), icon: FolderGit2, title: p2.title, desc: p2.description || p2.role, highlight: searchQuery, isSelected, id: `search-result-${currentIndex - 1}` }, p2._id);
+                  }) })
+                ] }),
+                filteredData.memoryCapsules.length > 0 && /* @__PURE__ */ jsxRuntimeExports.jsxs("div", { className: "relative", children: [
+                  /* @__PURE__ */ jsxRuntimeExports.jsx(SearchSectionHeader, { icon: Mail, title: "Memory Capsules" }),
+                  /* @__PURE__ */ jsxRuntimeExports.jsx("div", { className: "grid grid-cols-1 md:grid-cols-2 gap-2", children: filteredData.memoryCapsules.slice(0, 5).map((c2) => {
+                    const isSelected = currentIndex === selectedIndex;
+                    currentIndex++;
+                    return /* @__PURE__ */ jsxRuntimeExports.jsx(SearchResultItem, { onClick: () => navigate(`/memory-capsules?highlight=${c2._id}`), icon: Mail, title: c2.title, desc: c2.message, highlight: searchQuery, isSelected, id: `search-result-${currentIndex - 1}` }, c2._id);
+                  }) })
+                ] }),
+                filteredData.certificates.length > 0 && /* @__PURE__ */ jsxRuntimeExports.jsxs("div", { className: "relative", children: [
+                  /* @__PURE__ */ jsxRuntimeExports.jsx(SearchSectionHeader, { icon: FileText, title: "Certificates" }),
+                  /* @__PURE__ */ jsxRuntimeExports.jsx("div", { className: "grid grid-cols-1 md:grid-cols-2 gap-2", children: filteredData.certificates.slice(0, 5).map((c2) => {
+                    const isSelected = currentIndex === selectedIndex;
+                    currentIndex++;
+                    return /* @__PURE__ */ jsxRuntimeExports.jsx(SearchResultItem, { onClick: () => navigate(`/career/certificates?highlight=${c2._id}`), icon: FileText, title: c2.name, desc: c2.organization, highlight: searchQuery, isSelected, id: `search-result-${currentIndex - 1}` }, c2._id);
+                  }) })
+                ] }),
+                filteredData.career.length > 0 && /* @__PURE__ */ jsxRuntimeExports.jsxs("div", { className: "relative", children: [
+                  /* @__PURE__ */ jsxRuntimeExports.jsx(SearchSectionHeader, { icon: Briefcase, title: "Career" }),
+                  /* @__PURE__ */ jsxRuntimeExports.jsx("div", { className: "grid grid-cols-1 md:grid-cols-2 gap-2", children: filteredData.career.slice(0, 5).map((job) => {
+                    const isSelected = currentIndex === selectedIndex;
+                    currentIndex++;
+                    return /* @__PURE__ */ jsxRuntimeExports.jsx(SearchResultItem, { onClick: () => navigate(`/career/career?highlight=${job._id}`), icon: Briefcase, title: job.position, desc: job.company, highlight: searchQuery, isSelected, id: `search-result-${currentIndex - 1}` }, job._id);
+                  }) })
+                ] }),
+                filteredData.education.length > 0 && /* @__PURE__ */ jsxRuntimeExports.jsxs("div", { className: "relative", children: [
+                  /* @__PURE__ */ jsxRuntimeExports.jsx(SearchSectionHeader, { icon: GraduationCap, title: "Education" }),
+                  /* @__PURE__ */ jsxRuntimeExports.jsx("div", { className: "grid grid-cols-1 md:grid-cols-2 gap-2", children: filteredData.education.slice(0, 5).map((edu) => {
+                    const isSelected = currentIndex === selectedIndex;
+                    currentIndex++;
+                    return /* @__PURE__ */ jsxRuntimeExports.jsx(SearchResultItem, { onClick: () => navigate(`/career/education?highlight=${edu._id}`), icon: GraduationCap, title: edu.degree, desc: edu.school, highlight: searchQuery, isSelected, id: `search-result-${currentIndex - 1}` }, edu._id);
+                  }) })
+                ] }),
+                filteredData.relationships.length === 0 && filteredData.records.length === 0 && filteredData.journal.length === 0 && filteredData.habits.length === 0 && filteredData.goals.length === 0 && filteredData.achievements.length === 0 && filteredData.skills.length === 0 && filteredData.projects.length === 0 && filteredData.memoryCapsules.length === 0 && filteredData.certificates.length === 0 && filteredData.career.length === 0 && filteredData.education.length === 0 && /* @__PURE__ */ jsxRuntimeExports.jsxs("div", { className: "p-12 text-center flex flex-col items-center justify-center", children: [
+                  /* @__PURE__ */ jsxRuntimeExports.jsx("div", { className: "w-16 h-16 bg-accent rounded-full flex items-center justify-center mb-4 text-muted-foreground", children: /* @__PURE__ */ jsxRuntimeExports.jsx(Search, { size: 24 }) }),
+                  /* @__PURE__ */ jsxRuntimeExports.jsxs("p", { className: "text-muted-foreground font-medium text-lg", children: [
+                    'No results found for "',
+                    searchQuery,
+                    '"'
+                  ] }),
+                  /* @__PURE__ */ jsxRuntimeExports.jsx("p", { className: "text-sm text-muted-foreground/70 mt-1", children: "Try searching for something else." })
+                ] })
+              ]
+            }
+          );
+        })()
       ] }),
       /* @__PURE__ */ jsxRuntimeExports.jsxs("div", { className: "flex items-center gap-3", children: [
         /* @__PURE__ */ jsxRuntimeExports.jsxs(Tooltip, { children: [
@@ -90807,7 +91812,7 @@ function Dashboard$1() {
           /* @__PURE__ */ jsxRuntimeExports.jsx(TooltipContent, { side: "bottom", children: "Customize Dashboard Layout" })
         ] }),
         /* @__PURE__ */ jsxRuntimeExports.jsxs(Tooltip, { children: [
-          /* @__PURE__ */ jsxRuntimeExports.jsx(TooltipTrigger, { asChild: true, children: /* @__PURE__ */ jsxRuntimeExports.jsxs("button", { className: "bg-primary text-primary-foreground px-4 py-2 rounded-full text-sm font-bold flex items-center gap-2 hover:scale-105 transition-transform shadow-lg shadow-primary/20", children: [
+          /* @__PURE__ */ jsxRuntimeExports.jsx(TooltipTrigger, { asChild: true, children: /* @__PURE__ */ jsxRuntimeExports.jsxs("button", { onClick: () => setIsNewModalOpen(true), className: "bg-primary text-primary-foreground px-4 py-2 rounded-full text-sm font-bold flex items-center gap-2 hover:scale-105 transition-transform shadow-lg shadow-primary/20", children: [
             /* @__PURE__ */ jsxRuntimeExports.jsx(Plus, { size: 16 }),
             " New"
           ] }) }),
@@ -90844,7 +91849,6 @@ function Dashboard$1() {
         onKeyDown: handleKeyDown2,
         tabIndex: 0,
         children: [
-          /* @__PURE__ */ jsxRuntimeExports.jsx(DynamicWelcome, { data }),
           isBirthday && /* @__PURE__ */ jsxRuntimeExports.jsx(BirthdayWidget, { userProfile: data.userProfile }),
           (() => {
             const today = /* @__PURE__ */ new Date();
@@ -90882,36 +91886,41 @@ function Dashboard$1() {
             }
             return null;
           })(),
-          /* @__PURE__ */ jsxRuntimeExports.jsx("div", { className: "grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-6", children: widgetOrder.filter((id2) => widgetVisibility[id2]).map((id2) => {
-            const WidgetEntry = WIDGET_REGISTRY[id2];
-            if (!WidgetEntry) return null;
-            const WidgetComponent = WidgetEntry.component;
-            return /* @__PURE__ */ jsxRuntimeExports.jsx(
-              "div",
-              {
-                id: `widget-${id2}`,
-                draggable: true,
-                onDragStart: (e3) => handleDragStart(e3, id2),
-                onDragEnd: (e3) => handleDragEnd(e3, id2),
-                onDragOver: handleDragOver,
-                onDrop: (e3) => handleDrop2(e3, id2),
-                className: `transition-all duration-300 ${draggedWidget === id2 ? "scale-95 opacity-50" : "scale-100 opacity-100"} ${WidgetEntry.gridCol}`,
-                children: /* @__PURE__ */ jsxRuntimeExports.jsx("div", { className: "h-full cursor-grab active:cursor-grabbing", children: /* @__PURE__ */ jsxRuntimeExports.jsx(
-                  WidgetComponent,
-                  {
-                    data,
-                    searchQuery,
-                    calendarMemories: data.calendarMemories,
-                    onOpenMemoryModal: (date2) => {
-                      setMemoryModalDate(date2);
-                      setIsMemoryModalOpen(true);
-                    }
-                  }
-                ) })
-              },
-              id2
-            );
-          }) })
+          /* @__PURE__ */ jsxRuntimeExports.jsxs("div", { className: "grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-6 p-2 relative pb-32", children: [
+            /* @__PURE__ */ jsxRuntimeExports.jsx("div", { className: "col-span-1 md:col-span-2 xl:col-span-3", children: /* @__PURE__ */ jsxRuntimeExports.jsx(DynamicWelcome, { data: filteredData }) }),
+            widgetOrder.map((id2) => {
+              if (!widgetVisibility[id2]) return null;
+              const Component = WIDGET_REGISTRY[id2].component;
+              const gridCol = WIDGET_REGISTRY[id2].gridCol;
+              return /* @__PURE__ */ jsxRuntimeExports.jsxs(
+                "div",
+                {
+                  id: `widget-${id2}`,
+                  draggable: true,
+                  onDragStart: (e3) => handleDragStart(e3, id2),
+                  onDragEnd: (e3) => handleDragEnd(e3, id2),
+                  onDragOver: handleDragOver,
+                  onDrop: (e3) => handleDrop2(e3, id2),
+                  className: `${gridCol} group relative cursor-grab active:cursor-grabbing hover:z-10`,
+                  children: [
+                    /* @__PURE__ */ jsxRuntimeExports.jsxs("div", { className: "absolute -top-3 left-1/2 -translate-x-1/2 opacity-0 group-hover:opacity-100 transition-opacity bg-accent px-3 py-1 rounded-full text-[10px] font-bold text-muted-foreground uppercase tracking-wider flex items-center gap-1 shadow-sm border border-border z-10 pointer-events-none", children: [
+                      /* @__PURE__ */ jsxRuntimeExports.jsxs("svg", { width: "10", height: "6", viewBox: "0 0 10 6", fill: "currentColor", xmlns: "http://www.w3.org/2000/svg", children: [
+                        /* @__PURE__ */ jsxRuntimeExports.jsx("circle", { cx: "2", cy: "2", r: "1" }),
+                        /* @__PURE__ */ jsxRuntimeExports.jsx("circle", { cx: "5", cy: "2", r: "1" }),
+                        /* @__PURE__ */ jsxRuntimeExports.jsx("circle", { cx: "8", cy: "2", r: "1" }),
+                        /* @__PURE__ */ jsxRuntimeExports.jsx("circle", { cx: "2", cy: "5", r: "1" }),
+                        /* @__PURE__ */ jsxRuntimeExports.jsx("circle", { cx: "5", cy: "5", r: "1" }),
+                        /* @__PURE__ */ jsxRuntimeExports.jsx("circle", { cx: "8", cy: "5", r: "1" })
+                      ] }),
+                      "Drag to reorder"
+                    ] }),
+                    /* @__PURE__ */ jsxRuntimeExports.jsx(Component, { data: filteredData })
+                  ]
+                },
+                id2
+              );
+            })
+          ] })
         ]
       }
     ),
@@ -90919,15 +91928,88 @@ function Dashboard$1() {
       CalendarMemoryModal,
       {
         isOpen: isMemoryModalOpen,
-        onClose: () => setIsMemoryModalOpen(false),
-        selectedDate: memoryModalDate,
-        memories: memoryModalDate ? data.calendarMemories?.filter((m2) => m2.month === memoryModalDate.month && m2.day === memoryModalDate.day) || [] : [],
-        onSave: () => {
-          window.dispatchEvent(new CustomEvent("calendar-memories-updated"));
+        onClose: () => {
+          setIsMemoryModalOpen(false);
+          setMemoryModalDate(null);
+          const url = new URL(window.location.href);
+          url.searchParams.delete("calendarMemoryMonth");
+          url.searchParams.delete("calendarMemoryDay");
+          window.history.replaceState({}, "", url.pathname + url.search);
+        },
+        date: memoryModalDate,
+        existingMemories: data.calendarMemories || []
+      }
+    ),
+    /* @__PURE__ */ jsxRuntimeExports.jsx(
+      QuickAddModal,
+      {
+        isOpen: isNewModalOpen,
+        onClose: () => setIsNewModalOpen(false),
+        onSuccess: () => {
+          setIsNewModalOpen(false);
+          setShowSuccessOverlay(true);
+          loadDashboard();
+          setTimeout(() => setShowSuccessOverlay(false), 3e3);
         }
       }
-    )
+    ),
+    showSuccessOverlay && /* @__PURE__ */ jsxRuntimeExports.jsxs("div", { className: "absolute inset-0 z-[120] pointer-events-none flex items-center justify-center bg-[radial-gradient(ellipse_at_center,_var(--tw-gradient-stops))] from-primary/30 via-background/90 to-background/95 backdrop-blur-md animate-in fade-in duration-300", children: [
+      /* @__PURE__ */ jsxRuntimeExports.jsx("style", { children: `
+            @keyframes popCreate {
+              0% { transform: scale(0) rotate(-15deg); opacity: 0; }
+              40% { transform: scale(1.1) rotate(5deg); opacity: 1; }
+              60% { transform: scale(0.95) rotate(-2deg); }
+              80% { transform: scale(1.05) rotate(2deg); }
+              100% { transform: scale(1) rotate(0); opacity: 1; }
+            }
+            @keyframes floatUp {
+              0% { transform: translateY(0); opacity: 1; }
+              100% { transform: translateY(-50px); opacity: 0; }
+            }
+          ` }),
+      /* @__PURE__ */ jsxRuntimeExports.jsxs("div", { className: "relative flex flex-col items-center justify-center gap-8", style: { animation: "popCreate 0.8s cubic-bezier(0.34, 1.56, 0.64, 1) forwards" }, children: [
+        /* @__PURE__ */ jsxRuntimeExports.jsxs("svg", { width: "240", height: "240", viewBox: "0 0 240 240", fill: "none", xmlns: "http://www.w3.org/2000/svg", className: "drop-shadow-2xl", children: [
+          /* @__PURE__ */ jsxRuntimeExports.jsx("rect", { x: "40", y: "40", width: "160", height: "160", rx: "30", fill: "#3b82f6", opacity: "0.2" }),
+          /* @__PURE__ */ jsxRuntimeExports.jsx("rect", { x: "50", y: "50", width: "140", height: "140", rx: "25", fill: "#3b82f6", opacity: "0.4", transform: "rotate(5 120 120)" }),
+          /* @__PURE__ */ jsxRuntimeExports.jsx("rect", { x: "60", y: "60", width: "120", height: "120", rx: "20", fill: "#2563eb" }),
+          /* @__PURE__ */ jsxRuntimeExports.jsx("path", { d: "M 120 85 L 120 155 M 85 120 L 155 120", stroke: "white", strokeWidth: "16", strokeLinecap: "round" }),
+          /* @__PURE__ */ jsxRuntimeExports.jsx("g", { style: { animation: "floatUp 2s infinite ease-in-out" }, children: /* @__PURE__ */ jsxRuntimeExports.jsx("circle", { cx: "120", cy: "120", r: "40", stroke: "white", strokeWidth: "4", strokeDasharray: "4 8", opacity: "0.5" }) })
+        ] }),
+        /* @__PURE__ */ jsxRuntimeExports.jsx("h2", { className: "text-4xl font-extrabold text-primary drop-shadow-lg tracking-tight text-center z-50", children: "Entry Created!" })
+      ] })
+    ] })
   ] });
+}
+function ShootingStars() {
+  const [stars, setStars] = reactExports.useState([]);
+  reactExports.useEffect(() => {
+    const newStars = Array.from({ length: 75 }).map((_2, i2) => ({
+      id: i2,
+      top: Math.random() * -50 - 10,
+      // Start slightly above the screen
+      left: Math.random() * 120 - 30,
+      // Start anywhere between -30vw to 90vw
+      delay: Math.random() * 8,
+      // More frequent overlapping
+      duration: Math.random() * 3 + 2.5
+      // Slightly faster
+    }));
+    setStars(newStars);
+  }, []);
+  return /* @__PURE__ */ jsxRuntimeExports.jsx("div", { className: "absolute inset-0 overflow-hidden pointer-events-none z-0 opacity-70", children: stars.map((star) => /* @__PURE__ */ jsxRuntimeExports.jsx(
+    "div",
+    {
+      className: "absolute h-[3px] w-[150px] bg-gradient-to-r from-transparent via-black to-transparent",
+      style: {
+        top: `${star.top}vh`,
+        left: `${star.left}vw`,
+        animation: `shootingStarAnim ${star.duration}s ${star.delay}s infinite linear`,
+        opacity: 1,
+        transform: "rotate(45deg)"
+      }
+    },
+    star.id
+  )) });
 }
 function Goals$1() {
   const [goals, setGoals] = reactExports.useState([]);
@@ -90959,6 +92041,20 @@ function Goals$1() {
   reactExports.useEffect(() => {
     fetchGoals();
   }, []);
+  const location = useLocation();
+  reactExports.useEffect(() => {
+    const highlightId = new URLSearchParams(location.search).get("highlight");
+    if (highlightId && !loading && goals.length > 0) {
+      setTimeout(() => {
+        const el2 = document.getElementById(`goal-${highlightId}`);
+        if (el2) {
+          el2.scrollIntoView({ behavior: "smooth", block: "center" });
+          el2.classList.add("ring-4", "ring-primary", "shadow-2xl", "shadow-primary/40", "animate-[pulse_2s_ease-in-out_3]", "z-50");
+          setTimeout(() => el2.classList.remove("ring-4", "ring-primary", "shadow-2xl", "shadow-primary/40", "animate-[pulse_2s_ease-in-out_3]", "z-50"), 4e3);
+        }
+      }, 500);
+    }
+  }, [location.search, loading, goals.length]);
   const fetchGoals = async () => {
     try {
       const data = await window.api.db.find("goals", {});
@@ -91009,7 +92105,8 @@ function Goals$1() {
     setEditingId(record._id);
     setIsAdding(true);
   };
-  return /* @__PURE__ */ jsxRuntimeExports.jsxs("div", { className: "p-8 max-w-4xl mx-auto animate-in fade-in duration-500", children: [
+  return /* @__PURE__ */ jsxRuntimeExports.jsxs("div", { className: "p-8 max-w-4xl mx-auto animate-in fade-in duration-500 relative min-h-screen", children: [
+    /* @__PURE__ */ jsxRuntimeExports.jsx(ShootingStars, {}),
     /* @__PURE__ */ jsxRuntimeExports.jsxs("div", { className: "flex justify-between items-center mb-6", children: [
       /* @__PURE__ */ jsxRuntimeExports.jsx("h1", { className: "text-3xl font-bold", children: "Goals" }),
       !isAdding && /* @__PURE__ */ jsxRuntimeExports.jsxs("button", { onClick: () => {
@@ -91085,7 +92182,7 @@ function Goals$1() {
     ] }),
     /* @__PURE__ */ jsxRuntimeExports.jsxs("div", { children: [
       /* @__PURE__ */ jsxRuntimeExports.jsx("h2", { className: "text-xl font-semibold mb-4", children: "Active Goals" }),
-      loading ? /* @__PURE__ */ jsxRuntimeExports.jsx("p", { className: "text-muted-foreground animate-pulse", children: "Loading goals..." }) : goals.length === 0 ? /* @__PURE__ */ jsxRuntimeExports.jsx("div", { className: "text-center p-8 border border-dashed border-border rounded-xl text-muted-foreground", children: "No goals set. Aim for the stars!" }) : /* @__PURE__ */ jsxRuntimeExports.jsx("div", { className: "grid grid-cols-1 md:grid-cols-2 gap-4", children: goals.map((goal) => /* @__PURE__ */ jsxRuntimeExports.jsxs("div", { className: "p-5 bg-card border border-border rounded-xl shadow-sm hover:shadow-md transition-shadow relative group", children: [
+      loading ? /* @__PURE__ */ jsxRuntimeExports.jsx("p", { className: "text-muted-foreground animate-pulse", children: "Loading goals..." }) : goals.length === 0 ? /* @__PURE__ */ jsxRuntimeExports.jsx("div", { className: "text-center p-8 border border-dashed border-border rounded-xl text-muted-foreground", children: "No goals set. Aim for the stars!" }) : /* @__PURE__ */ jsxRuntimeExports.jsx("div", { className: "grid grid-cols-1 md:grid-cols-2 gap-4", children: goals.map((goal) => /* @__PURE__ */ jsxRuntimeExports.jsxs("div", { id: `goal-${goal._id}`, className: "p-5 bg-card border border-border rounded-xl shadow-sm hover:shadow-md transition-all duration-1000 relative group", children: [
         /* @__PURE__ */ jsxRuntimeExports.jsxs("div", { className: "flex justify-between items-start mb-2 pr-16", children: [
           /* @__PURE__ */ jsxRuntimeExports.jsx("h3", { className: "text-lg font-bold truncate", children: goal.title }),
           /* @__PURE__ */ jsxRuntimeExports.jsx("span", { className: `text-xs px-2 py-1 rounded-full font-medium ${goal.status === "Completed" ? "bg-green-500/10 text-green-500" : "bg-accent text-accent-foreground"}`, children: goal.status })
@@ -91208,6 +92305,7 @@ const checkAutoMisses = async () => {
 const CATEGORIES$1 = ["Health", "Productivity", "Learning", "Fitness", "Mindfulness", "Finance", "Social", "Hobbies"];
 function HabitFormModal({ isOpen, onClose, initialData, onSave, onDelete }) {
   const [loading, setLoading] = reactExports.useState(false);
+  const [showSuccessOverlay, setShowSuccessOverlay] = reactExports.useState(false);
   const [formData, setFormData] = reactExports.useState({
     title: "",
     description: "",
@@ -91257,12 +92355,18 @@ function HabitFormModal({ isOpen, onClose, initialData, onSave, onDelete }) {
       if (initialData && initialData._id) {
         await window.api.db.update("habits", { _id: initialData._id }, { $set: payload });
         await logHabitActivity(initialData._id, "edited", "Habit details updated.");
+        onSave();
+        onClose();
       } else {
         const newHabit = await window.api.db.insert("habits", payload);
         if (newHabit._id) await logHabitActivity(newHabit._id, "created", "Habit created.");
+        setShowSuccessOverlay(true);
+        setTimeout(() => {
+          setShowSuccessOverlay(false);
+          onSave();
+          onClose();
+        }, 3e3);
       }
-      onSave();
-      onClose();
     } catch (err) {
       console.error(err);
     } finally {
@@ -91284,6 +92388,64 @@ function HabitFormModal({ isOpen, onClose, initialData, onSave, onDelete }) {
       setFormData({ ...formData, scheduleDays: [...days, dayIndex] });
     }
   };
+  if (showSuccessOverlay) {
+    return /* @__PURE__ */ jsxRuntimeExports.jsxs("div", { className: "fixed inset-0 z-[100] flex items-center justify-center bg-[radial-gradient(ellipse_at_center,_var(--tw-gradient-stops))] from-green-500/30 via-background/80 to-background/95 backdrop-blur-sm animate-in fade-in duration-300", children: [
+      /* @__PURE__ */ jsxRuntimeExports.jsx("style", { children: `
+          @keyframes popAndRotateCheck {
+            0% { transform: scale(0) rotate(-45deg); opacity: 0; }
+            50% { transform: scale(1.2) rotate(15deg); opacity: 1; }
+            75% { transform: scale(0.9) rotate(-5deg); }
+            100% { transform: scale(1) rotate(0deg); opacity: 1; }
+          }
+          @keyframes floatUpFade {
+            0% { transform: translate(0, 0) scale(0); opacity: 0; }
+            20% { opacity: 1; scale: 1; }
+            100% { transform: translate(var(--tx), var(--ty)) scale(0.5); opacity: 0; }
+          }
+          @keyframes shineCheck {
+            0% { transform: translateX(-150%) skewX(-20deg); }
+            100% { transform: translateX(250%) skewX(-20deg); }
+          }
+        ` }),
+      /* @__PURE__ */ jsxRuntimeExports.jsxs("div", { className: "relative flex flex-col items-center justify-center gap-8", style: { animation: "popAndRotateCheck 1s cubic-bezier(0.34, 1.56, 0.64, 1) forwards" }, children: [
+        /* @__PURE__ */ jsxRuntimeExports.jsxs("svg", { width: "240", height: "240", viewBox: "0 0 240 240", fill: "none", xmlns: "http://www.w3.org/2000/svg", className: "drop-shadow-2xl", children: [
+          /* @__PURE__ */ jsxRuntimeExports.jsx("circle", { cx: "120", cy: "125", r: "90", fill: "#14532d", opacity: "0.4", transform: "rotate(-6 120 120)" }),
+          /* @__PURE__ */ jsxRuntimeExports.jsx("circle", { cx: "120", cy: "120", r: "90", fill: "#166534", opacity: "0.6", transform: "rotate(-3 120 120)" }),
+          /* @__PURE__ */ jsxRuntimeExports.jsx("circle", { cx: "120", cy: "120", r: "90", fill: "#22c55e" }),
+          /* @__PURE__ */ jsxRuntimeExports.jsx("circle", { cx: "120", cy: "120", r: "80", fill: "#4ade80", opacity: "0.2" }),
+          /* @__PURE__ */ jsxRuntimeExports.jsx("circle", { cx: "120", cy: "120", r: "70", fill: "none", stroke: "#15803d", strokeWidth: "4", opacity: "0.5" }),
+          /* @__PURE__ */ jsxRuntimeExports.jsx("path", { d: "M 85 125 L 115 155 L 175 85", fill: "none", stroke: "#14532d", strokeWidth: "24", strokeLinecap: "round", strokeLinejoin: "round", opacity: "0.4", transform: "translate(5, 5)" }),
+          /* @__PURE__ */ jsxRuntimeExports.jsx("path", { d: "M 80 120 L 110 150 L 170 80", fill: "none", stroke: "#ffffff", strokeWidth: "24", strokeLinecap: "round", strokeLinejoin: "round" }),
+          /* @__PURE__ */ jsxRuntimeExports.jsx("g", { style: { clipPath: "url(#checkClip)" }, children: /* @__PURE__ */ jsxRuntimeExports.jsx("rect", { x: "0", y: "0", width: "40", height: "240", fill: "white", opacity: "0.3", style: { animation: "shineCheck 3s infinite linear" } }) }),
+          /* @__PURE__ */ jsxRuntimeExports.jsx("defs", { children: /* @__PURE__ */ jsxRuntimeExports.jsx("clipPath", { id: "checkClip", children: /* @__PURE__ */ jsxRuntimeExports.jsx("circle", { cx: "120", cy: "120", r: "90" }) }) })
+        ] }),
+        [...Array(15)].map((_2, i2) => {
+          const angle = i2 * 24 * Math.PI / 180;
+          const dist = 100 + Math.random() * 50;
+          const tx = `${Math.cos(angle) * dist}px`;
+          const ty = `${Math.sin(angle) * dist}px`;
+          return /* @__PURE__ */ jsxRuntimeExports.jsx(
+            "svg",
+            {
+              width: "24",
+              height: "24",
+              viewBox: "0 0 24 24",
+              fill: "none",
+              className: `absolute top-1/2 left-1/2 -ml-3 -mt-10 ${i2 % 3 === 0 ? "text-green-300" : i2 % 3 === 1 ? "text-emerald-400" : "text-white"}`,
+              style: {
+                "--tx": tx,
+                "--ty": ty,
+                animation: `floatUpFade 1.5s ease-out forwards ${0.3 + Math.random() * 0.3}s`
+              },
+              children: i2 % 2 === 0 ? /* @__PURE__ */ jsxRuntimeExports.jsx("path", { d: "M12 2L14.39 9.61L22 12L14.39 14.39L12 22L9.61 14.39L2 12L9.61 9.61L12 2Z", fill: "currentColor" }) : /* @__PURE__ */ jsxRuntimeExports.jsx("rect", { x: "8", y: "8", width: "8", height: "8", rx: "2", fill: "currentColor" })
+            },
+            `star-${i2}`
+          );
+        }),
+        /* @__PURE__ */ jsxRuntimeExports.jsx("h2", { className: "text-4xl font-extrabold text-green-500 drop-shadow-lg tracking-tight text-center z-50", children: "Habit Created!" })
+      ] })
+    ] });
+  }
   return /* @__PURE__ */ jsxRuntimeExports.jsx("div", { className: "fixed inset-0 z-50 bg-background/80 backdrop-blur-sm flex items-center justify-center p-4", children: /* @__PURE__ */ jsxRuntimeExports.jsxs("div", { className: "bg-card border border-border w-full max-w-2xl max-h-[90vh] rounded-3xl shadow-2xl flex flex-col overflow-hidden animate-in zoom-in-95 duration-200", children: [
     /* @__PURE__ */ jsxRuntimeExports.jsxs("div", { className: "px-6 py-4 border-b border-border flex justify-between items-center bg-card z-10 shrink-0", children: [
       /* @__PURE__ */ jsxRuntimeExports.jsx("h2", { className: "text-xl font-bold", children: initialData ? "Edit Habit" : "Create New Habit" }),
@@ -91504,6 +92666,20 @@ function Dashboard() {
     }
   };
   const isMounted = reactExports.useRef(true);
+  const location = useLocation();
+  reactExports.useEffect(() => {
+    const highlightId = new URLSearchParams(location.search).get("highlight");
+    if (highlightId && !loading && habits.length > 0) {
+      setTimeout(() => {
+        const el2 = document.getElementById(`habit-${highlightId}`);
+        if (el2) {
+          el2.scrollIntoView({ behavior: "smooth", block: "center" });
+          el2.classList.add("ring-4", "ring-primary", "shadow-2xl", "shadow-primary/40", "animate-[pulse_2s_ease-in-out_3]", "z-50");
+          setTimeout(() => el2.classList.remove("ring-4", "ring-primary", "shadow-2xl", "shadow-primary/40", "animate-[pulse_2s_ease-in-out_3]", "z-50"), 4e3);
+        }
+      }, 500);
+    }
+  }, [location.search, loading, habits.length]);
   reactExports.useEffect(() => {
     isMounted.current = true;
     loadData();
@@ -91762,7 +92938,7 @@ function Dashboard() {
                   const s3 = secs % 60;
                   return `${m2}:${s3.toString().padStart(2, "0")}`;
                 };
-                return /* @__PURE__ */ jsxRuntimeExports.jsxs("div", { className: `flex items-center justify-between p-4 rounded-2xl border transition-all ${status === "completed" ? "bg-green-500/5 border-green-500/30 shadow-inner" : status === "missed" ? "bg-red-500/5 border-red-500/30 opacity-75" : activeTimerHabit === h2._id ? "bg-blue-500/10 border-blue-500/50 shadow-md ring-2 ring-blue-500/20" : "bg-card border-border hover:border-primary/50"}`, children: [
+                return /* @__PURE__ */ jsxRuntimeExports.jsxs("div", { id: `habit-${h2._id}`, className: `flex items-center justify-between p-4 rounded-2xl border transition-all duration-1000 ${status === "completed" ? "bg-green-500/5 border-green-500/30 shadow-inner" : status === "missed" ? "bg-red-500/5 border-red-500/30 opacity-75" : activeTimerHabit === h2._id ? "bg-blue-500/10 border-blue-500/50 shadow-md ring-2 ring-blue-500/20" : "bg-card border-border hover:border-primary/50"}`, children: [
                   /* @__PURE__ */ jsxRuntimeExports.jsxs("div", { className: "flex flex-col", children: [
                     /* @__PURE__ */ jsxRuntimeExports.jsx("span", { className: `text-lg font-bold ${status === "completed" ? "text-green-600 line-through decoration-green-500/50" : status === "missed" ? "text-red-500 line-through decoration-red-500/50" : "text-foreground"}`, children: h2.title }),
                     /* @__PURE__ */ jsxRuntimeExports.jsxs("div", { className: "flex items-center gap-3 text-xs text-muted-foreground mt-1 font-medium", children: [
@@ -93641,6 +94817,7 @@ function Relationships() {
   const [filterType, setFilterType] = reactExports.useState("All");
   const [sortBy2, setSortBy] = reactExports.useState("Updated");
   const [showAddModal, setShowAddModal] = reactExports.useState(false);
+  const [showSuccessOverlay, setShowSuccessOverlay] = reactExports.useState(false);
   const [showGlobalMenu, setShowGlobalMenu] = reactExports.useState(false);
   const [form, setForm] = reactExports.useState({});
   reactExports.useEffect(() => {
@@ -93795,9 +94972,13 @@ function Relationships() {
     try {
       await window.api.db.insert("relationships", newPerson);
       NotificationEngine.notify("success", "Person Added", `You added "${form.name}" to your relationships.`, "Relationships");
-      setShowAddModal(false);
-      setForm({});
       fetchPeople();
+      setShowSuccessOverlay(true);
+      setTimeout(() => {
+        setShowSuccessOverlay(false);
+        setShowAddModal(false);
+        setForm({});
+      }, 3e3);
     } catch (err) {
       console.error(err);
     }
@@ -93838,7 +95019,7 @@ function Relationships() {
     }
   };
   const relTypes = ["All", "Family", "Friend", "Best Friend", "Partner", "Wife", "Husband", "Crush", "Classmate", "Coworker", "Teacher", "Student", "Neighbor", "Online Friend", "Client", "Relative", "Other"];
-  let filtered = people.filter((p2) => p2.name.toLowerCase().includes(searchQuery.toLowerCase()));
+  let filtered = people.filter((p2) => (p2.name || "").toLowerCase().includes(searchQuery.toLowerCase()));
   if (filterType !== "All") {
     filtered = filtered.filter((p2) => p2.relationshipType === filterType);
   }
@@ -94030,7 +95211,61 @@ function Relationships() {
         )) })
       }
     ),
-    showAddModal && /* @__PURE__ */ jsxRuntimeExports.jsx("div", { className: "fixed inset-0 z-50 bg-background/80 backdrop-blur-sm flex items-center justify-center p-4", children: /* @__PURE__ */ jsxRuntimeExports.jsxs("div", { className: "bg-card border border-border rounded-xl shadow-lg w-full max-w-3xl flex flex-col max-h-[90vh]", children: [
+    showAddModal && /* @__PURE__ */ jsxRuntimeExports.jsx("div", { className: "fixed inset-0 z-50 bg-background/80 backdrop-blur-sm flex items-center justify-center p-4", children: showSuccessOverlay ? /* @__PURE__ */ jsxRuntimeExports.jsxs("div", { className: "fixed inset-0 z-[100] flex items-center justify-center bg-[radial-gradient(ellipse_at_center,_var(--tw-gradient-stops))] from-rose-500/30 via-background/80 to-background/95 backdrop-blur-sm animate-in fade-in duration-300", children: [
+      /* @__PURE__ */ jsxRuntimeExports.jsx("style", { children: `
+                @keyframes popAndBeatHeart {
+                  0% { transform: scale(0) rotate(-15deg); opacity: 0; }
+                  30% { transform: scale(1.2) rotate(10deg); opacity: 1; }
+                  50% { transform: scale(0.95) rotate(-5deg); }
+                  70% { transform: scale(1.1) rotate(5deg); }
+                  100% { transform: scale(1) rotate(0deg); opacity: 1; }
+                }
+                @keyframes floatUpFade {
+                  0% { transform: translate(0, 0) scale(0); opacity: 0; }
+                  20% { opacity: 1; scale: 1; }
+                  100% { transform: translate(var(--tx), var(--ty)) scale(0.5); opacity: 0; }
+                }
+                @keyframes shineHeart {
+                  0% { transform: translateX(-150%) skewX(-20deg); }
+                  100% { transform: translateX(250%) skewX(-20deg); }
+                }
+              ` }),
+      /* @__PURE__ */ jsxRuntimeExports.jsxs("div", { className: "relative flex flex-col items-center justify-center gap-8", style: { animation: "popAndBeatHeart 1s cubic-bezier(0.34, 1.56, 0.64, 1) forwards" }, children: [
+        /* @__PURE__ */ jsxRuntimeExports.jsxs("svg", { width: "240", height: "240", viewBox: "0 0 240 240", fill: "none", xmlns: "http://www.w3.org/2000/svg", className: "drop-shadow-2xl", children: [
+          /* @__PURE__ */ jsxRuntimeExports.jsx("path", { d: "M 120 210 C 120 210, 20 140, 20 75 C 20 40, 50 15, 85 15 C 105 15, 120 30, 120 30 C 120 30, 135 15, 155 15 C 190 15, 220 40, 220 75 C 220 140, 120 210, 120 210 Z", fill: "#881337", opacity: "0.4", transform: "translate(10, 15) rotate(-5 120 120)" }),
+          /* @__PURE__ */ jsxRuntimeExports.jsx("path", { d: "M 120 210 C 120 210, 20 140, 20 75 C 20 40, 50 15, 85 15 C 105 15, 120 30, 120 30 C 120 30, 135 15, 155 15 C 190 15, 220 40, 220 75 C 220 140, 120 210, 120 210 Z", fill: "#9f1239", opacity: "0.6", transform: "translate(5, 8) rotate(-2 120 120)" }),
+          /* @__PURE__ */ jsxRuntimeExports.jsx("path", { d: "M 120 210 C 120 210, 20 140, 20 75 C 20 40, 50 15, 85 15 C 105 15, 120 30, 120 30 C 120 30, 135 15, 155 15 C 190 15, 220 40, 220 75 C 220 140, 120 210, 120 210 Z", fill: "#e11d48" }),
+          /* @__PURE__ */ jsxRuntimeExports.jsx("path", { d: "M 120 190 C 120 190, 35 130, 35 75 C 35 45, 60 25, 85 25 C 100 25, 120 40, 120 40 C 120 40, 140 25, 155 25 C 180 25, 205 45, 205 75 C 205 130, 120 190, 120 190 Z", fill: "#f43f5e", opacity: "0.8" }),
+          /* @__PURE__ */ jsxRuntimeExports.jsx("path", { d: "M 45 65 C 45 40, 65 25, 85 25 C 95 25, 110 32, 120 40 C 100 50, 75 75, 60 100 C 50 85, 45 75, 45 65 Z", fill: "#fb7185", opacity: "0.9" }),
+          /* @__PURE__ */ jsxRuntimeExports.jsx("g", { style: { clipPath: "url(#heartClip)" }, children: /* @__PURE__ */ jsxRuntimeExports.jsx("rect", { x: "0", y: "0", width: "50", height: "240", fill: "white", opacity: "0.25", style: { animation: "shineHeart 3s infinite linear" } }) }),
+          /* @__PURE__ */ jsxRuntimeExports.jsx("defs", { children: /* @__PURE__ */ jsxRuntimeExports.jsx("clipPath", { id: "heartClip", children: /* @__PURE__ */ jsxRuntimeExports.jsx("path", { d: "M 120 210 C 120 210, 20 140, 20 75 C 20 40, 50 15, 85 15 C 105 15, 120 30, 120 30 C 120 30, 135 15, 155 15 C 190 15, 220 40, 220 75 C 220 140, 120 210, 120 210 Z" }) }) })
+        ] }),
+        [...Array(15)].map((_2, i2) => {
+          const angle = i2 * 24 * Math.PI / 180;
+          const dist = 100 + Math.random() * 50;
+          const tx = `${Math.cos(angle) * dist}px`;
+          const ty = `${Math.sin(angle) * dist}px`;
+          return /* @__PURE__ */ jsxRuntimeExports.jsx(
+            "svg",
+            {
+              width: "24",
+              height: "24",
+              viewBox: "0 0 24 24",
+              fill: "none",
+              className: `absolute top-1/2 left-1/2 -ml-3 -mt-10 ${i2 % 3 === 0 ? "text-rose-300" : i2 % 3 === 1 ? "text-pink-400" : "text-white"}`,
+              style: {
+                "--tx": tx,
+                "--ty": ty,
+                animation: `floatUpFade 1.5s ease-out forwards ${0.3 + Math.random() * 0.3}s`
+              },
+              children: i2 % 2 === 0 ? /* @__PURE__ */ jsxRuntimeExports.jsx("path", { d: "M12 21.35l-1.45-1.32C5.4 15.36 2 12.28 2 8.5 2 5.42 4.42 3 7.5 3c1.74 0 3.41.81 4.5 2.09C13.09 3.81 14.76 3 16.5 3 19.58 3 22 5.42 22 8.5c0 3.78-3.4 6.86-8.55 11.54L12 21.35z", fill: "currentColor" }) : /* @__PURE__ */ jsxRuntimeExports.jsx("rect", { x: "8", y: "8", width: "8", height: "8", rx: "2", fill: "currentColor" })
+            },
+            `star-${i2}`
+          );
+        }),
+        /* @__PURE__ */ jsxRuntimeExports.jsx("h2", { className: "text-4xl font-extrabold text-rose-500 drop-shadow-lg tracking-tight text-center z-50", children: "Person Added!" })
+      ] })
+    ] }) : /* @__PURE__ */ jsxRuntimeExports.jsxs("div", { className: "bg-card border border-border rounded-xl shadow-lg w-full max-w-3xl flex flex-col max-h-[90vh]", children: [
       /* @__PURE__ */ jsxRuntimeExports.jsxs("div", { className: "px-6 py-4 border-b border-border flex justify-between items-center", children: [
         /* @__PURE__ */ jsxRuntimeExports.jsx("h2", { className: "text-xl font-bold", children: "Add Person" }),
         /* @__PURE__ */ jsxRuntimeExports.jsx("button", { onClick: () => setShowAddModal(false), className: "text-muted-foreground hover:text-foreground", children: "✕" })
@@ -108172,8 +109407,19 @@ function RelationshipProfile() {
       console.error(e3);
     }
   };
-  const removePhoto = async (photoUrl) => {
-    if (!confirm("Are you sure you want to delete this photo from the record?")) return;
+  const removeAttachment = async (photoUrl) => {
+    if (!confirm("Are you sure you want to delete this attachment?")) return;
+    const isInPerson = person?.attachments?.includes(photoUrl) || person?.photos?.includes(photoUrl) || person?.video?.includes(photoUrl) || person?.audio?.includes(photoUrl);
+    if (isInPerson && person) {
+      const updatePayload = {};
+      if (person.attachments) updatePayload.attachments = person.attachments.filter((a2) => a2 !== photoUrl);
+      if (person.photos) updatePayload.photos = person.photos.filter((a2) => a2 !== photoUrl);
+      if (person.video) updatePayload.video = person.video.filter((a2) => a2 !== photoUrl);
+      if (person.audio) updatePayload.audio = person.audio.filter((a2) => a2 !== photoUrl);
+      await window.api.db.update("relationships", { _id: person._id }, { $set: updatePayload }, {});
+      loadData(person._id);
+      return;
+    }
     const record = records.find((r2) => r2.attachments?.includes(photoUrl));
     if (record) {
       const newAttachments = record.attachments.filter((a2) => a2 !== photoUrl);
@@ -108356,11 +109602,14 @@ Provide a brief, insightful summary of this relationship's health and suggest 1-
   };
   if (loading) return /* @__PURE__ */ jsxRuntimeExports.jsx("div", { className: "p-8 text-center text-muted-foreground animate-pulse", children: "Loading profile..." });
   if (!person) return /* @__PURE__ */ jsxRuntimeExports.jsx("div", { className: "p-8 text-center text-muted-foreground", children: "Person not found." });
-  const tabs = ["Overview", "Timeline", "Memories", "Photos", "Events", "AI Insights", "Notes"];
+  const tabs = ["Overview", "Timeline", "Memories", "Photos", "Video", "Audio", "Events", "AI Insights", "Notes"];
   const timelineRecords = records.filter((r2) => r2.type === "Timeline Event");
   records.filter((r2) => ["Memory", "Journal", "Voice", "Video", "Photo", "Document", "Link"].includes(r2.type));
   records.filter((r2) => r2.type === "Event");
-  const photos = records.filter((r2) => r2.type === "Photo").flatMap((r2) => r2.attachments || []);
+  const pAttachments = person.attachments || [];
+  const photos = Array.from(/* @__PURE__ */ new Set([...person.photos || [], ...pAttachments.filter((a2) => a2.match(/\.(jpg|jpeg|png|gif|webp)$/i)), ...records.filter((r2) => r2.type === "Photo").flatMap((r2) => r2.attachments || [])]));
+  const audio = Array.from(/* @__PURE__ */ new Set([...person.audio || [], ...pAttachments.filter((a2) => a2.match(/\.(mp3|wav|ogg|m4a|mpeg)$/i)), ...records.filter((r2) => r2.type === "Audio" || r2.type === "Voice").flatMap((r2) => r2.attachments || [])]));
+  const video = Array.from(/* @__PURE__ */ new Set([...person.video || [], ...pAttachments.filter((a2) => a2.match(/\.(mp4|webm|mov|mkv|avi|wmv|flv)$/i)), ...records.filter((r2) => r2.type === "Video").flatMap((r2) => r2.attachments || [])]));
   const sortedNotes = [...person.notes || []].sort((a2, b2) => {
     if (a2.isPinned && !b2.isPinned) return -1;
     if (!a2.isPinned && b2.isPinned) return 1;
@@ -108566,9 +109815,68 @@ Provide a brief, insightful summary of this relationship's health and suggest 1-
               /* @__PURE__ */ jsxRuntimeExports.jsxs("div", { className: "flex gap-1", children: [
                 /* @__PURE__ */ jsxRuntimeExports.jsx("button", { onClick: () => setViewingPhoto(photo), className: "p-1.5 bg-white/20 rounded hover:bg-white/40", children: /* @__PURE__ */ jsxRuntimeExports.jsx(Eye, { size: 14 }) }),
                 /* @__PURE__ */ jsxRuntimeExports.jsx("a", { href: normalizeUrl(photo), download: true, target: "_blank", rel: "noreferrer", className: "p-1.5 bg-white/20 rounded hover:bg-white/40 flex items-center", children: /* @__PURE__ */ jsxRuntimeExports.jsx(Download, { size: 14 }) }),
-                /* @__PURE__ */ jsxRuntimeExports.jsx("button", { onClick: () => removePhoto(photo), className: "p-1.5 bg-destructive/80 rounded hover:bg-destructive", children: /* @__PURE__ */ jsxRuntimeExports.jsx(Trash2, { size: 14 }) })
+                /* @__PURE__ */ jsxRuntimeExports.jsx("button", { onClick: () => removeAttachment(photo), className: "p-1.5 bg-destructive/80 rounded hover:bg-destructive", children: /* @__PURE__ */ jsxRuntimeExports.jsx(Trash2, { size: 14 }) })
               ] })
             ] })
+          ] })
+        ] }, i2)) })
+      ] }),
+      activeTab === "Video" && /* @__PURE__ */ jsxRuntimeExports.jsxs("div", { children: [
+        /* @__PURE__ */ jsxRuntimeExports.jsxs("div", { className: "flex justify-between items-center mb-6", children: [
+          /* @__PURE__ */ jsxRuntimeExports.jsx("h2", { className: "text-xl font-bold flex items-center gap-2", children: "Video" }),
+          /* @__PURE__ */ jsxRuntimeExports.jsx("div", { className: "flex gap-2", children: /* @__PURE__ */ jsxRuntimeExports.jsxs("button", { onClick: () => {
+            setFormState({ type: "Video" });
+            setShowMemoryForm(true);
+          }, className: "px-3 py-1.5 bg-primary text-primary-foreground rounded-md text-sm font-medium flex items-center gap-1", children: [
+            /* @__PURE__ */ jsxRuntimeExports.jsx(Plus, { size: 16 }),
+            " Upload Video"
+          ] }) })
+        ] }),
+        video.length === 0 ? /* @__PURE__ */ jsxRuntimeExports.jsxs("div", { className: "text-center p-12 bg-card border border-border rounded-xl shadow-sm space-y-4 max-w-3xl mx-auto", children: [
+          /* @__PURE__ */ jsxRuntimeExports.jsx(Video, { size: 48, className: "mx-auto text-primary/40" }),
+          /* @__PURE__ */ jsxRuntimeExports.jsx("h3", { className: "text-lg font-bold", children: "Save video memories together." }),
+          /* @__PURE__ */ jsxRuntimeExports.jsx("button", { onClick: () => {
+            setFormState({ type: "Video" });
+            setShowMemoryForm(true);
+          }, className: "px-4 py-2 bg-primary text-primary-foreground rounded-md text-sm font-medium mt-2", children: "+ Upload Video" })
+        ] }) : /* @__PURE__ */ jsxRuntimeExports.jsx("div", { className: "grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4", children: video.map((vid, i2) => /* @__PURE__ */ jsxRuntimeExports.jsxs("div", { className: "bg-black rounded-xl overflow-hidden border border-border shadow-sm group", children: [
+          /* @__PURE__ */ jsxRuntimeExports.jsx("video", { src: getSafeMediaUrl(vid), controls: true, className: "w-full h-auto max-h-[300px] object-contain" }),
+          /* @__PURE__ */ jsxRuntimeExports.jsxs("div", { className: "p-3 bg-card border-t border-border flex justify-between items-center", children: [
+            /* @__PURE__ */ jsxRuntimeExports.jsx("span", { className: "text-xs truncate max-w-[150px]", children: vid.split(/[/\\]/).pop() }),
+            /* @__PURE__ */ jsxRuntimeExports.jsxs("div", { className: "flex gap-1", children: [
+              /* @__PURE__ */ jsxRuntimeExports.jsx("a", { href: normalizeUrl(vid), download: true, target: "_blank", rel: "noreferrer", className: "p-1.5 bg-accent rounded hover:bg-muted", children: /* @__PURE__ */ jsxRuntimeExports.jsx(Download, { size: 14 }) }),
+              /* @__PURE__ */ jsxRuntimeExports.jsx("button", { onClick: () => removeAttachment(vid), className: "p-1.5 bg-destructive/10 text-destructive rounded hover:bg-destructive hover:text-white", children: /* @__PURE__ */ jsxRuntimeExports.jsx(Trash2, { size: 14 }) })
+            ] })
+          ] })
+        ] }, i2)) })
+      ] }),
+      activeTab === "Audio" && /* @__PURE__ */ jsxRuntimeExports.jsxs("div", { children: [
+        /* @__PURE__ */ jsxRuntimeExports.jsxs("div", { className: "flex justify-between items-center mb-6", children: [
+          /* @__PURE__ */ jsxRuntimeExports.jsx("h2", { className: "text-xl font-bold flex items-center gap-2", children: "Audio" }),
+          /* @__PURE__ */ jsxRuntimeExports.jsx("div", { className: "flex gap-2", children: /* @__PURE__ */ jsxRuntimeExports.jsxs("button", { onClick: () => {
+            setFormState({ type: "Audio" });
+            setShowMemoryForm(true);
+          }, className: "px-3 py-1.5 bg-primary text-primary-foreground rounded-md text-sm font-medium flex items-center gap-1", children: [
+            /* @__PURE__ */ jsxRuntimeExports.jsx(Plus, { size: 16 }),
+            " Upload Audio"
+          ] }) })
+        ] }),
+        audio.length === 0 ? /* @__PURE__ */ jsxRuntimeExports.jsxs("div", { className: "text-center p-12 bg-card border border-border rounded-xl shadow-sm space-y-4 max-w-3xl mx-auto", children: [
+          /* @__PURE__ */ jsxRuntimeExports.jsx(Music, { size: 48, className: "mx-auto text-primary/40" }),
+          /* @__PURE__ */ jsxRuntimeExports.jsx("h3", { className: "text-lg font-bold", children: "Save voice notes and audio memories." }),
+          /* @__PURE__ */ jsxRuntimeExports.jsx("button", { onClick: () => {
+            setFormState({ type: "Audio" });
+            setShowMemoryForm(true);
+          }, className: "px-4 py-2 bg-primary text-primary-foreground rounded-md text-sm font-medium mt-2", children: "+ Upload Audio" })
+        ] }) : /* @__PURE__ */ jsxRuntimeExports.jsx("div", { className: "grid gap-3", children: audio.map((aud, i2) => /* @__PURE__ */ jsxRuntimeExports.jsxs("div", { className: "flex items-center gap-3 p-4 bg-accent rounded-xl border border-border", children: [
+          /* @__PURE__ */ jsxRuntimeExports.jsx(Music, { size: 24, className: "text-blue-500 shrink-0" }),
+          /* @__PURE__ */ jsxRuntimeExports.jsxs("div", { className: "flex-1 min-w-0", children: [
+            /* @__PURE__ */ jsxRuntimeExports.jsx("span", { className: "text-sm font-bold truncate block", children: aud.split(/[/\\]/).pop() }),
+            /* @__PURE__ */ jsxRuntimeExports.jsx("audio", { src: getSafeMediaUrl(aud), controls: true, className: "w-full mt-2 h-10" })
+          ] }),
+          /* @__PURE__ */ jsxRuntimeExports.jsxs("div", { className: "flex gap-1 ml-4 shrink-0 flex-col sm:flex-row", children: [
+            /* @__PURE__ */ jsxRuntimeExports.jsx("a", { href: normalizeUrl(aud), download: true, target: "_blank", rel: "noreferrer", className: "p-2 bg-background rounded hover:bg-muted text-muted-foreground", children: /* @__PURE__ */ jsxRuntimeExports.jsx(Download, { size: 16 }) }),
+            /* @__PURE__ */ jsxRuntimeExports.jsx("button", { onClick: () => removeAttachment(aud), className: "p-2 bg-destructive/10 rounded hover:bg-destructive text-destructive hover:text-white", children: /* @__PURE__ */ jsxRuntimeExports.jsx(Trash2, { size: 16 }) })
           ] })
         ] }, i2)) })
       ] }),
@@ -108711,7 +110019,7 @@ Provide a brief, insightful summary of this relationship's health and suggest 1-
       /* @__PURE__ */ jsxRuntimeExports.jsxs("form", { onSubmit: (e3) => handleSaveRecord(e3, formState.type || "Journal"), className: "p-6 space-y-4", children: [
         /* @__PURE__ */ jsxRuntimeExports.jsxs("div", { children: [
           /* @__PURE__ */ jsxRuntimeExports.jsx("label", { className: "block text-sm font-medium mb-2", children: "Memory Type" }),
-          /* @__PURE__ */ jsxRuntimeExports.jsx("div", { className: "flex flex-wrap gap-2", children: ["Journal", "Voice", "Video", "Photo", "Document", "Link"].map((t2) => /* @__PURE__ */ jsxRuntimeExports.jsxs("label", { className: "flex items-center gap-1 text-sm bg-accent px-3 py-1.5 rounded cursor-pointer border border-border has-[:checked]:bg-primary has-[:checked]:text-primary-foreground", children: [
+          /* @__PURE__ */ jsxRuntimeExports.jsx("div", { className: "flex flex-wrap gap-2", children: ["Journal", "Audio", "Video", "Photo", "Document", "Link"].map((t2) => /* @__PURE__ */ jsxRuntimeExports.jsxs("label", { className: "flex items-center gap-1 text-sm bg-accent px-3 py-1.5 rounded cursor-pointer border border-border has-[:checked]:bg-primary has-[:checked]:text-primary-foreground", children: [
             /* @__PURE__ */ jsxRuntimeExports.jsx("input", { type: "radio", name: "memType", value: t2, className: "hidden", checked: (formState.type || "Journal") === t2, onChange: (e3) => setFormState({ ...formState, type: e3.target.value }) }),
             t2
           ] }, t2)) })
@@ -109294,13 +110602,15 @@ function ProfessionalTimeline() {
 }
 function EducationList() {
   const [education, setEducation] = reactExports.useState([]);
+  const [loading, setLoading] = reactExports.useState(true);
   const [isAdding, setIsAdding] = reactExports.useState(false);
   const [editingId, setEditingId] = reactExports.useState(null);
   const [isDragging, setIsDragging] = reactExports.useState(false);
   const [dragStartY, setDragStartY] = reactExports.useState(0);
   const [scrollTop, setScrollTop] = reactExports.useState(0);
+  const [showSuccessOverlay, setShowSuccessOverlay] = reactExports.useState(false);
   const scrollContainerRef = reactExports.useRef(null);
-  const [form, setForm] = reactExports.useState({
+  const defaultForm = {
     school: "",
     degree: "",
     field: "",
@@ -109314,18 +110624,40 @@ function EducationList() {
     achievements: [],
     attachments: [],
     photos: []
-  });
+  };
+  const [form, setForm] = reactExports.useState(defaultForm);
   const loadData = async () => {
     try {
       const data = await window.api.db.find("education", {});
-      setEducation(data.sort((a2, b2) => new Date(b2.startDate).getTime() - new Date(a2.startDate).getTime()));
+      const sorted = data.sort((a2, b2) => {
+        const timeA = a2.startDate ? new Date(a2.startDate).getTime() : 0;
+        const timeB = b2.startDate ? new Date(b2.startDate).getTime() : 0;
+        return (isNaN(timeB) ? 0 : timeB) - (isNaN(timeA) ? 0 : timeA);
+      });
+      setEducation(sorted);
     } catch (err) {
       console.error(err);
+    } finally {
+      setLoading(false);
     }
   };
   reactExports.useEffect(() => {
     loadData();
   }, []);
+  const location = useLocation();
+  reactExports.useEffect(() => {
+    const highlightId = new URLSearchParams(location.search).get("highlight");
+    if (highlightId && !loading && education.length > 0) {
+      setTimeout(() => {
+        const el2 = document.getElementById(`education-${highlightId}`);
+        if (el2) {
+          el2.scrollIntoView({ behavior: "smooth", block: "center" });
+          el2.classList.add("ring-4", "ring-primary", "shadow-2xl", "shadow-primary/40", "animate-[pulse_2s_ease-in-out_3]", "z-50");
+          setTimeout(() => el2.classList.remove("ring-4", "ring-primary", "shadow-2xl", "shadow-primary/40", "animate-[pulse_2s_ease-in-out_3]", "z-50"), 4e3);
+        }
+      }, 500);
+    }
+  }, [location.search, loading, education.length]);
   const handleSave = async () => {
     try {
       if (editingId) {
@@ -109334,6 +110666,8 @@ function EducationList() {
       } else {
         await window.api.db.insert("education", { ...form, createdAt: Date.now(), updatedAt: Date.now() });
         NotificationEngine.notify("success", "Education Added", `Added "${form.degree || form.school}".`, "Career");
+        setShowSuccessOverlay(true);
+        setTimeout(() => setShowSuccessOverlay(false), 3e3);
       }
       setIsAdding(false);
       setEditingId(null);
@@ -109407,174 +110741,236 @@ function EducationList() {
       }
     }
   };
-  return /* @__PURE__ */ jsxRuntimeExports.jsxs(
-    "div",
-    {
-      ref: scrollContainerRef,
-      className: `h-full overflow-y-auto p-8 animate-in fade-in duration-500 ${isDragging ? "cursor-grabbing" : "cursor-grab"}`,
-      onMouseDown: handleMouseDown,
-      onMouseMove: handleMouseMove,
-      onMouseUp: handleMouseUp,
-      onMouseLeave: handleMouseUp,
-      onContextMenu: handleContextMenu,
-      onKeyDown: handleKeyDown2,
-      tabIndex: 0,
-      children: [
-        /* @__PURE__ */ jsxRuntimeExports.jsxs("div", { className: "flex justify-between items-center mb-8", children: [
-          /* @__PURE__ */ jsxRuntimeExports.jsxs("div", { children: [
-            /* @__PURE__ */ jsxRuntimeExports.jsxs("h1", { className: "text-3xl font-bold flex items-center gap-3", children: [
-              /* @__PURE__ */ jsxRuntimeExports.jsx(GraduationCap, { className: "text-primary" }),
-              "Education"
+  return /* @__PURE__ */ jsxRuntimeExports.jsxs("div", { className: "h-full bg-background animate-in fade-in duration-500 relative overflow-hidden flex flex-col", children: [
+    /* @__PURE__ */ jsxRuntimeExports.jsxs(
+      "div",
+      {
+        ref: scrollContainerRef,
+        className: `absolute inset-0 overflow-y-auto p-8 z-10 scrollbar-none ${isDragging ? "cursor-grabbing" : "cursor-grab"}`,
+        onMouseDown: handleMouseDown,
+        onMouseMove: handleMouseMove,
+        onMouseUp: handleMouseUp,
+        onMouseLeave: handleMouseUp,
+        onContextMenu: handleContextMenu,
+        onKeyDown: handleKeyDown2,
+        tabIndex: 0,
+        children: [
+          /* @__PURE__ */ jsxRuntimeExports.jsxs("div", { className: "flex justify-between items-center mb-8", children: [
+            /* @__PURE__ */ jsxRuntimeExports.jsxs("div", { children: [
+              /* @__PURE__ */ jsxRuntimeExports.jsxs("h1", { className: "text-3xl font-bold flex items-center gap-3", children: [
+                /* @__PURE__ */ jsxRuntimeExports.jsx(GraduationCap, { className: "text-primary" }),
+                "Education"
+              ] }),
+              /* @__PURE__ */ jsxRuntimeExports.jsx("p", { className: "text-muted-foreground mt-1", children: "Manage your academic history and qualifications." })
             ] }),
-            /* @__PURE__ */ jsxRuntimeExports.jsx("p", { className: "text-muted-foreground mt-1", children: "Manage your academic history and qualifications." })
+            !isAdding && /* @__PURE__ */ jsxRuntimeExports.jsxs("button", { onClick: () => {
+              setForm(defaultForm);
+              setEditingId(null);
+              setIsAdding(true);
+            }, className: "px-4 py-2 bg-primary text-primary-foreground rounded-md hover:bg-primary/90 font-medium flex items-center gap-2", children: [
+              /* @__PURE__ */ jsxRuntimeExports.jsx(Plus, { size: 18 }),
+              " Add Education"
+            ] })
           ] }),
-          !isAdding && /* @__PURE__ */ jsxRuntimeExports.jsxs("button", { onClick: () => {
-            setForm({ status: "Current", subjects: [], attachments: [], photos: [] });
-            setEditingId(null);
-            setIsAdding(true);
-          }, className: "px-4 py-2 bg-primary text-primary-foreground rounded-md hover:bg-primary/90 font-medium flex items-center gap-2", children: [
-            /* @__PURE__ */ jsxRuntimeExports.jsx(Plus, { size: 18 }),
-            " Add Education"
+          isAdding ? /* @__PURE__ */ jsxRuntimeExports.jsxs("div", { className: "bg-card border border-border rounded-xl p-6 shadow-sm mb-8 animate-in slide-in-from-top-4", children: [
+            /* @__PURE__ */ jsxRuntimeExports.jsxs("div", { className: "flex justify-between items-center mb-6", children: [
+              /* @__PURE__ */ jsxRuntimeExports.jsx("h2", { className: "text-xl font-bold", children: editingId ? "Edit Education" : "Add Education" }),
+              /* @__PURE__ */ jsxRuntimeExports.jsx("button", { onClick: () => setIsAdding(false), className: "p-2 hover:bg-accent rounded-md", children: /* @__PURE__ */ jsxRuntimeExports.jsx(X, { size: 20 }) })
+            ] }),
+            /* @__PURE__ */ jsxRuntimeExports.jsxs("div", { className: "grid grid-cols-1 md:grid-cols-2 gap-4 mb-6", children: [
+              /* @__PURE__ */ jsxRuntimeExports.jsxs("div", { children: [
+                /* @__PURE__ */ jsxRuntimeExports.jsx("label", { className: "block text-sm font-medium mb-1", children: "School / University" }),
+                /* @__PURE__ */ jsxRuntimeExports.jsx("input", { autoFocus: true, type: "text", value: form.school, onChange: (e3) => setForm({ ...form, school: e3.target.value }), className: "w-full p-2 bg-background border border-border rounded-md" })
+              ] }),
+              /* @__PURE__ */ jsxRuntimeExports.jsxs("div", { children: [
+                /* @__PURE__ */ jsxRuntimeExports.jsx("label", { className: "block text-sm font-medium mb-1", children: "Degree" }),
+                /* @__PURE__ */ jsxRuntimeExports.jsx("input", { type: "text", value: form.degree, onChange: (e3) => setForm({ ...form, degree: e3.target.value }), className: "w-full p-2 bg-background border border-border rounded-md" })
+              ] }),
+              /* @__PURE__ */ jsxRuntimeExports.jsxs("div", { children: [
+                /* @__PURE__ */ jsxRuntimeExports.jsx("label", { className: "block text-sm font-medium mb-1", children: "Field of Study" }),
+                /* @__PURE__ */ jsxRuntimeExports.jsx("input", { type: "text", value: form.field, onChange: (e3) => setForm({ ...form, field: e3.target.value }), className: "w-full p-2 bg-background border border-border rounded-md" })
+              ] }),
+              /* @__PURE__ */ jsxRuntimeExports.jsxs("div", { children: [
+                /* @__PURE__ */ jsxRuntimeExports.jsx("label", { className: "block text-sm font-medium mb-1", children: "Status" }),
+                /* @__PURE__ */ jsxRuntimeExports.jsxs("select", { value: form.status, onChange: (e3) => setForm({ ...form, status: e3.target.value }), className: "w-full p-2 bg-background border border-border rounded-md", children: [
+                  /* @__PURE__ */ jsxRuntimeExports.jsx("option", { value: "Current", children: "Current" }),
+                  /* @__PURE__ */ jsxRuntimeExports.jsx("option", { value: "Graduated", children: "Graduated" }),
+                  /* @__PURE__ */ jsxRuntimeExports.jsx("option", { value: "Dropped", children: "Dropped" })
+                ] })
+              ] }),
+              /* @__PURE__ */ jsxRuntimeExports.jsxs("div", { children: [
+                /* @__PURE__ */ jsxRuntimeExports.jsx("label", { className: "block text-sm font-medium mb-1", children: "Start Date" }),
+                /* @__PURE__ */ jsxRuntimeExports.jsx("input", { type: "date", value: form.startDate, onChange: (e3) => setForm({ ...form, startDate: e3.target.value }), className: "w-full p-2 bg-background border border-border rounded-md" })
+              ] }),
+              /* @__PURE__ */ jsxRuntimeExports.jsxs("div", { children: [
+                /* @__PURE__ */ jsxRuntimeExports.jsx("label", { className: "block text-sm font-medium mb-1", children: "End Date" }),
+                /* @__PURE__ */ jsxRuntimeExports.jsx("input", { type: "date", value: form.endDate || "", onChange: (e3) => setForm({ ...form, endDate: e3.target.value }), className: "w-full p-2 bg-background border border-border rounded-md" })
+              ] }),
+              /* @__PURE__ */ jsxRuntimeExports.jsxs("div", { children: [
+                /* @__PURE__ */ jsxRuntimeExports.jsx("label", { className: "block text-sm font-medium mb-1", children: "Grade / GPA" }),
+                /* @__PURE__ */ jsxRuntimeExports.jsx("input", { type: "text", value: form.grade || "", onChange: (e3) => setForm({ ...form, grade: e3.target.value }), className: "w-full p-2 bg-background border border-border rounded-md" })
+              ] }),
+              /* @__PURE__ */ jsxRuntimeExports.jsxs("div", { className: "md:col-span-2", children: [
+                /* @__PURE__ */ jsxRuntimeExports.jsx("label", { className: "block text-sm font-medium mb-1", children: "Description" }),
+                /* @__PURE__ */ jsxRuntimeExports.jsx("textarea", { value: form.description || "", onChange: (e3) => setForm({ ...form, description: e3.target.value }), rows: 3, className: "w-full p-2 bg-background border border-border rounded-md" })
+              ] }),
+              /* @__PURE__ */ jsxRuntimeExports.jsxs("div", { className: "md:col-span-2", children: [
+                /* @__PURE__ */ jsxRuntimeExports.jsx("label", { className: "block text-sm font-medium mb-1", children: "Subjects (comma separated)" }),
+                /* @__PURE__ */ jsxRuntimeExports.jsx("input", { type: "text", value: form.subjects?.join(", ") || "", onChange: (e3) => setForm({ ...form, subjects: e3.target.value.split(",").map((s3) => s3.trim()).filter(Boolean) }), className: "w-full p-2 bg-background border border-border rounded-md", placeholder: "Math, Biology, Chemistry" })
+              ] })
+            ] }),
+            /* @__PURE__ */ jsxRuntimeExports.jsxs("div", { className: "mb-6", children: [
+              /* @__PURE__ */ jsxRuntimeExports.jsx("label", { className: "block text-sm font-medium mb-2", children: "Photos" }),
+              /* @__PURE__ */ jsxRuntimeExports.jsxs("div", { className: "flex flex-wrap gap-4", children: [
+                form.photos?.map((img, i2) => /* @__PURE__ */ jsxRuntimeExports.jsxs("div", { className: "relative group rounded-md overflow-hidden border border-border w-24 h-24", children: [
+                  /* @__PURE__ */ jsxRuntimeExports.jsx("img", { src: normalizeUrl(img), alt: "photo", className: "w-full h-full object-cover" }),
+                  /* @__PURE__ */ jsxRuntimeExports.jsx("button", { onClick: () => setForm({ ...form, photos: form.photos?.filter((_2, idx) => idx !== i2) }), className: "absolute top-1 right-1 p-1 bg-black/50 text-white rounded-full opacity-0 group-hover:opacity-100 transition-opacity", children: /* @__PURE__ */ jsxRuntimeExports.jsx(X, { size: 12 }) })
+                ] }, i2)),
+                /* @__PURE__ */ jsxRuntimeExports.jsxs("button", { onClick: handleAttachPhoto, className: "flex flex-col items-center justify-center w-24 h-24 bg-background border border-dashed border-border rounded-md text-muted-foreground hover:bg-accent hover:text-foreground transition-colors", children: [
+                  /* @__PURE__ */ jsxRuntimeExports.jsx(Upload, { size: 20, className: "mb-1" }),
+                  /* @__PURE__ */ jsxRuntimeExports.jsx("span", { className: "text-xs font-medium", children: "Add Photo" })
+                ] })
+              ] })
+            ] }),
+            /* @__PURE__ */ jsxRuntimeExports.jsxs("div", { className: "mb-6", children: [
+              /* @__PURE__ */ jsxRuntimeExports.jsx("label", { className: "block text-sm font-medium mb-2", children: "Attachments (Transcripts, Student Card, etc.)" }),
+              /* @__PURE__ */ jsxRuntimeExports.jsxs("div", { className: "flex flex-wrap gap-2", children: [
+                form.attachments?.map((att, i2) => /* @__PURE__ */ jsxRuntimeExports.jsxs("div", { className: "flex items-center gap-2 bg-accent px-3 py-1.5 rounded-md text-sm", children: [
+                  /* @__PURE__ */ jsxRuntimeExports.jsx("a", { href: normalizeUrl(att), target: "_blank", className: "hover:underline truncate max-w-[200px]", children: att ? att.split(/[\\/]/).pop() : "Attachment" }),
+                  /* @__PURE__ */ jsxRuntimeExports.jsx("button", { onClick: () => setForm({ ...form, attachments: form.attachments?.filter((_2, idx) => idx !== i2) }), className: "text-destructive hover:text-destructive/80", children: /* @__PURE__ */ jsxRuntimeExports.jsx(X, { size: 14 }) })
+                ] }, i2)),
+                /* @__PURE__ */ jsxRuntimeExports.jsxs("button", { onClick: handleAttach, className: "flex items-center gap-2 bg-background border border-dashed border-border px-4 py-1.5 rounded-md text-sm hover:bg-accent", children: [
+                  /* @__PURE__ */ jsxRuntimeExports.jsx(Upload, { size: 14 }),
+                  " Add File"
+                ] })
+              ] })
+            ] }),
+            /* @__PURE__ */ jsxRuntimeExports.jsxs("div", { className: "flex justify-end gap-3", children: [
+              /* @__PURE__ */ jsxRuntimeExports.jsx("button", { onClick: () => setIsAdding(false), className: "px-4 py-2 bg-accent rounded-md hover:bg-accent/80 font-medium", children: "Cancel" }),
+              /* @__PURE__ */ jsxRuntimeExports.jsx("button", { onClick: handleSave, className: "px-4 py-2 bg-primary text-primary-foreground rounded-md hover:bg-primary/90 font-medium", children: "Save Record" })
+            ] })
+          ] }) : null,
+          /* @__PURE__ */ jsxRuntimeExports.jsxs("div", { className: "space-y-6", children: [
+            education.map((record) => /* @__PURE__ */ jsxRuntimeExports.jsxs("div", { id: `education-${record._id}`, className: "bg-card border border-border p-6 rounded-2xl shadow-sm relative group hover:border-primary/50 transition-all duration-1000", children: [
+              /* @__PURE__ */ jsxRuntimeExports.jsxs("div", { className: "absolute top-6 right-6 opacity-0 group-hover:opacity-100 transition-opacity flex items-center gap-2", children: [
+                /* @__PURE__ */ jsxRuntimeExports.jsx("button", { onClick: () => openEdit(record), className: "p-2 bg-background border border-border rounded-md hover:bg-accent", children: /* @__PURE__ */ jsxRuntimeExports.jsx(Pen, { size: 16 }) }),
+                /* @__PURE__ */ jsxRuntimeExports.jsx("button", { onClick: () => handleDelete2(record._id, record.degree || record.school), className: "p-2 bg-background border border-border text-destructive rounded-md hover:bg-destructive/10", children: /* @__PURE__ */ jsxRuntimeExports.jsx(Trash2, { size: 16 }) })
+              ] }),
+              /* @__PURE__ */ jsxRuntimeExports.jsxs("div", { className: "flex items-start gap-4 mb-4", children: [
+                /* @__PURE__ */ jsxRuntimeExports.jsx("div", { className: "w-12 h-12 bg-primary/10 text-primary rounded-xl flex items-center justify-center shrink-0", children: /* @__PURE__ */ jsxRuntimeExports.jsx(GraduationCap, { size: 24 }) }),
+                /* @__PURE__ */ jsxRuntimeExports.jsxs("div", { children: [
+                  /* @__PURE__ */ jsxRuntimeExports.jsx("h3", { className: "text-xl font-bold", children: record.school }),
+                  /* @__PURE__ */ jsxRuntimeExports.jsxs("p", { className: "text-lg text-muted-foreground", children: [
+                    record.degree,
+                    " in ",
+                    record.field
+                  ] })
+                ] })
+              ] }),
+              /* @__PURE__ */ jsxRuntimeExports.jsxs("div", { className: "grid grid-cols-2 md:grid-cols-4 gap-4 mb-4 text-sm bg-accent/30 p-4 rounded-xl", children: [
+                /* @__PURE__ */ jsxRuntimeExports.jsxs("div", { children: [
+                  /* @__PURE__ */ jsxRuntimeExports.jsx("span", { className: "text-muted-foreground block mb-1", children: "Status" }),
+                  /* @__PURE__ */ jsxRuntimeExports.jsx("span", { className: `font-medium px-2 py-0.5 rounded-md ${record.status === "Current" ? "bg-green-500/10 text-green-500" : record.status === "Graduated" ? "bg-blue-500/10 text-blue-500" : "bg-red-500/10 text-red-500"}`, children: record.status })
+                ] }),
+                /* @__PURE__ */ jsxRuntimeExports.jsxs("div", { children: [
+                  /* @__PURE__ */ jsxRuntimeExports.jsx("span", { className: "text-muted-foreground block mb-1", children: "Duration" }),
+                  /* @__PURE__ */ jsxRuntimeExports.jsxs("span", { className: "font-medium", children: [
+                    record.startDate ? new Date(record.startDate).getFullYear() : "",
+                    " - ",
+                    record.endDate ? new Date(record.endDate).getFullYear() : "Present"
+                  ] })
+                ] }),
+                record.grade && /* @__PURE__ */ jsxRuntimeExports.jsxs("div", { children: [
+                  /* @__PURE__ */ jsxRuntimeExports.jsx("span", { className: "text-muted-foreground block mb-1", children: "Grade/GPA" }),
+                  /* @__PURE__ */ jsxRuntimeExports.jsx("span", { className: "font-medium", children: record.grade })
+                ] })
+              ] }),
+              record.description && /* @__PURE__ */ jsxRuntimeExports.jsx("p", { className: "text-muted-foreground text-sm mb-4", children: record.description }),
+              (record.photos && record.photos.length > 0 || record.attachments && record.attachments.length > 0) && /* @__PURE__ */ jsxRuntimeExports.jsxs("div", { className: "mt-6 pt-6 border-t border-border space-y-4", children: [
+                record.photos && record.photos.length > 0 && /* @__PURE__ */ jsxRuntimeExports.jsx("div", { className: "flex gap-2 overflow-x-auto pb-2 scrollbar-none", children: record.photos.map((img) => /* @__PURE__ */ jsxRuntimeExports.jsx("img", { src: normalizeUrl(img), alt: "Education", className: "h-24 w-36 object-cover rounded-md border border-border shrink-0 hover:scale-105 transition-transform" }, img)) }),
+                record.attachments && record.attachments.length > 0 && /* @__PURE__ */ jsxRuntimeExports.jsx("div", { className: "flex flex-wrap gap-2", children: record.attachments.map((att) => /* @__PURE__ */ jsxRuntimeExports.jsxs("a", { href: normalizeUrl(att), target: "_blank", className: "flex items-center gap-1.5 text-xs font-medium bg-accent px-3 py-1.5 rounded-md hover:bg-primary/10 hover:text-primary transition-colors", children: [
+                  /* @__PURE__ */ jsxRuntimeExports.jsx(FileText, { size: 14 }),
+                  " ",
+                  att ? att.split(/[\\/]/).pop() : "Attachment"
+                ] }, att)) })
+              ] })
+            ] }, record._id)),
+            education.length === 0 && !isAdding && /* @__PURE__ */ jsxRuntimeExports.jsx("div", { className: "text-center p-12 border border-dashed border-border rounded-xl text-muted-foreground", children: "No education records added yet." })
+          ] })
+        ]
+      }
+    ),
+    showSuccessOverlay && /* @__PURE__ */ jsxRuntimeExports.jsxs("div", { className: "absolute inset-0 z-50 flex items-center justify-center bg-[radial-gradient(ellipse_at_center,_var(--tw-gradient-stops))] from-indigo-500/30 via-background/80 to-background/95 backdrop-blur-sm animate-in fade-in duration-300", children: [
+      /* @__PURE__ */ jsxRuntimeExports.jsx("style", { children: `
+            @keyframes popAndRotateHat {
+              0% { transform: scale(0) rotate(-45deg); opacity: 0; }
+              50% { transform: scale(1.2) rotate(15deg); opacity: 1; }
+              75% { transform: scale(0.9) rotate(-5deg); }
+              100% { transform: scale(1) rotate(0deg); opacity: 1; }
+            }
+            @keyframes floatUpFade {
+              0% { transform: translate(0, 0) scale(0); opacity: 0; }
+              20% { opacity: 1; scale: 1; }
+              100% { transform: translate(var(--tx), var(--ty)) scale(0.5); opacity: 0; }
+            }
+            @keyframes swingTassel {
+              0% { transform: rotate(10deg); }
+              100% { transform: rotate(-10deg); }
+            }
+          ` }),
+      /* @__PURE__ */ jsxRuntimeExports.jsxs("div", { className: "relative flex flex-col items-center justify-center gap-8", style: { animation: "popAndRotateHat 1s cubic-bezier(0.34, 1.56, 0.64, 1) forwards" }, children: [
+        /* @__PURE__ */ jsxRuntimeExports.jsxs("svg", { width: "240", height: "200", viewBox: "0 0 240 200", fill: "none", xmlns: "http://www.w3.org/2000/svg", className: "drop-shadow-2xl", children: [
+          /* @__PURE__ */ jsxRuntimeExports.jsx("path", { d: "M 20 80 L 120 40 L 220 80 L 120 120 Z", fill: "#312e81", opacity: "0.4", transform: "translate(10, 20)" }),
+          /* @__PURE__ */ jsxRuntimeExports.jsx("path", { d: "M 70 100 L 170 100 L 170 140 C 170 155, 150 165, 120 165 C 90 165, 70 155, 70 140 Z", fill: "#4338ca" }),
+          /* @__PURE__ */ jsxRuntimeExports.jsx("path", { d: "M 70 100 L 170 100 L 170 140 C 170 155, 150 165, 120 165 C 90 165, 70 155, 70 140 Z", fill: "#3730a3", opacity: "0.5", transform: "translate(-2, 0)" }),
+          /* @__PURE__ */ jsxRuntimeExports.jsx("path", { d: "M 20 80 L 120 40 L 220 80 L 120 120 Z", fill: "#4f46e5" }),
+          /* @__PURE__ */ jsxRuntimeExports.jsx("path", { d: "M 20 80 L 120 40 L 220 80 L 120 120 Z", fill: "#6366f1", opacity: "0.7", transform: "scale(0.95) translate(6, 4)" }),
+          /* @__PURE__ */ jsxRuntimeExports.jsx("circle", { cx: "120", cy: "80", r: "8", fill: "#c7d2fe" }),
+          /* @__PURE__ */ jsxRuntimeExports.jsxs("g", { style: { animation: "swingTassel 2s ease-in-out infinite alternate", transformOrigin: "120px 80px" }, children: [
+            /* @__PURE__ */ jsxRuntimeExports.jsx("path", { d: "M 120 80 Q 150 100, 180 130", fill: "none", stroke: "#fbbf24", strokeWidth: "4" }),
+            /* @__PURE__ */ jsxRuntimeExports.jsx("path", { d: "M 175 130 L 185 130 L 190 160 L 170 160 Z", fill: "#f59e0b" }),
+            /* @__PURE__ */ jsxRuntimeExports.jsx("path", { d: "M 170 160 L 175 180 M 175 160 L 178 185 M 180 160 L 182 185 M 185 160 L 185 180 M 190 160 L 188 175", stroke: "#fcd34d", strokeWidth: "2", strokeLinecap: "round" })
           ] })
         ] }),
-        isAdding ? /* @__PURE__ */ jsxRuntimeExports.jsxs("div", { className: "bg-card border border-border rounded-xl p-6 shadow-sm mb-8 animate-in slide-in-from-top-4", children: [
-          /* @__PURE__ */ jsxRuntimeExports.jsxs("div", { className: "flex justify-between items-center mb-6", children: [
-            /* @__PURE__ */ jsxRuntimeExports.jsx("h2", { className: "text-xl font-bold", children: editingId ? "Edit Education" : "Add Education" }),
-            /* @__PURE__ */ jsxRuntimeExports.jsx("button", { onClick: () => setIsAdding(false), className: "p-2 hover:bg-accent rounded-md", children: /* @__PURE__ */ jsxRuntimeExports.jsx(X, { size: 20 }) })
-          ] }),
-          /* @__PURE__ */ jsxRuntimeExports.jsxs("div", { className: "grid grid-cols-1 md:grid-cols-2 gap-4 mb-6", children: [
-            /* @__PURE__ */ jsxRuntimeExports.jsxs("div", { children: [
-              /* @__PURE__ */ jsxRuntimeExports.jsx("label", { className: "block text-sm font-medium mb-1", children: "School / University" }),
-              /* @__PURE__ */ jsxRuntimeExports.jsx("input", { autoFocus: true, type: "text", value: form.school, onChange: (e3) => setForm({ ...form, school: e3.target.value }), className: "w-full p-2 bg-background border border-border rounded-md" })
-            ] }),
-            /* @__PURE__ */ jsxRuntimeExports.jsxs("div", { children: [
-              /* @__PURE__ */ jsxRuntimeExports.jsx("label", { className: "block text-sm font-medium mb-1", children: "Degree" }),
-              /* @__PURE__ */ jsxRuntimeExports.jsx("input", { type: "text", value: form.degree, onChange: (e3) => setForm({ ...form, degree: e3.target.value }), className: "w-full p-2 bg-background border border-border rounded-md" })
-            ] }),
-            /* @__PURE__ */ jsxRuntimeExports.jsxs("div", { children: [
-              /* @__PURE__ */ jsxRuntimeExports.jsx("label", { className: "block text-sm font-medium mb-1", children: "Field of Study" }),
-              /* @__PURE__ */ jsxRuntimeExports.jsx("input", { type: "text", value: form.field, onChange: (e3) => setForm({ ...form, field: e3.target.value }), className: "w-full p-2 bg-background border border-border rounded-md" })
-            ] }),
-            /* @__PURE__ */ jsxRuntimeExports.jsxs("div", { children: [
-              /* @__PURE__ */ jsxRuntimeExports.jsx("label", { className: "block text-sm font-medium mb-1", children: "Status" }),
-              /* @__PURE__ */ jsxRuntimeExports.jsxs("select", { value: form.status, onChange: (e3) => setForm({ ...form, status: e3.target.value }), className: "w-full p-2 bg-background border border-border rounded-md", children: [
-                /* @__PURE__ */ jsxRuntimeExports.jsx("option", { value: "Current", children: "Current" }),
-                /* @__PURE__ */ jsxRuntimeExports.jsx("option", { value: "Graduated", children: "Graduated" }),
-                /* @__PURE__ */ jsxRuntimeExports.jsx("option", { value: "Dropped", children: "Dropped" })
-              ] })
-            ] }),
-            /* @__PURE__ */ jsxRuntimeExports.jsxs("div", { children: [
-              /* @__PURE__ */ jsxRuntimeExports.jsx("label", { className: "block text-sm font-medium mb-1", children: "Start Date" }),
-              /* @__PURE__ */ jsxRuntimeExports.jsx("input", { type: "date", value: form.startDate, onChange: (e3) => setForm({ ...form, startDate: e3.target.value }), className: "w-full p-2 bg-background border border-border rounded-md" })
-            ] }),
-            /* @__PURE__ */ jsxRuntimeExports.jsxs("div", { children: [
-              /* @__PURE__ */ jsxRuntimeExports.jsx("label", { className: "block text-sm font-medium mb-1", children: "End Date" }),
-              /* @__PURE__ */ jsxRuntimeExports.jsx("input", { type: "date", value: form.endDate || "", onChange: (e3) => setForm({ ...form, endDate: e3.target.value }), className: "w-full p-2 bg-background border border-border rounded-md" })
-            ] }),
-            /* @__PURE__ */ jsxRuntimeExports.jsxs("div", { children: [
-              /* @__PURE__ */ jsxRuntimeExports.jsx("label", { className: "block text-sm font-medium mb-1", children: "Grade / GPA" }),
-              /* @__PURE__ */ jsxRuntimeExports.jsx("input", { type: "text", value: form.grade || "", onChange: (e3) => setForm({ ...form, grade: e3.target.value }), className: "w-full p-2 bg-background border border-border rounded-md" })
-            ] }),
-            /* @__PURE__ */ jsxRuntimeExports.jsxs("div", { className: "md:col-span-2", children: [
-              /* @__PURE__ */ jsxRuntimeExports.jsx("label", { className: "block text-sm font-medium mb-1", children: "Description" }),
-              /* @__PURE__ */ jsxRuntimeExports.jsx("textarea", { value: form.description || "", onChange: (e3) => setForm({ ...form, description: e3.target.value }), rows: 3, className: "w-full p-2 bg-background border border-border rounded-md" })
-            ] }),
-            /* @__PURE__ */ jsxRuntimeExports.jsxs("div", { className: "md:col-span-2", children: [
-              /* @__PURE__ */ jsxRuntimeExports.jsx("label", { className: "block text-sm font-medium mb-1", children: "Subjects (comma separated)" }),
-              /* @__PURE__ */ jsxRuntimeExports.jsx("input", { type: "text", value: form.subjects?.join(", ") || "", onChange: (e3) => setForm({ ...form, subjects: e3.target.value.split(",").map((s3) => s3.trim()).filter(Boolean) }), className: "w-full p-2 bg-background border border-border rounded-md", placeholder: "Math, Biology, Chemistry" })
-            ] })
-          ] }),
-          /* @__PURE__ */ jsxRuntimeExports.jsxs("div", { className: "mb-6", children: [
-            /* @__PURE__ */ jsxRuntimeExports.jsx("label", { className: "block text-sm font-medium mb-2", children: "Photos" }),
-            /* @__PURE__ */ jsxRuntimeExports.jsxs("div", { className: "flex flex-wrap gap-4", children: [
-              form.photos?.map((img, i2) => /* @__PURE__ */ jsxRuntimeExports.jsxs("div", { className: "relative group rounded-md overflow-hidden border border-border w-24 h-24", children: [
-                /* @__PURE__ */ jsxRuntimeExports.jsx("img", { src: normalizeUrl(img), alt: "photo", className: "w-full h-full object-cover" }),
-                /* @__PURE__ */ jsxRuntimeExports.jsx("button", { onClick: () => setForm({ ...form, photos: form.photos?.filter((_2, idx) => idx !== i2) }), className: "absolute top-1 right-1 p-1 bg-black/50 text-white rounded-full opacity-0 group-hover:opacity-100 transition-opacity", children: /* @__PURE__ */ jsxRuntimeExports.jsx(X, { size: 12 }) })
-              ] }, i2)),
-              /* @__PURE__ */ jsxRuntimeExports.jsxs("button", { onClick: handleAttachPhoto, className: "flex flex-col items-center justify-center w-24 h-24 bg-background border border-dashed border-border rounded-md text-muted-foreground hover:bg-accent hover:text-foreground transition-colors", children: [
-                /* @__PURE__ */ jsxRuntimeExports.jsx(Upload, { size: 20, className: "mb-1" }),
-                /* @__PURE__ */ jsxRuntimeExports.jsx("span", { className: "text-xs font-medium", children: "Add Photo" })
-              ] })
-            ] })
-          ] }),
-          /* @__PURE__ */ jsxRuntimeExports.jsxs("div", { className: "mb-6", children: [
-            /* @__PURE__ */ jsxRuntimeExports.jsx("label", { className: "block text-sm font-medium mb-2", children: "Attachments (Transcripts, Student Card, etc.)" }),
-            /* @__PURE__ */ jsxRuntimeExports.jsxs("div", { className: "flex flex-wrap gap-2", children: [
-              form.attachments?.map((att, i2) => /* @__PURE__ */ jsxRuntimeExports.jsxs("div", { className: "flex items-center gap-2 bg-accent px-3 py-1.5 rounded-md text-sm", children: [
-                /* @__PURE__ */ jsxRuntimeExports.jsx("a", { href: normalizeUrl(att), target: "_blank", className: "hover:underline truncate max-w-[200px]", children: att ? att.split(/[\\/]/).pop() : "Attachment" }),
-                /* @__PURE__ */ jsxRuntimeExports.jsx("button", { onClick: () => setForm({ ...form, attachments: form.attachments?.filter((_2, idx) => idx !== i2) }), className: "text-destructive hover:text-destructive/80", children: /* @__PURE__ */ jsxRuntimeExports.jsx(X, { size: 14 }) })
-              ] }, i2)),
-              /* @__PURE__ */ jsxRuntimeExports.jsxs("button", { onClick: handleAttach, className: "flex items-center gap-2 bg-background border border-dashed border-border px-4 py-1.5 rounded-md text-sm hover:bg-accent", children: [
-                /* @__PURE__ */ jsxRuntimeExports.jsx(Upload, { size: 14 }),
-                " Add File"
-              ] })
-            ] })
-          ] }),
-          /* @__PURE__ */ jsxRuntimeExports.jsxs("div", { className: "flex justify-end gap-3", children: [
-            /* @__PURE__ */ jsxRuntimeExports.jsx("button", { onClick: () => setIsAdding(false), className: "px-4 py-2 bg-accent rounded-md hover:bg-accent/80 font-medium", children: "Cancel" }),
-            /* @__PURE__ */ jsxRuntimeExports.jsx("button", { onClick: handleSave, className: "px-4 py-2 bg-primary text-primary-foreground rounded-md hover:bg-primary/90 font-medium", children: "Save Record" })
-          ] })
-        ] }) : null,
-        /* @__PURE__ */ jsxRuntimeExports.jsxs("div", { className: "space-y-6", children: [
-          education.map((record) => /* @__PURE__ */ jsxRuntimeExports.jsxs("div", { className: "bg-card border border-border p-6 rounded-2xl shadow-sm relative group hover:border-primary/50 transition-colors", children: [
-            /* @__PURE__ */ jsxRuntimeExports.jsxs("div", { className: "absolute top-6 right-6 opacity-0 group-hover:opacity-100 transition-opacity flex items-center gap-2", children: [
-              /* @__PURE__ */ jsxRuntimeExports.jsx("button", { onClick: () => openEdit(record), className: "p-2 bg-background border border-border rounded-md hover:bg-accent", children: /* @__PURE__ */ jsxRuntimeExports.jsx(Pen, { size: 16 }) }),
-              /* @__PURE__ */ jsxRuntimeExports.jsx("button", { onClick: () => handleDelete2(record._id, record.degree || record.school), className: "p-2 bg-background border border-border text-destructive rounded-md hover:bg-destructive/10", children: /* @__PURE__ */ jsxRuntimeExports.jsx(Trash2, { size: 16 }) })
-            ] }),
-            /* @__PURE__ */ jsxRuntimeExports.jsxs("div", { className: "flex items-start gap-4 mb-4", children: [
-              /* @__PURE__ */ jsxRuntimeExports.jsx("div", { className: "w-12 h-12 bg-primary/10 text-primary rounded-xl flex items-center justify-center shrink-0", children: /* @__PURE__ */ jsxRuntimeExports.jsx(GraduationCap, { size: 24 }) }),
-              /* @__PURE__ */ jsxRuntimeExports.jsxs("div", { children: [
-                /* @__PURE__ */ jsxRuntimeExports.jsx("h3", { className: "text-xl font-bold", children: record.school }),
-                /* @__PURE__ */ jsxRuntimeExports.jsxs("p", { className: "text-lg text-muted-foreground", children: [
-                  record.degree,
-                  " in ",
-                  record.field
-                ] })
-              ] })
-            ] }),
-            /* @__PURE__ */ jsxRuntimeExports.jsxs("div", { className: "grid grid-cols-2 md:grid-cols-4 gap-4 mb-4 text-sm bg-accent/30 p-4 rounded-xl", children: [
-              /* @__PURE__ */ jsxRuntimeExports.jsxs("div", { children: [
-                /* @__PURE__ */ jsxRuntimeExports.jsx("span", { className: "text-muted-foreground block mb-1", children: "Status" }),
-                /* @__PURE__ */ jsxRuntimeExports.jsx("span", { className: `font-medium px-2 py-0.5 rounded-md ${record.status === "Current" ? "bg-green-500/10 text-green-500" : record.status === "Graduated" ? "bg-blue-500/10 text-blue-500" : "bg-red-500/10 text-red-500"}`, children: record.status })
-              ] }),
-              /* @__PURE__ */ jsxRuntimeExports.jsxs("div", { children: [
-                /* @__PURE__ */ jsxRuntimeExports.jsx("span", { className: "text-muted-foreground block mb-1", children: "Duration" }),
-                /* @__PURE__ */ jsxRuntimeExports.jsxs("span", { className: "font-medium", children: [
-                  record.startDate ? new Date(record.startDate).getFullYear() : "",
-                  " - ",
-                  record.endDate ? new Date(record.endDate).getFullYear() : "Present"
-                ] })
-              ] }),
-              record.grade && /* @__PURE__ */ jsxRuntimeExports.jsxs("div", { children: [
-                /* @__PURE__ */ jsxRuntimeExports.jsx("span", { className: "text-muted-foreground block mb-1", children: "Grade/GPA" }),
-                /* @__PURE__ */ jsxRuntimeExports.jsx("span", { className: "font-medium", children: record.grade })
-              ] })
-            ] }),
-            record.description && /* @__PURE__ */ jsxRuntimeExports.jsx("p", { className: "text-muted-foreground text-sm mb-4", children: record.description }),
-            (record.photos && record.photos.length > 0 || record.attachments && record.attachments.length > 0) && /* @__PURE__ */ jsxRuntimeExports.jsxs("div", { className: "mt-6 pt-6 border-t border-border space-y-4", children: [
-              record.photos && record.photos.length > 0 && /* @__PURE__ */ jsxRuntimeExports.jsx("div", { className: "flex gap-2 overflow-x-auto pb-2 scrollbar-none", children: record.photos.map((img) => /* @__PURE__ */ jsxRuntimeExports.jsx("img", { src: normalizeUrl(img), alt: "Education", className: "h-24 w-36 object-cover rounded-md border border-border shrink-0 hover:scale-105 transition-transform" }, img)) }),
-              record.attachments && record.attachments.length > 0 && /* @__PURE__ */ jsxRuntimeExports.jsx("div", { className: "flex flex-wrap gap-2", children: record.attachments.map((att) => /* @__PURE__ */ jsxRuntimeExports.jsxs("a", { href: normalizeUrl(att), target: "_blank", className: "flex items-center gap-1.5 text-xs font-medium bg-accent px-3 py-1.5 rounded-md hover:bg-primary/10 hover:text-primary transition-colors", children: [
-                /* @__PURE__ */ jsxRuntimeExports.jsx(FileText, { size: 14 }),
-                " ",
-                att ? att.split(/[\\/]/).pop() : "Attachment"
-              ] }, att)) })
-            ] })
-          ] }, record._id)),
-          education.length === 0 && !isAdding && /* @__PURE__ */ jsxRuntimeExports.jsx("div", { className: "text-center p-12 border border-dashed border-border rounded-xl text-muted-foreground", children: "No education records added yet." })
-        ] })
-      ]
-    }
-  );
+        [...Array(15)].map((_2, i2) => {
+          const angle = i2 * 24 * Math.PI / 180;
+          const dist = 100 + Math.random() * 50;
+          const tx = `${Math.cos(angle) * dist}px`;
+          const ty = `${Math.sin(angle) * dist}px`;
+          return /* @__PURE__ */ jsxRuntimeExports.jsx(
+            "svg",
+            {
+              width: "24",
+              height: "24",
+              viewBox: "0 0 24 24",
+              fill: "none",
+              className: `absolute top-1/2 left-1/2 -ml-3 -mt-10 ${i2 % 3 === 0 ? "text-indigo-400" : i2 % 3 === 1 ? "text-purple-400" : "text-yellow-400"}`,
+              style: {
+                "--tx": tx,
+                "--ty": ty,
+                animation: `floatUpFade 1.5s ease-out forwards ${0.3 + Math.random() * 0.3}s`
+              },
+              children: i2 % 2 === 0 ? /* @__PURE__ */ jsxRuntimeExports.jsx("path", { d: "M12 2L14.39 9.61L22 12L14.39 14.39L12 22L9.61 14.39L2 12L9.61 9.61L12 2Z", fill: "currentColor" }) : /* @__PURE__ */ jsxRuntimeExports.jsx("rect", { x: "8", y: "8", width: "8", height: "8", rx: "2", fill: "currentColor" })
+            },
+            `star-${i2}`
+          );
+        }),
+        /* @__PURE__ */ jsxRuntimeExports.jsx("h2", { className: "text-4xl font-extrabold text-indigo-600 dark:text-indigo-400 drop-shadow-lg tracking-tight text-center z-50", children: "Education Saved!" })
+      ] })
+    ] })
+  ] });
 }
 function CareerList() {
   const [jobs, setJobs] = reactExports.useState([]);
+  const [loading, setLoading] = reactExports.useState(true);
   const [isAdding, setIsAdding] = reactExports.useState(false);
   const [editingId, setEditingId] = reactExports.useState(null);
   const [isDragging, setIsDragging] = reactExports.useState(false);
   const [dragStartY, setDragStartY] = reactExports.useState(0);
   const [scrollTop, setScrollTop] = reactExports.useState(0);
+  const [showSuccessOverlay, setShowSuccessOverlay] = reactExports.useState(false);
   const scrollContainerRef = reactExports.useRef(null);
-  const [form, setForm] = reactExports.useState({
+  const defaultForm = {
     company: "",
     position: "",
     employmentType: "Full-time",
@@ -109589,18 +110985,40 @@ function CareerList() {
     references: [],
     attachments: [],
     photos: []
-  });
+  };
+  const [form, setForm] = reactExports.useState(defaultForm);
   const [skillsInput, setSkillsInput] = reactExports.useState("");
   const [responsibilitiesInput, setResponsibilitiesInput] = reactExports.useState("");
   const loadData = async () => {
     try {
       const data = await window.api.db.find("career", {});
-      setJobs(data.sort((a2, b2) => new Date(b2.startDate).getTime() - new Date(a2.startDate).getTime()));
+      const sorted = data.sort((a2, b2) => {
+        const timeA = a2.startDate ? new Date(a2.startDate).getTime() : 0;
+        const timeB = b2.startDate ? new Date(b2.startDate).getTime() : 0;
+        return (isNaN(timeB) ? 0 : timeB) - (isNaN(timeA) ? 0 : timeA);
+      });
+      setJobs(sorted);
     } catch (err) {
       console.error(err);
+    } finally {
+      setLoading(false);
     }
   };
   const [mousePos, setMousePos] = reactExports.useState({ x: 0, y: 0 });
+  const location = useLocation();
+  reactExports.useEffect(() => {
+    const highlightId = new URLSearchParams(location.search).get("highlight");
+    if (highlightId && !loading && jobs.length > 0) {
+      setTimeout(() => {
+        const el2 = document.getElementById(`career-${highlightId}`);
+        if (el2) {
+          el2.scrollIntoView({ behavior: "smooth", block: "center" });
+          el2.classList.add("ring-4", "ring-primary", "shadow-2xl", "shadow-primary/40", "animate-[pulse_2s_ease-in-out_3]", "z-50");
+          setTimeout(() => el2.classList.remove("ring-4", "ring-primary", "shadow-2xl", "shadow-primary/40", "animate-[pulse_2s_ease-in-out_3]", "z-50"), 4e3);
+        }
+      }, 500);
+    }
+  }, [location.search, loading, jobs.length]);
   reactExports.useEffect(() => {
     loadData();
     const handleMouseMove2 = (e3) => {
@@ -109619,6 +111037,8 @@ function CareerList() {
       } else {
         await window.api.db.insert("career", { ...form, createdAt: Date.now(), updatedAt: Date.now() });
         NotificationEngine.notify("success", "Career Record Added", `Added "${form.position}" at ${form.company}.`, "Career");
+        setShowSuccessOverlay(true);
+        setTimeout(() => setShowSuccessOverlay(false), 3e3);
       }
       setIsAdding(false);
       setEditingId(null);
@@ -109767,7 +111187,7 @@ function CareerList() {
               /* @__PURE__ */ jsxRuntimeExports.jsx("p", { className: "text-muted-foreground mt-1", children: "Track your work history, positions, and responsibilities." })
             ] }),
             !isAdding && /* @__PURE__ */ jsxRuntimeExports.jsxs("button", { onClick: () => {
-              setForm({ isCurrent: false, responsibilities: [], skillsUsed: [], attachments: [], photos: [], employmentType: "Full-time" });
+              setForm(defaultForm);
               setSkillsInput("");
               setResponsibilitiesInput("");
               setEditingId(null);
@@ -109862,7 +111282,7 @@ function CareerList() {
           /* @__PURE__ */ jsxRuntimeExports.jsxs("div", { className: "space-y-6 relative before:absolute before:inset-0 before:ml-[23px] before:-translate-x-px md:before:mx-auto md:before:translate-x-0 before:h-full before:w-0.5 before:bg-border", children: [
             jobs.map((record) => /* @__PURE__ */ jsxRuntimeExports.jsxs("div", { className: "relative flex items-center justify-between md:justify-normal md:odd:flex-row-reverse group is-active", children: [
               /* @__PURE__ */ jsxRuntimeExports.jsx("div", { className: "flex items-center justify-center w-12 h-12 rounded-full border-4 border-background bg-blue-500 text-white shadow shrink-0 md:order-1 md:group-odd:-translate-x-1/2 md:group-even:translate-x-1/2", children: /* @__PURE__ */ jsxRuntimeExports.jsx(Briefcase, { size: 20 }) }),
-              /* @__PURE__ */ jsxRuntimeExports.jsxs("div", { className: "w-[calc(100%-4rem)] md:w-[calc(50%-2.5rem)] bg-card border border-border p-6 rounded-2xl shadow-sm relative group-hover:border-blue-500/50 transition-colors", children: [
+              /* @__PURE__ */ jsxRuntimeExports.jsxs("div", { id: `career-${record._id}`, className: "w-[calc(100%-4rem)] md:w-[calc(50%-2.5rem)] bg-card border border-border p-6 rounded-2xl shadow-sm relative group-hover:border-blue-500/50 transition-all duration-1000", children: [
                 /* @__PURE__ */ jsxRuntimeExports.jsxs("div", { className: "absolute top-4 right-4 opacity-0 group-hover:opacity-100 transition-opacity flex items-center gap-2", children: [
                   /* @__PURE__ */ jsxRuntimeExports.jsx("button", { onClick: () => openEdit(record), className: "p-1.5 bg-background border border-border rounded-md hover:bg-accent", children: /* @__PURE__ */ jsxRuntimeExports.jsx(Pen, { size: 14 }) }),
                   /* @__PURE__ */ jsxRuntimeExports.jsx("button", { onClick: () => handleDelete2(record._id, record.position), className: "p-1.5 bg-background border border-border text-destructive rounded-md hover:bg-destructive/10", children: /* @__PURE__ */ jsxRuntimeExports.jsx(Trash2, { size: 14 }) })
@@ -109914,18 +111334,81 @@ function CareerList() {
           ] })
         ]
       }
-    )
+    ),
+    showSuccessOverlay && /* @__PURE__ */ jsxRuntimeExports.jsxs("div", { className: "absolute inset-0 z-50 flex items-center justify-center bg-[radial-gradient(ellipse_at_center,_var(--tw-gradient-stops))] from-blue-500/30 via-background/80 to-background/95 backdrop-blur-sm animate-in fade-in duration-300", children: [
+      /* @__PURE__ */ jsxRuntimeExports.jsx("style", { children: `
+            @keyframes popAndRotateBriefcase {
+              0% { transform: scale(0) rotate(-45deg); opacity: 0; }
+              50% { transform: scale(1.2) rotate(15deg); opacity: 1; }
+              75% { transform: scale(0.9) rotate(-5deg); }
+              100% { transform: scale(1) rotate(0deg); opacity: 1; }
+            }
+            @keyframes floatUpFade {
+              0% { transform: translate(0, 0) scale(0); opacity: 0; }
+              20% { opacity: 1; scale: 1; }
+              100% { transform: translate(var(--tx), var(--ty)) scale(0.5); opacity: 0; }
+            }
+            @keyframes shineBriefcase {
+              0% { transform: translateX(-150%) skewX(-20deg); }
+              100% { transform: translateX(250%) skewX(-20deg); }
+            }
+          ` }),
+      /* @__PURE__ */ jsxRuntimeExports.jsxs("div", { className: "relative flex flex-col items-center justify-center gap-8", style: { animation: "popAndRotateBriefcase 1s cubic-bezier(0.34, 1.56, 0.64, 1) forwards" }, children: [
+        /* @__PURE__ */ jsxRuntimeExports.jsxs("svg", { width: "240", height: "240", viewBox: "0 0 240 240", fill: "none", xmlns: "http://www.w3.org/2000/svg", className: "drop-shadow-2xl", children: [
+          /* @__PURE__ */ jsxRuntimeExports.jsx("rect", { x: "25", y: "65", width: "190", height: "140", rx: "12", fill: "#1e3a8a", opacity: "0.4", transform: "rotate(-6 120 120)" }),
+          /* @__PURE__ */ jsxRuntimeExports.jsx("rect", { x: "15", y: "55", width: "190", height: "140", rx: "12", fill: "#1d4ed8", opacity: "0.6", transform: "rotate(-3 120 120)" }),
+          /* @__PURE__ */ jsxRuntimeExports.jsx("path", { d: "M 90 60 L 90 35 C 90 20, 150 20, 150 35 L 150 60", fill: "none", stroke: "#64748b", strokeWidth: "12", strokeLinecap: "round" }),
+          /* @__PURE__ */ jsxRuntimeExports.jsx("path", { d: "M 90 60 L 90 35 C 90 20, 150 20, 150 35 L 150 60", fill: "none", stroke: "#94a3b8", strokeWidth: "12", strokeLinecap: "round", opacity: "0.5", transform: "translate(2, -2)" }),
+          /* @__PURE__ */ jsxRuntimeExports.jsx("rect", { x: "20", y: "60", width: "200", height: "150", rx: "16", fill: "#3b82f6" }),
+          /* @__PURE__ */ jsxRuntimeExports.jsx("rect", { x: "15", y: "110", width: "210", height: "8", rx: "4", fill: "#1e40af" }),
+          /* @__PURE__ */ jsxRuntimeExports.jsx("rect", { x: "60", y: "60", width: "20", height: "150", fill: "#2563eb" }),
+          /* @__PURE__ */ jsxRuntimeExports.jsx("rect", { x: "160", y: "60", width: "20", height: "150", fill: "#2563eb" }),
+          /* @__PURE__ */ jsxRuntimeExports.jsx("rect", { x: "55", y: "100", width: "30", height: "20", rx: "4", fill: "#cbd5e1" }),
+          /* @__PURE__ */ jsxRuntimeExports.jsx("rect", { x: "65", y: "105", width: "10", height: "10", rx: "2", fill: "#64748b" }),
+          /* @__PURE__ */ jsxRuntimeExports.jsx("rect", { x: "155", y: "100", width: "30", height: "20", rx: "4", fill: "#cbd5e1" }),
+          /* @__PURE__ */ jsxRuntimeExports.jsx("rect", { x: "165", y: "105", width: "10", height: "10", rx: "2", fill: "#64748b" }),
+          /* @__PURE__ */ jsxRuntimeExports.jsx("g", { style: { clipPath: "url(#briefcaseClip)" }, children: /* @__PURE__ */ jsxRuntimeExports.jsx("rect", { x: "20", y: "60", width: "40", height: "150", fill: "white", opacity: "0.3", style: { animation: "shineBriefcase 3s infinite linear" } }) }),
+          /* @__PURE__ */ jsxRuntimeExports.jsx("defs", { children: /* @__PURE__ */ jsxRuntimeExports.jsx("clipPath", { id: "briefcaseClip", children: /* @__PURE__ */ jsxRuntimeExports.jsx("rect", { x: "20", y: "60", width: "200", height: "150", rx: "16" }) }) })
+        ] }),
+        [...Array(15)].map((_2, i2) => {
+          const angle = i2 * 24 * Math.PI / 180;
+          const dist = 100 + Math.random() * 50;
+          const tx = `${Math.cos(angle) * dist}px`;
+          const ty = `${Math.sin(angle) * dist}px`;
+          return /* @__PURE__ */ jsxRuntimeExports.jsx(
+            "svg",
+            {
+              width: "24",
+              height: "24",
+              viewBox: "0 0 24 24",
+              fill: "none",
+              className: `absolute top-1/2 left-1/2 -ml-3 -mt-10 ${i2 % 3 === 0 ? "text-blue-300" : i2 % 3 === 1 ? "text-cyan-400" : "text-white"}`,
+              style: {
+                "--tx": tx,
+                "--ty": ty,
+                animation: `floatUpFade 1.5s ease-out forwards ${0.3 + Math.random() * 0.3}s`
+              },
+              children: i2 % 2 === 0 ? /* @__PURE__ */ jsxRuntimeExports.jsx("path", { d: "M12 2L14.39 9.61L22 12L14.39 14.39L12 22L9.61 14.39L2 12L9.61 9.61L12 2Z", fill: "currentColor" }) : /* @__PURE__ */ jsxRuntimeExports.jsx("rect", { x: "8", y: "8", width: "8", height: "8", rx: "2", fill: "currentColor" })
+            },
+            `star-${i2}`
+          );
+        }),
+        /* @__PURE__ */ jsxRuntimeExports.jsx("h2", { className: "text-4xl font-extrabold text-blue-600 dark:text-blue-400 drop-shadow-lg tracking-tight text-center z-50", children: "Experience Saved!" })
+      ] })
+    ] })
   ] });
 }
 function ProjectsPortfolio() {
   const [projects, setProjects] = reactExports.useState([]);
+  const [loading, setLoading] = reactExports.useState(true);
   const [isAdding, setIsAdding] = reactExports.useState(false);
   const [editingId, setEditingId] = reactExports.useState(null);
   const [isDragging, setIsDragging] = reactExports.useState(false);
   const [dragStartY, setDragStartY] = reactExports.useState(0);
   const [scrollTop, setScrollTop] = reactExports.useState(0);
+  const [showSuccessOverlay, setShowSuccessOverlay] = reactExports.useState(false);
   const scrollContainerRef = reactExports.useRef(null);
-  const [form, setForm] = reactExports.useState({
+  const defaultForm = {
     title: "",
     description: "",
     status: "Active",
@@ -109937,19 +111420,41 @@ function ProjectsPortfolio() {
     screenshots: [],
     attachments: [],
     relatedSkills: []
-  });
+  };
+  const [form, setForm] = reactExports.useState(defaultForm);
   const [technologiesInput, setTechnologiesInput] = reactExports.useState("");
   const loadData = async () => {
     try {
       const data = await window.api.db.find("projects", {});
-      setProjects(data.sort((a2, b2) => new Date(b2.startDate).getTime() - new Date(a2.startDate).getTime()));
+      const sorted = data.sort((a2, b2) => {
+        const timeA = a2.startDate ? new Date(a2.startDate).getTime() : 0;
+        const timeB = b2.startDate ? new Date(b2.startDate).getTime() : 0;
+        return (isNaN(timeB) ? 0 : timeB) - (isNaN(timeA) ? 0 : timeA);
+      });
+      setProjects(sorted);
     } catch (err) {
       console.error(err);
+    } finally {
+      setLoading(false);
     }
   };
   reactExports.useEffect(() => {
     loadData();
   }, []);
+  const location = useLocation();
+  reactExports.useEffect(() => {
+    const highlightId = new URLSearchParams(location.search).get("highlight");
+    if (highlightId && !loading && projects.length > 0) {
+      setTimeout(() => {
+        const el2 = document.getElementById(`project-${highlightId}`);
+        if (el2) {
+          el2.scrollIntoView({ behavior: "smooth", block: "center" });
+          el2.classList.add("ring-4", "ring-primary", "shadow-2xl", "shadow-primary/40", "animate-[pulse_2s_ease-in-out_3]", "z-50");
+          setTimeout(() => el2.classList.remove("ring-4", "ring-primary", "shadow-2xl", "shadow-primary/40", "animate-[pulse_2s_ease-in-out_3]", "z-50"), 4e3);
+        }
+      }, 500);
+    }
+  }, [location.search, loading, projects.length]);
   const handleSave = async () => {
     try {
       if (editingId) {
@@ -109958,6 +111463,8 @@ function ProjectsPortfolio() {
       } else {
         await window.api.db.insert("projects", { ...form, createdAt: Date.now(), updatedAt: Date.now() });
         NotificationEngine.notify("success", "Project Added", `Added "${form.title}".`, "Career");
+        setShowSuccessOverlay(true);
+        setTimeout(() => setShowSuccessOverlay(false), 3e3);
       }
       setIsAdding(false);
       setEditingId(null);
@@ -110026,136 +111533,203 @@ function ProjectsPortfolio() {
       }
     }
   };
-  return /* @__PURE__ */ jsxRuntimeExports.jsxs(
-    "div",
-    {
-      ref: scrollContainerRef,
-      className: `h-full overflow-y-auto p-8 animate-in fade-in duration-500 ${isDragging ? "cursor-grabbing" : "cursor-grab"}`,
-      onMouseDown: handleMouseDown,
-      onMouseMove: handleMouseMove,
-      onMouseUp: handleMouseUp,
-      onMouseLeave: handleMouseUp,
-      onContextMenu: handleContextMenu,
-      onKeyDown: handleKeyDown2,
-      tabIndex: 0,
-      children: [
-        /* @__PURE__ */ jsxRuntimeExports.jsxs("div", { className: "flex justify-between items-center mb-8", children: [
-          /* @__PURE__ */ jsxRuntimeExports.jsxs("div", { children: [
-            /* @__PURE__ */ jsxRuntimeExports.jsxs("h1", { className: "text-3xl font-bold flex items-center gap-3", children: [
-              /* @__PURE__ */ jsxRuntimeExports.jsx(FolderGit2, { className: "text-pink-500" }),
-              "Projects Portfolio"
+  return /* @__PURE__ */ jsxRuntimeExports.jsxs("div", { className: "h-full bg-background animate-in fade-in duration-500 relative overflow-hidden flex flex-col", children: [
+    /* @__PURE__ */ jsxRuntimeExports.jsxs(
+      "div",
+      {
+        ref: scrollContainerRef,
+        className: `absolute inset-0 overflow-y-auto p-8 z-10 scrollbar-none ${isDragging ? "cursor-grabbing" : "cursor-grab"}`,
+        onMouseDown: handleMouseDown,
+        onMouseMove: handleMouseMove,
+        onMouseUp: handleMouseUp,
+        onMouseLeave: handleMouseUp,
+        onContextMenu: handleContextMenu,
+        onKeyDown: handleKeyDown2,
+        tabIndex: 0,
+        children: [
+          /* @__PURE__ */ jsxRuntimeExports.jsxs("div", { className: "flex justify-between items-center mb-8", children: [
+            /* @__PURE__ */ jsxRuntimeExports.jsxs("div", { children: [
+              /* @__PURE__ */ jsxRuntimeExports.jsxs("h1", { className: "text-3xl font-bold flex items-center gap-3", children: [
+                /* @__PURE__ */ jsxRuntimeExports.jsx(FolderGit2, { className: "text-pink-500" }),
+                "Projects Portfolio"
+              ] }),
+              /* @__PURE__ */ jsxRuntimeExports.jsx("p", { className: "text-muted-foreground mt-1", children: "Showcase your personal and professional projects." })
             ] }),
-            /* @__PURE__ */ jsxRuntimeExports.jsx("p", { className: "text-muted-foreground mt-1", children: "Showcase your personal and professional projects." })
+            !isAdding && /* @__PURE__ */ jsxRuntimeExports.jsxs("button", { onClick: () => {
+              setForm(defaultForm);
+              setTechnologiesInput("");
+              setEditingId(null);
+              setIsAdding(true);
+            }, className: "px-4 py-2 bg-pink-500 text-white rounded-md hover:bg-pink-600 font-medium flex items-center gap-2", children: [
+              /* @__PURE__ */ jsxRuntimeExports.jsx(Plus, { size: 18 }),
+              " Add Project"
+            ] })
           ] }),
-          !isAdding && /* @__PURE__ */ jsxRuntimeExports.jsxs("button", { onClick: () => {
-            setForm({ status: "Active", technologies: [], screenshots: [], attachments: [], relatedSkills: [] });
-            setTechnologiesInput("");
-            setEditingId(null);
-            setIsAdding(true);
-          }, className: "px-4 py-2 bg-pink-500 text-white rounded-md hover:bg-pink-600 font-medium flex items-center gap-2", children: [
-            /* @__PURE__ */ jsxRuntimeExports.jsx(Plus, { size: 18 }),
-            " Add Project"
+          isAdding ? /* @__PURE__ */ jsxRuntimeExports.jsxs("div", { className: "bg-card border border-border rounded-xl p-6 shadow-sm mb-8 animate-in slide-in-from-top-4", children: [
+            /* @__PURE__ */ jsxRuntimeExports.jsxs("div", { className: "flex justify-between items-center mb-6", children: [
+              /* @__PURE__ */ jsxRuntimeExports.jsx("h2", { className: "text-xl font-bold", children: editingId ? "Edit Project" : "Add Project" }),
+              /* @__PURE__ */ jsxRuntimeExports.jsx("button", { onClick: () => setIsAdding(false), className: "p-2 hover:bg-accent rounded-md", children: /* @__PURE__ */ jsxRuntimeExports.jsx(X, { size: 20 }) })
+            ] }),
+            /* @__PURE__ */ jsxRuntimeExports.jsxs("div", { className: "grid grid-cols-1 md:grid-cols-2 gap-4 mb-6", children: [
+              /* @__PURE__ */ jsxRuntimeExports.jsxs("div", { children: [
+                /* @__PURE__ */ jsxRuntimeExports.jsx("label", { className: "block text-sm font-medium mb-1", children: "Project Title" }),
+                /* @__PURE__ */ jsxRuntimeExports.jsx("input", { autoFocus: true, type: "text", value: form.title, onChange: (e3) => setForm({ ...form, title: e3.target.value }), className: "w-full p-2 bg-background border border-border rounded-md" })
+              ] }),
+              /* @__PURE__ */ jsxRuntimeExports.jsxs("div", { children: [
+                /* @__PURE__ */ jsxRuntimeExports.jsx("label", { className: "block text-sm font-medium mb-1", children: "Status" }),
+                /* @__PURE__ */ jsxRuntimeExports.jsxs("select", { value: form.status, onChange: (e3) => setForm({ ...form, status: e3.target.value }), className: "w-full p-2 bg-background border border-border rounded-md", children: [
+                  /* @__PURE__ */ jsxRuntimeExports.jsx("option", { value: "Planning", children: "Planning" }),
+                  /* @__PURE__ */ jsxRuntimeExports.jsx("option", { value: "Active", children: "Active" }),
+                  /* @__PURE__ */ jsxRuntimeExports.jsx("option", { value: "On Hold", children: "On Hold" }),
+                  /* @__PURE__ */ jsxRuntimeExports.jsx("option", { value: "Completed", children: "Completed" })
+                ] })
+              ] }),
+              /* @__PURE__ */ jsxRuntimeExports.jsxs("div", { children: [
+                /* @__PURE__ */ jsxRuntimeExports.jsx("label", { className: "block text-sm font-medium mb-1", children: "Start Date" }),
+                /* @__PURE__ */ jsxRuntimeExports.jsx("input", { type: "month", value: form.startDate, onChange: (e3) => setForm({ ...form, startDate: e3.target.value }), className: "w-full p-2 bg-background border border-border rounded-md" })
+              ] }),
+              /* @__PURE__ */ jsxRuntimeExports.jsxs("div", { children: [
+                /* @__PURE__ */ jsxRuntimeExports.jsx("label", { className: "block text-sm font-medium mb-1", children: "End Date" }),
+                /* @__PURE__ */ jsxRuntimeExports.jsx("input", { type: "month", value: form.endDate || "", onChange: (e3) => setForm({ ...form, endDate: e3.target.value }), className: "w-full p-2 bg-background border border-border rounded-md" })
+              ] }),
+              /* @__PURE__ */ jsxRuntimeExports.jsxs("div", { className: "md:col-span-2", children: [
+                /* @__PURE__ */ jsxRuntimeExports.jsx("label", { className: "block text-sm font-medium mb-1", children: "Description" }),
+                /* @__PURE__ */ jsxRuntimeExports.jsx("textarea", { value: form.description || "", onChange: (e3) => setForm({ ...form, description: e3.target.value }), rows: 3, className: "w-full p-2 bg-background border border-border rounded-md" })
+              ] }),
+              /* @__PURE__ */ jsxRuntimeExports.jsxs("div", { className: "md:col-span-2", children: [
+                /* @__PURE__ */ jsxRuntimeExports.jsx("label", { className: "block text-sm font-medium mb-1", children: "Technologies Used (comma separated)" }),
+                /* @__PURE__ */ jsxRuntimeExports.jsx("input", { type: "text", value: technologiesInput, onChange: (e3) => setTechnologiesInput(e3.target.value), onBlur: () => {
+                  const parts = technologiesInput.split(",");
+                  const processed = parts.map((s3) => s3.trim()).filter(Boolean);
+                  setForm({ ...form, technologies: processed });
+                }, className: "w-full p-2 bg-background border border-border rounded-md", placeholder: "React, Tailwind, Node.js" })
+              ] }),
+              /* @__PURE__ */ jsxRuntimeExports.jsxs("div", { children: [
+                /* @__PURE__ */ jsxRuntimeExports.jsx("label", { className: "block text-sm font-medium mb-1", children: "GitHub / Git Repository URL" }),
+                /* @__PURE__ */ jsxRuntimeExports.jsx("input", { type: "text", value: form.gitUrl || "", onChange: (e3) => setForm({ ...form, gitUrl: e3.target.value }), className: "w-full p-2 bg-background border border-border rounded-md" })
+              ] }),
+              /* @__PURE__ */ jsxRuntimeExports.jsxs("div", { children: [
+                /* @__PURE__ */ jsxRuntimeExports.jsx("label", { className: "block text-sm font-medium mb-1", children: "Live Website URL" }),
+                /* @__PURE__ */ jsxRuntimeExports.jsx("input", { type: "text", value: form.websiteUrl || "", onChange: (e3) => setForm({ ...form, websiteUrl: e3.target.value }), className: "w-full p-2 bg-background border border-border rounded-md" })
+              ] })
+            ] }),
+            /* @__PURE__ */ jsxRuntimeExports.jsxs("div", { className: "mb-6", children: [
+              /* @__PURE__ */ jsxRuntimeExports.jsx("label", { className: "block text-sm font-medium mb-2", children: "Screenshots" }),
+              /* @__PURE__ */ jsxRuntimeExports.jsxs("div", { className: "flex flex-wrap gap-4", children: [
+                form.screenshots?.map((img, i2) => /* @__PURE__ */ jsxRuntimeExports.jsxs("div", { className: "relative group rounded-md overflow-hidden border border-border w-24 h-24", children: [
+                  /* @__PURE__ */ jsxRuntimeExports.jsx("img", { src: normalizeUrl(img), alt: "screenshot", className: "w-full h-full object-cover" }),
+                  /* @__PURE__ */ jsxRuntimeExports.jsx("button", { onClick: () => setForm({ ...form, screenshots: form.screenshots?.filter((_2, idx) => idx !== i2) }), className: "absolute top-1 right-1 p-1 bg-black/50 text-white rounded-full opacity-0 group-hover:opacity-100 transition-opacity", children: /* @__PURE__ */ jsxRuntimeExports.jsx(X, { size: 12 }) })
+                ] }, i2)),
+                /* @__PURE__ */ jsxRuntimeExports.jsxs("button", { onClick: handleAttachScreenshot, className: "flex flex-col items-center justify-center w-24 h-24 bg-background border border-dashed border-border rounded-md text-muted-foreground hover:bg-accent hover:text-foreground transition-colors", children: [
+                  /* @__PURE__ */ jsxRuntimeExports.jsx(Image$2, { size: 20, className: "mb-1" }),
+                  /* @__PURE__ */ jsxRuntimeExports.jsx("span", { className: "text-xs font-medium", children: "Add Image" })
+                ] })
+              ] })
+            ] }),
+            /* @__PURE__ */ jsxRuntimeExports.jsxs("div", { className: "flex justify-end gap-3", children: [
+              /* @__PURE__ */ jsxRuntimeExports.jsx("button", { onClick: () => setIsAdding(false), className: "px-4 py-2 bg-accent rounded-md hover:bg-accent/80 font-medium", children: "Cancel" }),
+              /* @__PURE__ */ jsxRuntimeExports.jsx("button", { onClick: handleSave, className: "px-4 py-2 bg-pink-500 text-white rounded-md hover:bg-pink-600 font-medium", children: "Save Project" })
+            ] })
+          ] }) : null,
+          /* @__PURE__ */ jsxRuntimeExports.jsx("div", { className: "grid grid-cols-1 md:grid-cols-2 gap-6", children: projects.map((record) => /* @__PURE__ */ jsxRuntimeExports.jsxs("div", { id: `project-${record._id}`, className: "bg-card border border-border rounded-2xl shadow-sm relative group hover:border-pink-500/50 transition-all duration-1000 flex flex-col overflow-hidden", children: [
+            record.screenshots && record.screenshots.length > 0 && /* @__PURE__ */ jsxRuntimeExports.jsx("div", { className: "h-48 w-full border-b border-border bg-accent/30 relative", children: /* @__PURE__ */ jsxRuntimeExports.jsx("img", { src: normalizeUrl(record.screenshots[0]), alt: record.title, className: "w-full h-full object-cover" }) }),
+            /* @__PURE__ */ jsxRuntimeExports.jsxs("div", { className: "p-6 flex-1 flex flex-col", children: [
+              /* @__PURE__ */ jsxRuntimeExports.jsxs("div", { className: "absolute top-4 right-4 opacity-0 group-hover:opacity-100 transition-opacity flex items-center gap-1 z-10 bg-background/80 backdrop-blur-sm p-1 rounded-lg border border-border", children: [
+                /* @__PURE__ */ jsxRuntimeExports.jsx("button", { onClick: () => openEdit(record), className: "p-1.5 rounded-md hover:bg-accent text-foreground", children: /* @__PURE__ */ jsxRuntimeExports.jsx(Pen, { size: 14 }) }),
+                /* @__PURE__ */ jsxRuntimeExports.jsx("button", { onClick: () => handleDelete2(record._id, record.title), className: "p-1.5 rounded-md hover:bg-destructive/10 text-destructive", children: /* @__PURE__ */ jsxRuntimeExports.jsx(Trash2, { size: 14 }) })
+              ] }),
+              /* @__PURE__ */ jsxRuntimeExports.jsxs("div", { className: "flex justify-between items-start mb-2 pr-16", children: [
+                /* @__PURE__ */ jsxRuntimeExports.jsx("h3", { className: "text-xl font-bold", children: record.title }),
+                /* @__PURE__ */ jsxRuntimeExports.jsx("span", { className: `px-2 py-0.5 rounded-full text-xs font-medium ${record.status === "Completed" ? "bg-green-500/10 text-green-500" : record.status === "Active" ? "bg-blue-500/10 text-blue-500" : "bg-muted text-muted-foreground"}`, children: record.status })
+              ] }),
+              /* @__PURE__ */ jsxRuntimeExports.jsxs("div", { className: "text-sm text-muted-foreground mb-4", children: [
+                new Date(record.startDate).toLocaleDateString([], { month: "short", year: "numeric" }),
+                record.endDate && ` - ${new Date(record.endDate).toLocaleDateString([], { month: "short", year: "numeric" })}`
+              ] }),
+              record.description && /* @__PURE__ */ jsxRuntimeExports.jsx("p", { className: "text-sm text-foreground/90 mb-4 line-clamp-3 flex-1", children: record.description }),
+              record.technologies && record.technologies.length > 0 && /* @__PURE__ */ jsxRuntimeExports.jsx("div", { className: "flex flex-wrap gap-1.5 mb-6", children: record.technologies.map((t2) => /* @__PURE__ */ jsxRuntimeExports.jsx("span", { className: "bg-pink-500/10 text-pink-500 px-2 py-0.5 rounded border border-pink-500/20 text-xs font-medium", children: t2 }, t2)) }),
+              /* @__PURE__ */ jsxRuntimeExports.jsxs("div", { className: "flex gap-3 pt-4 border-t border-border mt-auto", children: [
+                record.gitUrl && /* @__PURE__ */ jsxRuntimeExports.jsxs("a", { href: record.gitUrl, target: "_blank", rel: "noreferrer", className: "flex items-center gap-1.5 text-sm font-medium text-muted-foreground hover:text-foreground transition-colors", children: [
+                  /* @__PURE__ */ jsxRuntimeExports.jsx(Github, { size: 16 }),
+                  " Repository"
+                ] }),
+                record.websiteUrl && /* @__PURE__ */ jsxRuntimeExports.jsxs("a", { href: record.websiteUrl, target: "_blank", rel: "noreferrer", className: "flex items-center gap-1.5 text-sm font-medium text-muted-foreground hover:text-foreground transition-colors", children: [
+                  /* @__PURE__ */ jsxRuntimeExports.jsx(ExternalLink, { size: 16 }),
+                  " Live App"
+                ] })
+              ] })
+            ] })
+          ] }, record._id)) }),
+          projects.length === 0 && !isAdding && /* @__PURE__ */ jsxRuntimeExports.jsx("div", { className: "text-center p-12 border border-dashed border-border rounded-xl text-muted-foreground", children: "No projects added yet. Share what you've been working on!" })
+        ]
+      }
+    ),
+    showSuccessOverlay && /* @__PURE__ */ jsxRuntimeExports.jsxs("div", { className: "absolute inset-0 z-50 flex items-center justify-center bg-[radial-gradient(ellipse_at_center,_var(--tw-gradient-stops))] from-pink-500/30 via-background/80 to-background/95 backdrop-blur-sm animate-in fade-in duration-300", children: [
+      /* @__PURE__ */ jsxRuntimeExports.jsx("style", { children: `
+            @keyframes popAndRotateRocket {
+              0% { transform: scale(0) rotate(-45deg); opacity: 0; }
+              50% { transform: scale(1.2) rotate(15deg); opacity: 1; }
+              75% { transform: scale(0.9) rotate(-5deg); }
+              100% { transform: scale(1) rotate(0deg); opacity: 1; }
+            }
+            @keyframes floatUpFade {
+              0% { transform: translate(0, 0) scale(0); opacity: 0; }
+              20% { opacity: 1; scale: 1; }
+              100% { transform: translate(var(--tx), var(--ty)) scale(0.5); opacity: 0; }
+            }
+            @keyframes flyRocket {
+              0% { transform: translate(-30px, 30px); }
+              100% { transform: translate(30px, -30px); }
+            }
+          ` }),
+      /* @__PURE__ */ jsxRuntimeExports.jsxs("div", { className: "relative flex flex-col items-center justify-center gap-8", style: { animation: "popAndRotateRocket 1s cubic-bezier(0.34, 1.56, 0.64, 1) forwards" }, children: [
+        /* @__PURE__ */ jsxRuntimeExports.jsxs("svg", { width: "300", height: "240", viewBox: "0 0 300 240", fill: "none", xmlns: "http://www.w3.org/2000/svg", className: "drop-shadow-2xl", children: [
+          /* @__PURE__ */ jsxRuntimeExports.jsx("rect", { x: "25", y: "35", width: "250", height: "180", rx: "10", fill: "#be185d", opacity: "0.4", transform: "rotate(-4 150 120)" }),
+          /* @__PURE__ */ jsxRuntimeExports.jsx("rect", { x: "15", y: "25", width: "250", height: "180", rx: "10", fill: "#db2777", opacity: "0.6", transform: "rotate(-2 150 120)" }),
+          /* @__PURE__ */ jsxRuntimeExports.jsx("rect", { x: "10", y: "15", width: "250", height: "180", rx: "10", fill: "currentColor", className: "text-card stroke-border", strokeWidth: "2" }),
+          /* @__PURE__ */ jsxRuntimeExports.jsx("path", { d: "M10 25 C10 19.4772 14.4772 15 20 15 L250 15 C255.523 15 260 19.4772 260 25 L260 45 L10 45 L10 25 Z", fill: "#fbcfe8" }),
+          /* @__PURE__ */ jsxRuntimeExports.jsx("circle", { cx: "25", cy: "30", r: "5", fill: "#f43f5e" }),
+          /* @__PURE__ */ jsxRuntimeExports.jsx("circle", { cx: "45", cy: "30", r: "5", fill: "#fbbf24" }),
+          /* @__PURE__ */ jsxRuntimeExports.jsx("circle", { cx: "65", cy: "30", r: "5", fill: "#34d399" }),
+          /* @__PURE__ */ jsxRuntimeExports.jsx("rect", { x: "30", y: "70", width: "80", height: "8", rx: "4", fill: "#ec4899" }),
+          /* @__PURE__ */ jsxRuntimeExports.jsx("rect", { x: "30", y: "90", width: "120", height: "6", rx: "3", fill: "#f472b6", opacity: "0.5" }),
+          /* @__PURE__ */ jsxRuntimeExports.jsx("rect", { x: "50", y: "110", width: "100", height: "6", rx: "3", fill: "#f472b6", opacity: "0.5" }),
+          /* @__PURE__ */ jsxRuntimeExports.jsx("rect", { x: "50", y: "130", width: "60", height: "6", rx: "3", fill: "#f472b6", opacity: "0.5" }),
+          /* @__PURE__ */ jsxRuntimeExports.jsxs("g", { style: { animation: "flyRocket 2s ease-in-out infinite alternate" }, children: [
+            /* @__PURE__ */ jsxRuntimeExports.jsx("path", { d: "M180 80 C180 80, 200 60, 220 60 C220 80, 200 100, 200 100 L180 80 Z", fill: "#ec4899" }),
+            /* @__PURE__ */ jsxRuntimeExports.jsx("path", { d: "M185 85 L195 95", stroke: "white", strokeWidth: "2", strokeLinecap: "round" }),
+            /* @__PURE__ */ jsxRuntimeExports.jsx("path", { d: "M175 95 L185 105 L205 85 L195 75 Z", fill: "#db2777" }),
+            /* @__PURE__ */ jsxRuntimeExports.jsx("circle", { cx: "190", cy: "90", r: "3", fill: "#fdf2f8" }),
+            /* @__PURE__ */ jsxRuntimeExports.jsx("path", { d: "M175 95 L165 110 L185 105 Z", fill: "#fbbf24" })
           ] })
         ] }),
-        isAdding ? /* @__PURE__ */ jsxRuntimeExports.jsxs("div", { className: "bg-card border border-border rounded-xl p-6 shadow-sm mb-8 animate-in slide-in-from-top-4", children: [
-          /* @__PURE__ */ jsxRuntimeExports.jsxs("div", { className: "flex justify-between items-center mb-6", children: [
-            /* @__PURE__ */ jsxRuntimeExports.jsx("h2", { className: "text-xl font-bold", children: editingId ? "Edit Project" : "Add Project" }),
-            /* @__PURE__ */ jsxRuntimeExports.jsx("button", { onClick: () => setIsAdding(false), className: "p-2 hover:bg-accent rounded-md", children: /* @__PURE__ */ jsxRuntimeExports.jsx(X, { size: 20 }) })
-          ] }),
-          /* @__PURE__ */ jsxRuntimeExports.jsxs("div", { className: "grid grid-cols-1 md:grid-cols-2 gap-4 mb-6", children: [
-            /* @__PURE__ */ jsxRuntimeExports.jsxs("div", { children: [
-              /* @__PURE__ */ jsxRuntimeExports.jsx("label", { className: "block text-sm font-medium mb-1", children: "Project Title" }),
-              /* @__PURE__ */ jsxRuntimeExports.jsx("input", { autoFocus: true, type: "text", value: form.title, onChange: (e3) => setForm({ ...form, title: e3.target.value }), className: "w-full p-2 bg-background border border-border rounded-md" })
-            ] }),
-            /* @__PURE__ */ jsxRuntimeExports.jsxs("div", { children: [
-              /* @__PURE__ */ jsxRuntimeExports.jsx("label", { className: "block text-sm font-medium mb-1", children: "Status" }),
-              /* @__PURE__ */ jsxRuntimeExports.jsxs("select", { value: form.status, onChange: (e3) => setForm({ ...form, status: e3.target.value }), className: "w-full p-2 bg-background border border-border rounded-md", children: [
-                /* @__PURE__ */ jsxRuntimeExports.jsx("option", { value: "Planning", children: "Planning" }),
-                /* @__PURE__ */ jsxRuntimeExports.jsx("option", { value: "Active", children: "Active" }),
-                /* @__PURE__ */ jsxRuntimeExports.jsx("option", { value: "On Hold", children: "On Hold" }),
-                /* @__PURE__ */ jsxRuntimeExports.jsx("option", { value: "Completed", children: "Completed" })
-              ] })
-            ] }),
-            /* @__PURE__ */ jsxRuntimeExports.jsxs("div", { children: [
-              /* @__PURE__ */ jsxRuntimeExports.jsx("label", { className: "block text-sm font-medium mb-1", children: "Start Date" }),
-              /* @__PURE__ */ jsxRuntimeExports.jsx("input", { type: "month", value: form.startDate, onChange: (e3) => setForm({ ...form, startDate: e3.target.value }), className: "w-full p-2 bg-background border border-border rounded-md" })
-            ] }),
-            /* @__PURE__ */ jsxRuntimeExports.jsxs("div", { children: [
-              /* @__PURE__ */ jsxRuntimeExports.jsx("label", { className: "block text-sm font-medium mb-1", children: "End Date" }),
-              /* @__PURE__ */ jsxRuntimeExports.jsx("input", { type: "month", value: form.endDate || "", onChange: (e3) => setForm({ ...form, endDate: e3.target.value }), className: "w-full p-2 bg-background border border-border rounded-md" })
-            ] }),
-            /* @__PURE__ */ jsxRuntimeExports.jsxs("div", { className: "md:col-span-2", children: [
-              /* @__PURE__ */ jsxRuntimeExports.jsx("label", { className: "block text-sm font-medium mb-1", children: "Description" }),
-              /* @__PURE__ */ jsxRuntimeExports.jsx("textarea", { value: form.description || "", onChange: (e3) => setForm({ ...form, description: e3.target.value }), rows: 3, className: "w-full p-2 bg-background border border-border rounded-md" })
-            ] }),
-            /* @__PURE__ */ jsxRuntimeExports.jsxs("div", { className: "md:col-span-2", children: [
-              /* @__PURE__ */ jsxRuntimeExports.jsx("label", { className: "block text-sm font-medium mb-1", children: "Technologies Used (comma separated)" }),
-              /* @__PURE__ */ jsxRuntimeExports.jsx("input", { type: "text", value: technologiesInput, onChange: (e3) => setTechnologiesInput(e3.target.value), onBlur: () => {
-                const parts = technologiesInput.split(",");
-                const processed = parts.map((s3) => s3.trim()).filter(Boolean);
-                setForm({ ...form, technologies: processed });
-              }, className: "w-full p-2 bg-background border border-border rounded-md", placeholder: "React, Tailwind, Node.js" })
-            ] }),
-            /* @__PURE__ */ jsxRuntimeExports.jsxs("div", { children: [
-              /* @__PURE__ */ jsxRuntimeExports.jsx("label", { className: "block text-sm font-medium mb-1", children: "GitHub / Git Repository URL" }),
-              /* @__PURE__ */ jsxRuntimeExports.jsx("input", { type: "text", value: form.gitUrl || "", onChange: (e3) => setForm({ ...form, gitUrl: e3.target.value }), className: "w-full p-2 bg-background border border-border rounded-md" })
-            ] }),
-            /* @__PURE__ */ jsxRuntimeExports.jsxs("div", { children: [
-              /* @__PURE__ */ jsxRuntimeExports.jsx("label", { className: "block text-sm font-medium mb-1", children: "Live Website URL" }),
-              /* @__PURE__ */ jsxRuntimeExports.jsx("input", { type: "text", value: form.websiteUrl || "", onChange: (e3) => setForm({ ...form, websiteUrl: e3.target.value }), className: "w-full p-2 bg-background border border-border rounded-md" })
-            ] })
-          ] }),
-          /* @__PURE__ */ jsxRuntimeExports.jsxs("div", { className: "mb-6", children: [
-            /* @__PURE__ */ jsxRuntimeExports.jsx("label", { className: "block text-sm font-medium mb-2", children: "Screenshots" }),
-            /* @__PURE__ */ jsxRuntimeExports.jsxs("div", { className: "flex flex-wrap gap-4", children: [
-              form.screenshots?.map((img, i2) => /* @__PURE__ */ jsxRuntimeExports.jsxs("div", { className: "relative group rounded-md overflow-hidden border border-border w-24 h-24", children: [
-                /* @__PURE__ */ jsxRuntimeExports.jsx("img", { src: normalizeUrl(img), alt: "screenshot", className: "w-full h-full object-cover" }),
-                /* @__PURE__ */ jsxRuntimeExports.jsx("button", { onClick: () => setForm({ ...form, screenshots: form.screenshots?.filter((_2, idx) => idx !== i2) }), className: "absolute top-1 right-1 p-1 bg-black/50 text-white rounded-full opacity-0 group-hover:opacity-100 transition-opacity", children: /* @__PURE__ */ jsxRuntimeExports.jsx(X, { size: 12 }) })
-              ] }, i2)),
-              /* @__PURE__ */ jsxRuntimeExports.jsxs("button", { onClick: handleAttachScreenshot, className: "flex flex-col items-center justify-center w-24 h-24 bg-background border border-dashed border-border rounded-md text-muted-foreground hover:bg-accent hover:text-foreground transition-colors", children: [
-                /* @__PURE__ */ jsxRuntimeExports.jsx(Image$2, { size: 20, className: "mb-1" }),
-                /* @__PURE__ */ jsxRuntimeExports.jsx("span", { className: "text-xs font-medium", children: "Add Image" })
-              ] })
-            ] })
-          ] }),
-          /* @__PURE__ */ jsxRuntimeExports.jsxs("div", { className: "flex justify-end gap-3", children: [
-            /* @__PURE__ */ jsxRuntimeExports.jsx("button", { onClick: () => setIsAdding(false), className: "px-4 py-2 bg-accent rounded-md hover:bg-accent/80 font-medium", children: "Cancel" }),
-            /* @__PURE__ */ jsxRuntimeExports.jsx("button", { onClick: handleSave, className: "px-4 py-2 bg-pink-500 text-white rounded-md hover:bg-pink-600 font-medium", children: "Save Project" })
-          ] })
-        ] }) : null,
-        /* @__PURE__ */ jsxRuntimeExports.jsx("div", { className: "grid grid-cols-1 md:grid-cols-2 gap-6", children: projects.map((record) => /* @__PURE__ */ jsxRuntimeExports.jsxs("div", { className: "bg-card border border-border rounded-2xl shadow-sm relative group hover:border-pink-500/50 transition-colors flex flex-col overflow-hidden", children: [
-          record.screenshots && record.screenshots.length > 0 && /* @__PURE__ */ jsxRuntimeExports.jsx("div", { className: "h-48 w-full border-b border-border bg-accent/30 relative", children: /* @__PURE__ */ jsxRuntimeExports.jsx("img", { src: normalizeUrl(record.screenshots[0]), alt: record.title, className: "w-full h-full object-cover" }) }),
-          /* @__PURE__ */ jsxRuntimeExports.jsxs("div", { className: "p-6 flex-1 flex flex-col", children: [
-            /* @__PURE__ */ jsxRuntimeExports.jsxs("div", { className: "absolute top-4 right-4 opacity-0 group-hover:opacity-100 transition-opacity flex items-center gap-1 z-10 bg-background/80 backdrop-blur-sm p-1 rounded-lg border border-border", children: [
-              /* @__PURE__ */ jsxRuntimeExports.jsx("button", { onClick: () => openEdit(record), className: "p-1.5 rounded-md hover:bg-accent text-foreground", children: /* @__PURE__ */ jsxRuntimeExports.jsx(Pen, { size: 14 }) }),
-              /* @__PURE__ */ jsxRuntimeExports.jsx("button", { onClick: () => handleDelete2(record._id, record.title), className: "p-1.5 rounded-md hover:bg-destructive/10 text-destructive", children: /* @__PURE__ */ jsxRuntimeExports.jsx(Trash2, { size: 14 }) })
-            ] }),
-            /* @__PURE__ */ jsxRuntimeExports.jsxs("div", { className: "flex justify-between items-start mb-2 pr-16", children: [
-              /* @__PURE__ */ jsxRuntimeExports.jsx("h3", { className: "text-xl font-bold", children: record.title }),
-              /* @__PURE__ */ jsxRuntimeExports.jsx("span", { className: `px-2 py-0.5 rounded-full text-xs font-medium ${record.status === "Completed" ? "bg-green-500/10 text-green-500" : record.status === "Active" ? "bg-blue-500/10 text-blue-500" : "bg-muted text-muted-foreground"}`, children: record.status })
-            ] }),
-            /* @__PURE__ */ jsxRuntimeExports.jsxs("div", { className: "text-sm text-muted-foreground mb-4", children: [
-              new Date(record.startDate).toLocaleDateString([], { month: "short", year: "numeric" }),
-              record.endDate && ` - ${new Date(record.endDate).toLocaleDateString([], { month: "short", year: "numeric" })}`
-            ] }),
-            record.description && /* @__PURE__ */ jsxRuntimeExports.jsx("p", { className: "text-sm text-foreground/90 mb-4 line-clamp-3 flex-1", children: record.description }),
-            record.technologies && record.technologies.length > 0 && /* @__PURE__ */ jsxRuntimeExports.jsx("div", { className: "flex flex-wrap gap-1.5 mb-6", children: record.technologies.map((t2) => /* @__PURE__ */ jsxRuntimeExports.jsx("span", { className: "bg-pink-500/10 text-pink-500 px-2 py-0.5 rounded border border-pink-500/20 text-xs font-medium", children: t2 }, t2)) }),
-            /* @__PURE__ */ jsxRuntimeExports.jsxs("div", { className: "flex gap-3 pt-4 border-t border-border mt-auto", children: [
-              record.gitUrl && /* @__PURE__ */ jsxRuntimeExports.jsxs("a", { href: record.gitUrl, target: "_blank", rel: "noreferrer", className: "flex items-center gap-1.5 text-sm font-medium text-muted-foreground hover:text-foreground transition-colors", children: [
-                /* @__PURE__ */ jsxRuntimeExports.jsx(Github, { size: 16 }),
-                " Repository"
-              ] }),
-              record.websiteUrl && /* @__PURE__ */ jsxRuntimeExports.jsxs("a", { href: record.websiteUrl, target: "_blank", rel: "noreferrer", className: "flex items-center gap-1.5 text-sm font-medium text-muted-foreground hover:text-foreground transition-colors", children: [
-                /* @__PURE__ */ jsxRuntimeExports.jsx(ExternalLink, { size: 16 }),
-                " Live App"
-              ] })
-            ] })
-          ] })
-        ] }, record._id)) }),
-        projects.length === 0 && !isAdding && /* @__PURE__ */ jsxRuntimeExports.jsx("div", { className: "text-center p-12 border border-dashed border-border rounded-xl text-muted-foreground", children: "No projects added yet. Share what you've been working on!" })
-      ]
-    }
-  );
+        [...Array(15)].map((_2, i2) => {
+          const angle = i2 * 24 * Math.PI / 180;
+          const dist = 120 + Math.random() * 60;
+          const tx = `${Math.cos(angle) * dist}px`;
+          const ty = `${Math.sin(angle) * dist}px`;
+          return /* @__PURE__ */ jsxRuntimeExports.jsx(
+            "svg",
+            {
+              width: "24",
+              height: "24",
+              viewBox: "0 0 24 24",
+              fill: "none",
+              className: `absolute top-1/2 left-1/2 -ml-3 -mt-8 ${i2 % 3 === 0 ? "text-pink-400" : i2 % 3 === 1 ? "text-purple-400" : "text-white"}`,
+              style: {
+                "--tx": tx,
+                "--ty": ty,
+                animation: `floatUpFade 1.5s ease-out forwards ${0.3 + Math.random() * 0.3}s`
+              },
+              children: i2 % 2 === 0 ? /* @__PURE__ */ jsxRuntimeExports.jsx("path", { d: "M12 2L14.39 9.61L22 12L14.39 14.39L12 22L9.61 14.39L2 12L9.61 9.61L12 2Z", fill: "currentColor" }) : /* @__PURE__ */ jsxRuntimeExports.jsx("rect", { x: "8", y: "8", width: "8", height: "8", rx: "2", fill: "currentColor" })
+            },
+            `star-${i2}`
+          );
+        }),
+        /* @__PURE__ */ jsxRuntimeExports.jsx("h2", { className: "text-4xl font-extrabold text-pink-600 dark:text-pink-400 drop-shadow-lg tracking-tight text-center z-50", children: "Project Saved!" })
+      ] })
+    ] })
+  ] });
 }
 function SkillsStatistics({ skills, setFilters }) {
   const stats = {
@@ -110243,6 +111817,7 @@ function getDurationText(start2, end2) {
 }
 function SkillsTracker() {
   const [skills, setSkills] = reactExports.useState([]);
+  const [loading, setLoading] = reactExports.useState(true);
   const [isAdding, setIsAdding] = reactExports.useState(false);
   const [editingId, setEditingId] = reactExports.useState(null);
   const [celebrationLevel, setCelebrationLevel] = reactExports.useState(null);
@@ -110270,11 +111845,27 @@ function SkillsTracker() {
       setSkills(data);
     } catch (err) {
       console.error(err);
+    } finally {
+      setLoading(false);
     }
   };
   reactExports.useEffect(() => {
     loadData();
   }, []);
+  const location = useLocation();
+  reactExports.useEffect(() => {
+    const highlightId = new URLSearchParams(location.search).get("highlight");
+    if (highlightId && !loading && skills.length > 0) {
+      setTimeout(() => {
+        const el2 = document.getElementById(`skill-${highlightId}`);
+        if (el2) {
+          el2.scrollIntoView({ behavior: "smooth", block: "center" });
+          el2.classList.add("ring-4", "ring-primary", "shadow-2xl", "shadow-primary/40", "animate-[pulse_2s_ease-in-out_3]", "z-50");
+          setTimeout(() => el2.classList.remove("ring-4", "ring-primary", "shadow-2xl", "shadow-primary/40", "animate-[pulse_2s_ease-in-out_3]", "z-50"), 4e3);
+        }
+      }, 500);
+    }
+  }, [location.search, loading, skills.length]);
   const filteredSkills = skills.filter((s3) => {
     if (filters.level !== "all") {
       if (filters.level === "beginner" && s3.level >= 40) return false;
@@ -110694,7 +112285,7 @@ function SkillsTracker() {
             ] })
           ] }) : null,
           /* @__PURE__ */ jsxRuntimeExports.jsxs("div", { className: "grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6", children: [
-            filteredSkills.map((record) => /* @__PURE__ */ jsxRuntimeExports.jsxs("div", { className: "bg-card/70 backdrop-blur-md border border-border p-6 rounded-2xl shadow-sm relative group hover:border-purple-500/50 transition-colors flex flex-col overflow-hidden", children: [
+            filteredSkills.map((record) => /* @__PURE__ */ jsxRuntimeExports.jsxs("div", { id: `skill-${record._id}`, className: "bg-card/70 backdrop-blur-md border border-border p-6 rounded-2xl shadow-sm relative group hover:border-purple-500/50 transition-all duration-1000 flex flex-col overflow-hidden", children: [
               record.backgroundImage && /* @__PURE__ */ jsxRuntimeExports.jsx(
                 "div",
                 {
@@ -110826,13 +112417,15 @@ function SkillsTracker() {
 }
 function CertificatesGallery() {
   const [certificates, setCertificates] = reactExports.useState([]);
+  const [loading, setLoading] = reactExports.useState(true);
   const [isAdding, setIsAdding] = reactExports.useState(false);
   const [editingId, setEditingId] = reactExports.useState(null);
   const [isDragging, setIsDragging] = reactExports.useState(false);
   const [dragStartY, setDragStartY] = reactExports.useState(0);
   const [scrollTop, setScrollTop] = reactExports.useState(0);
+  const [showSuccessOverlay, setShowSuccessOverlay] = reactExports.useState(false);
   const scrollContainerRef = reactExports.useRef(null);
-  const [form, setForm] = reactExports.useState({
+  const defaultForm = {
     name: "",
     organization: "",
     issueDate: "",
@@ -110841,18 +112434,40 @@ function CertificatesGallery() {
     credentialUrl: "",
     imageAttachment: "",
     pdfAttachment: ""
-  });
+  };
+  const [form, setForm] = reactExports.useState(defaultForm);
   const loadData = async () => {
     try {
       const data = await window.api.db.find("certificates", {});
-      setCertificates(data.sort((a2, b2) => new Date(b2.issueDate).getTime() - new Date(a2.issueDate).getTime()));
+      const sorted = data.sort((a2, b2) => {
+        const timeA = a2.issueDate ? new Date(a2.issueDate).getTime() : 0;
+        const timeB = b2.issueDate ? new Date(b2.issueDate).getTime() : 0;
+        return (isNaN(timeB) ? 0 : timeB) - (isNaN(timeA) ? 0 : timeA);
+      });
+      setCertificates(sorted);
     } catch (err) {
       console.error(err);
+    } finally {
+      setLoading(false);
     }
   };
   reactExports.useEffect(() => {
     loadData();
   }, []);
+  const location = useLocation();
+  reactExports.useEffect(() => {
+    const highlightId = new URLSearchParams(location.search).get("highlight");
+    if (highlightId && !loading && certificates.length > 0) {
+      setTimeout(() => {
+        const el2 = document.getElementById(`certificate-${highlightId}`);
+        if (el2) {
+          el2.scrollIntoView({ behavior: "smooth", block: "center" });
+          el2.classList.add("ring-4", "ring-primary", "shadow-2xl", "shadow-primary/40", "animate-[pulse_2s_ease-in-out_3]", "z-50");
+          setTimeout(() => el2.classList.remove("ring-4", "ring-primary", "shadow-2xl", "shadow-primary/40", "animate-[pulse_2s_ease-in-out_3]", "z-50"), 4e3);
+        }
+      }, 500);
+    }
+  }, [location.search, loading, certificates.length]);
   const handleSave = async () => {
     try {
       if (editingId) {
@@ -110861,6 +112476,8 @@ function CertificatesGallery() {
       } else {
         await window.api.db.insert("certificates", { ...form, createdAt: Date.now(), updatedAt: Date.now() });
         NotificationEngine.notify("success", "Certificate Added", `Added "${form.name}".`, "Career");
+        setShowSuccessOverlay(true);
+        setTimeout(() => setShowSuccessOverlay(false), 3e3);
       }
       setIsAdding(false);
       setEditingId(null);
@@ -111012,7 +112629,7 @@ function CertificatesGallery() {
               /* @__PURE__ */ jsxRuntimeExports.jsx("p", { className: "text-muted-foreground mt-1", children: "Manage your professional certifications." })
             ] }),
             !isAdding && /* @__PURE__ */ jsxRuntimeExports.jsxs("button", { onClick: () => {
-              setForm({ imageAttachment: "", pdfAttachment: "" });
+              setForm(defaultForm);
               setEditingId(null);
               setIsAdding(true);
             }, className: "px-4 py-2 bg-green-500 text-white rounded-md hover:bg-green-600 font-medium flex items-center gap-2", children: [
@@ -111028,15 +112645,15 @@ function CertificatesGallery() {
             /* @__PURE__ */ jsxRuntimeExports.jsxs("div", { className: "grid grid-cols-1 md:grid-cols-2 gap-4 mb-6", children: [
               /* @__PURE__ */ jsxRuntimeExports.jsxs("div", { children: [
                 /* @__PURE__ */ jsxRuntimeExports.jsx("label", { className: "block text-sm font-medium mb-1", children: "Certificate Name" }),
-                /* @__PURE__ */ jsxRuntimeExports.jsx("input", { autoFocus: true, type: "text", value: form.name, onChange: (e3) => setForm({ ...form, name: e3.target.value }), className: "w-full p-2 bg-background border border-border rounded-md" })
+                /* @__PURE__ */ jsxRuntimeExports.jsx("input", { autoFocus: true, type: "text", value: form.name || "", onChange: (e3) => setForm({ ...form, name: e3.target.value }), className: "w-full p-2 bg-background border border-border rounded-md" })
               ] }),
               /* @__PURE__ */ jsxRuntimeExports.jsxs("div", { children: [
                 /* @__PURE__ */ jsxRuntimeExports.jsx("label", { className: "block text-sm font-medium mb-1", children: "Issuing Organization" }),
-                /* @__PURE__ */ jsxRuntimeExports.jsx("input", { type: "text", value: form.organization, onChange: (e3) => setForm({ ...form, organization: e3.target.value }), className: "w-full p-2 bg-background border border-border rounded-md" })
+                /* @__PURE__ */ jsxRuntimeExports.jsx("input", { type: "text", value: form.organization || "", onChange: (e3) => setForm({ ...form, organization: e3.target.value }), className: "w-full p-2 bg-background border border-border rounded-md" })
               ] }),
               /* @__PURE__ */ jsxRuntimeExports.jsxs("div", { children: [
                 /* @__PURE__ */ jsxRuntimeExports.jsx("label", { className: "block text-sm font-medium mb-1", children: "Issue Date" }),
-                /* @__PURE__ */ jsxRuntimeExports.jsx("input", { type: "month", value: form.issueDate, onChange: (e3) => setForm({ ...form, issueDate: e3.target.value }), className: "w-full p-2 bg-background border border-border rounded-md" })
+                /* @__PURE__ */ jsxRuntimeExports.jsx("input", { type: "month", value: form.issueDate || "", onChange: (e3) => setForm({ ...form, issueDate: e3.target.value }), className: "w-full p-2 bg-background border border-border rounded-md" })
               ] }),
               /* @__PURE__ */ jsxRuntimeExports.jsxs("div", { children: [
                 /* @__PURE__ */ jsxRuntimeExports.jsx("label", { className: "block text-sm font-medium mb-1", children: "Expiry Date (Optional)" }),
@@ -111078,7 +112695,7 @@ function CertificatesGallery() {
               /* @__PURE__ */ jsxRuntimeExports.jsx("button", { onClick: handleSave, className: "px-4 py-2 bg-green-500 text-white rounded-md hover:bg-green-600 font-medium", children: "Save Certificate" })
             ] })
           ] }) : null,
-          /* @__PURE__ */ jsxRuntimeExports.jsx("div", { className: "grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6", children: certificates.map((record) => /* @__PURE__ */ jsxRuntimeExports.jsxs("div", { className: "bg-card border border-border rounded-2xl shadow-sm relative group hover:border-green-500/50 transition-colors flex flex-col overflow-hidden", children: [
+          /* @__PURE__ */ jsxRuntimeExports.jsx("div", { className: "grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6", children: certificates.map((record) => /* @__PURE__ */ jsxRuntimeExports.jsxs("div", { id: `certificate-${record._id}`, className: "bg-card border border-border rounded-2xl shadow-sm relative group hover:border-green-500/50 transition-all duration-1000 flex flex-col overflow-hidden", children: [
             record.imageAttachment ? /* @__PURE__ */ jsxRuntimeExports.jsxs("div", { className: "h-48 w-full border-b border-border relative flex items-center justify-center overflow-hidden bg-black/5 dark:bg-white/5", children: [
               /* @__PURE__ */ jsxRuntimeExports.jsx(
                 "div",
@@ -111126,36 +112743,124 @@ function CertificatesGallery() {
           certificates.length === 0 && !isAdding && /* @__PURE__ */ jsxRuntimeExports.jsx("div", { className: "text-center p-12 border border-dashed border-border rounded-xl text-muted-foreground bg-card/50 backdrop-blur", children: "No certificates added yet." })
         ]
       }
-    )
+    ),
+    showSuccessOverlay && /* @__PURE__ */ jsxRuntimeExports.jsxs("div", { className: "absolute inset-0 z-50 flex items-center justify-center bg-[radial-gradient(ellipse_at_center,_var(--tw-gradient-stops))] from-green-500/30 via-background/80 to-background/95 backdrop-blur-sm animate-in fade-in duration-300", children: [
+      /* @__PURE__ */ jsxRuntimeExports.jsx("style", { children: `
+            @keyframes popAndRotate {
+              0% { transform: scale(0) rotate(-45deg); opacity: 0; }
+              50% { transform: scale(1.2) rotate(15deg); opacity: 1; }
+              75% { transform: scale(0.9) rotate(-5deg); }
+              100% { transform: scale(1) rotate(0deg); opacity: 1; }
+            }
+            @keyframes floatUpFade {
+              0% { transform: translate(0, 0) scale(0); opacity: 0; }
+              20% { opacity: 1; scale: 1; }
+              100% { transform: translate(var(--tx), var(--ty)) scale(0.5); opacity: 0; }
+            }
+            @keyframes shineEffect {
+              0% { transform: translateX(-100%); }
+              100% { transform: translateX(200%); }
+            }
+          ` }),
+      /* @__PURE__ */ jsxRuntimeExports.jsxs("div", { className: "relative flex flex-col items-center justify-center gap-8", style: { animation: "popAndRotate 1s cubic-bezier(0.34, 1.56, 0.64, 1) forwards" }, children: [
+        /* @__PURE__ */ jsxRuntimeExports.jsxs("svg", { width: "240", height: "300", viewBox: "0 0 240 300", fill: "none", xmlns: "http://www.w3.org/2000/svg", className: "drop-shadow-2xl", children: [
+          /* @__PURE__ */ jsxRuntimeExports.jsx("rect", { x: "35", y: "45", width: "180", height: "230", rx: "12", fill: "#16a34a", opacity: "0.4", transform: "rotate(-6 120 150)" }),
+          /* @__PURE__ */ jsxRuntimeExports.jsx("rect", { x: "25", y: "35", width: "180", height: "230", rx: "12", fill: "#22c55e", opacity: "0.6", transform: "rotate(-3 120 150)" }),
+          /* @__PURE__ */ jsxRuntimeExports.jsx("rect", { x: "20", y: "25", width: "180", height: "230", rx: "12", fill: "currentColor", className: "text-card stroke-border", strokeWidth: "2" }),
+          /* @__PURE__ */ jsxRuntimeExports.jsx("g", { style: { clipPath: "url(#certClip)" }, children: /* @__PURE__ */ jsxRuntimeExports.jsx("rect", { x: "20", y: "25", width: "50", height: "300", fill: "white", opacity: "0.2", style: { animation: "shineEffect 2.5s infinite linear" }, transform: "skewX(-20)" }) }),
+          /* @__PURE__ */ jsxRuntimeExports.jsx("defs", { children: /* @__PURE__ */ jsxRuntimeExports.jsx("clipPath", { id: "certClip", children: /* @__PURE__ */ jsxRuntimeExports.jsx("rect", { x: "20", y: "25", width: "180", height: "230", rx: "12" }) }) }),
+          /* @__PURE__ */ jsxRuntimeExports.jsx("rect", { x: "30", y: "35", width: "160", height: "210", rx: "6", stroke: "#22c55e", strokeWidth: "2.5", strokeDasharray: "6 6" }),
+          /* @__PURE__ */ jsxRuntimeExports.jsx("path", { d: "M140 210 L125 260 L150 245 L175 260 L160 210 Z", fill: "#eab308" }),
+          /* @__PURE__ */ jsxRuntimeExports.jsx("path", { d: "M140 210 L130 260 L150 250 L170 260 L160 210 Z", fill: "#ca8a04", opacity: "0.5" }),
+          /* @__PURE__ */ jsxRuntimeExports.jsx("circle", { cx: "150", cy: "200", r: "30", fill: "#facc15" }),
+          /* @__PURE__ */ jsxRuntimeExports.jsx("circle", { cx: "150", cy: "200", r: "24", stroke: "#ca8a04", strokeWidth: "2.5", strokeDasharray: "3 3" }),
+          /* @__PURE__ */ jsxRuntimeExports.jsx("path", { d: "M142 195 L158 205 M158 195 L142 205", stroke: "#ca8a04", strokeWidth: "4", strokeLinecap: "round" }),
+          /* @__PURE__ */ jsxRuntimeExports.jsx("rect", { x: "50", y: "65", width: "120", height: "10", rx: "5", fill: "#22c55e" }),
+          /* @__PURE__ */ jsxRuntimeExports.jsx("rect", { x: "50", y: "100", width: "100", height: "6", rx: "3", fill: "currentColor", className: "text-muted-foreground", opacity: "0.4" }),
+          /* @__PURE__ */ jsxRuntimeExports.jsx("rect", { x: "50", y: "120", width: "90", height: "6", rx: "3", fill: "currentColor", className: "text-muted-foreground", opacity: "0.4" }),
+          /* @__PURE__ */ jsxRuntimeExports.jsx("rect", { x: "50", y: "140", width: "110", height: "6", rx: "3", fill: "currentColor", className: "text-muted-foreground", opacity: "0.4" }),
+          /* @__PURE__ */ jsxRuntimeExports.jsx("rect", { x: "50", y: "160", width: "70", height: "6", rx: "3", fill: "currentColor", className: "text-muted-foreground", opacity: "0.4" })
+        ] }),
+        [...Array(12)].map((_2, i2) => {
+          const angle = i2 * 30 * Math.PI / 180;
+          const dist = 100 + Math.random() * 50;
+          const tx = `${Math.cos(angle) * dist}px`;
+          const ty = `${Math.sin(angle) * dist}px`;
+          return /* @__PURE__ */ jsxRuntimeExports.jsx(
+            "svg",
+            {
+              width: "24",
+              height: "24",
+              viewBox: "0 0 24 24",
+              fill: "none",
+              className: `absolute top-1/2 left-1/2 -ml-3 -mt-3 ${i2 % 2 === 0 ? "text-yellow-400" : "text-green-400"}`,
+              style: {
+                "--tx": tx,
+                "--ty": ty,
+                animation: `floatUpFade 1.5s ease-out forwards ${0.3 + Math.random() * 0.3}s`
+              },
+              children: /* @__PURE__ */ jsxRuntimeExports.jsx("path", { d: "M12 2L14.39 9.61L22 12L14.39 14.39L12 22L9.61 14.39L2 12L9.61 9.61L12 2Z", fill: "currentColor" })
+            },
+            `star-${i2}`
+          );
+        }),
+        /* @__PURE__ */ jsxRuntimeExports.jsx("h2", { className: "text-4xl font-extrabold text-green-600 dark:text-green-400 drop-shadow-lg tracking-tight text-center z-50", children: "Certificate Saved!" })
+      ] })
+    ] })
   ] });
 }
 function Achievements() {
   const [achievements, setAchievements] = reactExports.useState([]);
+  const [loading, setLoading] = reactExports.useState(true);
   const [isAdding, setIsAdding] = reactExports.useState(false);
   const [editingId, setEditingId] = reactExports.useState(null);
   const [isDragging, setIsDragging] = reactExports.useState(false);
   const [dragStartY, setDragStartY] = reactExports.useState(0);
   const [scrollTop, setScrollTop] = reactExports.useState(0);
+  const [showSuccessOverlay, setShowSuccessOverlay] = reactExports.useState(false);
   const scrollContainerRef = reactExports.useRef(null);
-  const [form, setForm] = reactExports.useState({
+  const defaultForm = {
     title: "",
     date: "",
     description: "",
     photos: [],
     certificates: [],
-    notes: ""
-  });
+    notes: "",
+    attachments: []
+  };
+  const [form, setForm] = reactExports.useState(defaultForm);
   const loadData = async () => {
     try {
       const data = await window.api.db.find("achievements", {});
-      setAchievements(data.sort((a2, b2) => new Date(b2.date).getTime() - new Date(a2.date).getTime()));
+      const sorted = data.sort((a2, b2) => {
+        const timeA = a2.date ? new Date(a2.date).getTime() : 0;
+        const timeB = b2.date ? new Date(b2.date).getTime() : 0;
+        return (isNaN(timeB) ? 0 : timeB) - (isNaN(timeA) ? 0 : timeA);
+      });
+      setAchievements(sorted);
     } catch (err) {
       console.error(err);
+    } finally {
+      setLoading(false);
     }
   };
   reactExports.useEffect(() => {
     loadData();
   }, []);
+  const location = useLocation();
+  reactExports.useEffect(() => {
+    const highlightId = new URLSearchParams(location.search).get("highlight");
+    if (highlightId && !loading && achievements.length > 0) {
+      setTimeout(() => {
+        const el2 = document.getElementById(`achievement-${highlightId}`);
+        if (el2) {
+          el2.scrollIntoView({ behavior: "smooth", block: "center" });
+          el2.classList.add("ring-4", "ring-primary", "shadow-2xl", "shadow-primary/40", "animate-[pulse_2s_ease-in-out_3]", "z-50");
+          setTimeout(() => el2.classList.remove("ring-4", "ring-primary", "shadow-2xl", "shadow-primary/40", "animate-[pulse_2s_ease-in-out_3]", "z-50"), 4e3);
+        }
+      }, 500);
+    }
+  }, [location.search, loading, achievements.length]);
   const handleSave = async () => {
     try {
       if (editingId) {
@@ -111164,6 +112869,8 @@ function Achievements() {
       } else {
         await window.api.db.insert("achievements", { ...form, createdAt: Date.now(), updatedAt: Date.now() });
         NotificationEngine.notify("success", "Achievement Added", `Added "${form.title}".`, "Career");
+        setShowSuccessOverlay(true);
+        setTimeout(() => setShowSuccessOverlay(false), 3e3);
       }
       setIsAdding(false);
       setEditingId(null);
@@ -111316,7 +113023,7 @@ function Achievements() {
               /* @__PURE__ */ jsxRuntimeExports.jsx("p", { className: "text-muted-foreground mt-1", children: "Track your awards, honors, and professional milestones." })
             ] }),
             !isAdding && /* @__PURE__ */ jsxRuntimeExports.jsxs("button", { onClick: () => {
-              setForm({ photos: [], attachments: [], certificates: [] });
+              setForm(defaultForm);
               setEditingId(null);
               setIsAdding(true);
             }, className: "px-4 py-2 bg-yellow-500 text-white rounded-md hover:bg-yellow-600 font-medium flex items-center gap-2", children: [
@@ -111372,7 +113079,7 @@ function Achievements() {
               /* @__PURE__ */ jsxRuntimeExports.jsx("button", { onClick: handleSave, className: "px-4 py-2 bg-yellow-500 text-white rounded-md hover:bg-yellow-600 font-medium", children: "Save Achievement" })
             ] })
           ] }) : null,
-          /* @__PURE__ */ jsxRuntimeExports.jsx("div", { className: "grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6", children: achievements.map((record) => /* @__PURE__ */ jsxRuntimeExports.jsxs("div", { className: "bg-card border border-border rounded-2xl shadow-sm relative group hover:border-yellow-500/50 transition-colors flex flex-col overflow-hidden", children: [
+          /* @__PURE__ */ jsxRuntimeExports.jsx("div", { className: "grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6", children: achievements.map((record) => /* @__PURE__ */ jsxRuntimeExports.jsxs("div", { id: `achievement-${record._id}`, className: "bg-card border border-border rounded-2xl shadow-sm relative group hover:border-yellow-500/50 transition-all duration-1000 flex flex-col overflow-hidden", children: [
             record.photos && record.photos.length > 0 ? /* @__PURE__ */ jsxRuntimeExports.jsxs("div", { className: "h-48 w-full border-b border-border relative flex items-center justify-center overflow-hidden bg-black/5 dark:bg-white/5", children: [
               /* @__PURE__ */ jsxRuntimeExports.jsx(
                 "div",
@@ -111408,7 +113115,69 @@ function Achievements() {
           achievements.length === 0 && !isAdding && /* @__PURE__ */ jsxRuntimeExports.jsx("div", { className: "text-center p-12 border border-dashed border-border rounded-xl text-muted-foreground bg-card/50 backdrop-blur", children: "No achievements logged yet. Celebrate your wins!" })
         ]
       }
-    )
+    ),
+    showSuccessOverlay && /* @__PURE__ */ jsxRuntimeExports.jsxs("div", { className: "absolute inset-0 z-50 flex items-center justify-center bg-[radial-gradient(ellipse_at_center,_var(--tw-gradient-stops))] from-yellow-500/30 via-background/80 to-background/95 backdrop-blur-sm animate-in fade-in duration-300", children: [
+      /* @__PURE__ */ jsxRuntimeExports.jsx("style", { children: `
+            @keyframes popAndRotateTrophy {
+              0% { transform: scale(0) rotate(-45deg); opacity: 0; }
+              50% { transform: scale(1.2) rotate(15deg); opacity: 1; }
+              75% { transform: scale(0.9) rotate(-5deg); }
+              100% { transform: scale(1) rotate(0deg); opacity: 1; }
+            }
+            @keyframes floatUpFade {
+              0% { transform: translate(0, 0) scale(0); opacity: 0; }
+              20% { opacity: 1; scale: 1; }
+              100% { transform: translate(var(--tx), var(--ty)) scale(0.5); opacity: 0; }
+            }
+            @keyframes shineTrophy {
+              0% { transform: translateX(-150%) skewX(-20deg); }
+              100% { transform: translateX(250%) skewX(-20deg); }
+            }
+          ` }),
+      /* @__PURE__ */ jsxRuntimeExports.jsxs("div", { className: "relative flex flex-col items-center justify-center gap-8", style: { animation: "popAndRotateTrophy 1s cubic-bezier(0.34, 1.56, 0.64, 1) forwards" }, children: [
+        /* @__PURE__ */ jsxRuntimeExports.jsxs("svg", { width: "240", height: "300", viewBox: "0 0 240 300", fill: "none", xmlns: "http://www.w3.org/2000/svg", className: "drop-shadow-2xl", children: [
+          /* @__PURE__ */ jsxRuntimeExports.jsx("path", { d: "M 60 70 Q 120 280 180 70 Z", fill: "#ca8a04", opacity: "0.4", transform: "rotate(-6 120 150)" }),
+          /* @__PURE__ */ jsxRuntimeExports.jsx("path", { d: "M 50 60 Q 120 280 190 60 Z", fill: "#eab308", opacity: "0.6", transform: "rotate(-3 120 150)" }),
+          /* @__PURE__ */ jsxRuntimeExports.jsx("path", { d: "M 90 260 L 150 260 L 170 290 L 70 290 Z", fill: "#b45309" }),
+          /* @__PURE__ */ jsxRuntimeExports.jsx("rect", { x: "85", y: "245", width: "70", height: "15", rx: "2", fill: "#d97706" }),
+          /* @__PURE__ */ jsxRuntimeExports.jsx("rect", { x: "110", y: "200", width: "20", height: "45", fill: "#facc15" }),
+          /* @__PURE__ */ jsxRuntimeExports.jsx("path", { d: "M 40 50 C 40 180, 200 180, 200 50 Z", fill: "#fef08a" }),
+          /* @__PURE__ */ jsxRuntimeExports.jsx("path", { d: "M 40 50 C 40 180, 200 180, 200 50 Z", fill: "none", stroke: "#eab308", strokeWidth: "8" }),
+          /* @__PURE__ */ jsxRuntimeExports.jsx("path", { d: "M 45 70 C 5 70, 5 130, 65 140", fill: "none", stroke: "#facc15", strokeWidth: "12", strokeLinecap: "round" }),
+          /* @__PURE__ */ jsxRuntimeExports.jsx("path", { d: "M 45 70 C 5 70, 5 130, 65 140", fill: "none", stroke: "#ca8a04", strokeWidth: "12", strokeLinecap: "round", opacity: "0.3", transform: "translate(3,3)" }),
+          /* @__PURE__ */ jsxRuntimeExports.jsx("path", { d: "M 195 70 C 235 70, 235 130, 175 140", fill: "none", stroke: "#facc15", strokeWidth: "12", strokeLinecap: "round" }),
+          /* @__PURE__ */ jsxRuntimeExports.jsx("path", { d: "M 195 70 C 235 70, 235 130, 175 140", fill: "none", stroke: "#ca8a04", strokeWidth: "12", strokeLinecap: "round", opacity: "0.3", transform: "translate(-3,3)" }),
+          /* @__PURE__ */ jsxRuntimeExports.jsx("ellipse", { cx: "120", cy: "50", rx: "80", ry: "20", fill: "#fef9c3", stroke: "#eab308", strokeWidth: "6" }),
+          /* @__PURE__ */ jsxRuntimeExports.jsx("g", { style: { clipPath: "url(#trophyClip)" }, children: /* @__PURE__ */ jsxRuntimeExports.jsx("rect", { x: "20", y: "20", width: "40", height: "300", fill: "white", opacity: "0.4", style: { animation: "shineTrophy 3s infinite linear" } }) }),
+          /* @__PURE__ */ jsxRuntimeExports.jsx("defs", { children: /* @__PURE__ */ jsxRuntimeExports.jsx("clipPath", { id: "trophyClip", children: /* @__PURE__ */ jsxRuntimeExports.jsx("path", { d: "M 40 50 C 40 180, 200 180, 200 50 Z" }) }) }),
+          /* @__PURE__ */ jsxRuntimeExports.jsx("path", { d: "M 120 70 L 128 95 L 155 95 L 133 110 L 140 135 L 120 120 L 100 135 L 107 110 L 85 95 L 112 95 Z", fill: "#fbbf24" })
+        ] }),
+        [...Array(15)].map((_2, i2) => {
+          const angle = i2 * 24 * Math.PI / 180;
+          const dist = 120 + Math.random() * 60;
+          const tx = `${Math.cos(angle) * dist}px`;
+          const ty = `${Math.sin(angle) * dist}px`;
+          return /* @__PURE__ */ jsxRuntimeExports.jsx(
+            "svg",
+            {
+              width: "24",
+              height: "24",
+              viewBox: "0 0 24 24",
+              fill: "none",
+              className: `absolute top-1/2 left-1/2 -ml-3 -mt-16 ${i2 % 3 === 0 ? "text-yellow-300" : i2 % 3 === 1 ? "text-orange-400" : "text-white"}`,
+              style: {
+                "--tx": tx,
+                "--ty": ty,
+                animation: `floatUpFade 1.5s ease-out forwards ${0.3 + Math.random() * 0.3}s`
+              },
+              children: i2 % 2 === 0 ? /* @__PURE__ */ jsxRuntimeExports.jsx("path", { d: "M12 2L14.39 9.61L22 12L14.39 14.39L12 22L9.61 14.39L2 12L9.61 9.61L12 2Z", fill: "currentColor" }) : /* @__PURE__ */ jsxRuntimeExports.jsx("circle", { cx: "12", cy: "12", r: "8", fill: "currentColor" })
+            },
+            `star-${i2}`
+          );
+        }),
+        /* @__PURE__ */ jsxRuntimeExports.jsx("h2", { className: "text-4xl font-extrabold text-yellow-600 dark:text-yellow-400 drop-shadow-lg tracking-tight text-center z-50", children: "Achievement Unlocked!" })
+      ] })
+    ] })
   ] });
 }
 function GoalsStatistics({ goals, setFilters }) {
@@ -112046,6 +113815,7 @@ function Goals() {
       ) })
     ] }) : /* @__PURE__ */ jsxRuntimeExports.jsxs(jsxRuntimeExports.Fragment, { children: [
       /* @__PURE__ */ jsxRuntimeExports.jsx("div", { className: "absolute inset-0 overflow-hidden pointer-events-none z-0", children: /* @__PURE__ */ jsxRuntimeExports.jsxs("div", { className: "absolute inset-0 bg-white overflow-hidden", children: [
+        /* @__PURE__ */ jsxRuntimeExports.jsx(ShootingStars, {}),
         /* @__PURE__ */ jsxRuntimeExports.jsx("style", { children: `
               :root {
                 --step: 40px; 
@@ -137738,6 +139508,8 @@ function Assistant() {
   const [aiTextColor, setAiTextColor] = reactExports.useState(localStorage.getItem("aiAiTextColor") || "");
   const [msgOpacity, setMsgOpacity] = reactExports.useState(Number(localStorage.getItem("aiMsgOpacity") || "1.0"));
   const [showSettingsModal, setShowSettingsModal] = reactExports.useState(false);
+  const [showSuccessOverlay, setShowSuccessOverlay] = reactExports.useState(false);
+  const [convToDelete, setConvToDelete] = reactExports.useState(null);
   const [searchQuery, setSearchQuery] = reactExports.useState("");
   const [showMenu, setShowMenu] = reactExports.useState(false);
   const [attachedImages, setAttachedImages] = reactExports.useState([]);
@@ -137759,7 +139531,12 @@ function Assistant() {
       setActiveConv((prev) => {
         if (!prev || prev._id !== globalAssistant.streamingConvId || prev.messages.length === 0) return prev;
         const newMsgs = [...prev.messages];
-        newMsgs[newMsgs.length - 1].content = content2;
+        const lastMsg = newMsgs[newMsgs.length - 1];
+        if (lastMsg.role === "assistant") {
+          newMsgs[newMsgs.length - 1] = { ...lastMsg, content: content2 };
+        } else {
+          newMsgs.push({ role: "assistant", content: content2, timestamp: Date.now() });
+        }
         return { ...prev, messages: newMsgs };
       });
     };
@@ -137834,19 +139611,32 @@ function Assistant() {
   };
   const startNewChat = () => {
     stopGeneration();
-    setActiveConv({
-      title: "New Conversation",
-      messages: [],
-      updatedAt: Date.now()
-    });
+    setActiveConv(null);
     setAttachedImages([]);
+    setTimeout(() => {
+      if (textareaRef.current) {
+        textareaRef.current.focus();
+      }
+    }, 100);
   };
-  const deleteConversation = async (id2) => {
-    if (!confirm("Delete this conversation?")) return;
+  const deleteConversation = (id2) => {
+    setConvToDelete(id2);
+  };
+  const confirmDelete = async (id2) => {
+    setConvToDelete(null);
     try {
-      await window.api.db.remove("conversations", { _id: id2 }, {});
-      if (activeConv?._id === id2) setActiveConv(null);
+      if (id2 !== "new") {
+        await window.api.db.remove("conversations", { _id: id2 }, {});
+      }
+      if (activeConv?._id === id2 || id2 === "new" && !activeConv?._id) {
+        setActiveConv(null);
+      }
       loadConversations();
+      setShowSuccessOverlay(true);
+      setTimeout(() => {
+        if (textareaRef.current) textareaRef.current.focus();
+      }, 100);
+      setTimeout(() => setShowSuccessOverlay(false), 3e3);
     } catch (err) {
       console.error(err);
     }
@@ -137855,11 +139645,11 @@ function Assistant() {
     if (globalAssistant.abortController) {
       globalAssistant.abortController.abort();
       globalAssistant.abortController = null;
-      globalAssistant.isStreaming = false;
-      globalAssistant.isLoading = false;
-      setStreaming(false);
-      setLoading(false);
     }
+    globalAssistant.isStreaming = false;
+    globalAssistant.isLoading = false;
+    setStreaming(false);
+    setLoading(false);
   };
   const handleAttachImage = async () => {
     try {
@@ -138178,10 +139968,10 @@ ${m2.content}
     await window.api.db.insert("conversations", dup);
     loadConversations();
   };
-  const handleClear = async () => {
-    if (!activeConv || !confirm("Clear all messages?")) return;
-    const updated = { ...activeConv, messages: [] };
-    saveConversation(updated);
+  const handleClear = () => {
+    if (!activeConv) return;
+    setConvToDelete(activeConv._id || "new");
+    setShowMenu(false);
   };
   const handleSetBackground = async () => {
     try {
@@ -138274,7 +140064,88 @@ ${m2.content}
         ] })
       ] })
     ] }),
-    /* @__PURE__ */ jsxRuntimeExports.jsxs("div", { className: "flex-1 flex flex-col relative bg-card/30", children: [
+    /* @__PURE__ */ jsxRuntimeExports.jsxs("div", { className: "flex-1 flex flex-col relative bg-card/30 overflow-hidden", children: [
+      showSuccessOverlay && /* @__PURE__ */ jsxRuntimeExports.jsxs("div", { className: "absolute inset-0 z-[100] pointer-events-none flex items-center justify-center bg-[radial-gradient(ellipse_at_center,_var(--tw-gradient-stops))] from-destructive/30 via-background/90 to-background/95 backdrop-blur-md animate-in fade-in duration-300", children: [
+        /* @__PURE__ */ jsxRuntimeExports.jsx("style", { children: `
+              @keyframes popTrash {
+                0% { transform: scale(0) translateY(50px) rotate(-15deg); opacity: 0; }
+                40% { transform: scale(1.1) translateY(-10px) rotate(5deg); opacity: 1; }
+                60% { transform: scale(0.95) translateY(5px) rotate(-2deg); }
+                80% { transform: scale(1.05) translateY(-2px) rotate(2deg); }
+                100% { transform: scale(1) translateY(0) rotate(0); opacity: 1; }
+              }
+              @keyframes floatUpFade {
+                0% { transform: translate(0, 0) scale(0); opacity: 0; }
+                20% { opacity: 1; scale: 1; }
+                100% { transform: translate(var(--tx), var(--ty)) scale(0.5); opacity: 0; }
+              }
+              @keyframes openLid {
+                0% { transform: translateY(0) rotate(0); }
+                30% { transform: translateY(-30px) rotate(-20deg); }
+                70% { transform: translateY(-30px) rotate(-20deg); }
+                100% { transform: translateY(0) rotate(0); }
+              }
+              @keyframes suckIn {
+                0% { transform: translateY(-80px) scale(1.5); opacity: 0; }
+                30% { transform: translateY(-60px) scale(1.2); opacity: 1; }
+                70% { transform: translateY(20px) scale(0); opacity: 0; }
+                100% { transform: translateY(20px) scale(0); opacity: 0; }
+              }
+            ` }),
+        /* @__PURE__ */ jsxRuntimeExports.jsxs("div", { className: "relative flex flex-col items-center justify-center gap-8", style: { animation: "popTrash 1.2s cubic-bezier(0.34, 1.56, 0.64, 1) forwards" }, children: [
+          /* @__PURE__ */ jsxRuntimeExports.jsxs("svg", { width: "240", height: "240", viewBox: "0 0 240 240", fill: "none", xmlns: "http://www.w3.org/2000/svg", className: "drop-shadow-2xl", children: [
+            /* @__PURE__ */ jsxRuntimeExports.jsx("rect", { x: "70", y: "80", width: "100", height: "120", rx: "10", fill: "#7f1d1d", opacity: "0.4", transform: "translate(10, 15) rotate(-5 120 120)" }),
+            /* @__PURE__ */ jsxRuntimeExports.jsx("rect", { x: "70", y: "80", width: "100", height: "120", rx: "10", fill: "#991b1b", opacity: "0.6", transform: "translate(5, 8) rotate(-2 120 120)" }),
+            /* @__PURE__ */ jsxRuntimeExports.jsx("path", { d: "M 70 80 L 170 80 L 155 200 C 155 205, 150 210, 145 210 L 95 210 C 90 210, 85 205, 85 200 Z", fill: "#ef4444" }),
+            /* @__PURE__ */ jsxRuntimeExports.jsx("path", { d: "M 70 80 L 120 80 L 120 210 L 95 210 C 90 210, 85 205, 85 200 Z", fill: "#f87171", opacity: "0.5" }),
+            /* @__PURE__ */ jsxRuntimeExports.jsx("rect", { x: "95", y: "95", width: "6", height: "95", rx: "3", fill: "#b91c1c" }),
+            /* @__PURE__ */ jsxRuntimeExports.jsx("rect", { x: "117", y: "95", width: "6", height: "95", rx: "3", fill: "#b91c1c" }),
+            /* @__PURE__ */ jsxRuntimeExports.jsx("rect", { x: "139", y: "95", width: "6", height: "95", rx: "3", fill: "#b91c1c" }),
+            /* @__PURE__ */ jsxRuntimeExports.jsxs("g", { style: { animation: "suckIn 1.5s ease-in-out infinite" }, children: [
+              /* @__PURE__ */ jsxRuntimeExports.jsx("rect", { x: "100", y: "60", width: "40", height: "15", rx: "2", fill: "#60a5fa" }),
+              /* @__PURE__ */ jsxRuntimeExports.jsx("rect", { x: "110", y: "40", width: "20", height: "10", rx: "2", fill: "#34d399" }),
+              /* @__PURE__ */ jsxRuntimeExports.jsx("rect", { x: "90", y: "20", width: "60", height: "10", rx: "2", fill: "#fbbf24" })
+            ] }),
+            /* @__PURE__ */ jsxRuntimeExports.jsxs("g", { style: { transformOrigin: "70px 80px", animation: "openLid 2.5s infinite ease-in-out" }, children: [
+              /* @__PURE__ */ jsxRuntimeExports.jsx("rect", { x: "60", y: "70", width: "120", height: "12", rx: "4", fill: "#dc2626" }),
+              /* @__PURE__ */ jsxRuntimeExports.jsx("rect", { x: "100", y: "55", width: "40", height: "15", rx: "4", fill: "#dc2626" }),
+              /* @__PURE__ */ jsxRuntimeExports.jsx("rect", { x: "60", y: "70", width: "60", height: "12", rx: "4", fill: "#f87171", opacity: "0.5" })
+            ] })
+          ] }),
+          [...Array(15)].map((_2, i2) => {
+            const angle = i2 * 24 * Math.PI / 180;
+            const dist = 100 + Math.random() * 50;
+            const tx = `${Math.cos(angle) * dist}px`;
+            const ty = `${Math.sin(angle) * dist}px`;
+            return /* @__PURE__ */ jsxRuntimeExports.jsx(
+              "svg",
+              {
+                width: "24",
+                height: "24",
+                viewBox: "0 0 24 24",
+                fill: "none",
+                className: `absolute top-1/2 left-1/2 -ml-3 -mt-10 ${i2 % 3 === 0 ? "text-red-300" : i2 % 3 === 1 ? "text-rose-400" : "text-orange-400"}`,
+                style: {
+                  "--tx": tx,
+                  "--ty": ty,
+                  animation: `floatUpFade 1.5s ease-out forwards ${0.3 + Math.random() * 0.3}s`
+                },
+                children: i2 % 2 === 0 ? /* @__PURE__ */ jsxRuntimeExports.jsx("path", { d: "M12 21.35l-1.45-1.32C5.4 15.36 2 12.28 2 8.5 2 5.42 4.42 3 7.5 3c1.74 0 3.41.81 4.5 2.09C13.09 3.81 14.76 3 16.5 3 19.58 3 22 5.42 22 8.5c0 3.78-3.4 6.86-8.55 11.54L12 21.35z", fill: "currentColor" }) : /* @__PURE__ */ jsxRuntimeExports.jsx("rect", { x: "8", y: "8", width: "8", height: "8", rx: "2", fill: "currentColor" })
+              },
+              `star-${i2}`
+            );
+          }),
+          /* @__PURE__ */ jsxRuntimeExports.jsx("h2", { className: "text-4xl font-extrabold text-destructive drop-shadow-lg tracking-tight text-center z-50", children: "Chat Deleted!" })
+        ] })
+      ] }),
+      convToDelete && /* @__PURE__ */ jsxRuntimeExports.jsx("div", { className: "fixed inset-0 z-[110] bg-background/80 backdrop-blur-sm flex items-center justify-center p-4", children: /* @__PURE__ */ jsxRuntimeExports.jsxs("div", { className: "bg-card border border-border rounded-2xl p-6 shadow-2xl max-w-sm w-full animate-in zoom-in-95", children: [
+        /* @__PURE__ */ jsxRuntimeExports.jsx("h3", { className: "font-bold text-lg mb-2 text-destructive", children: "Delete Chat?" }),
+        /* @__PURE__ */ jsxRuntimeExports.jsx("p", { className: "text-muted-foreground text-sm mb-6", children: "Are you sure you want to delete this conversation? This action cannot be undone." }),
+        /* @__PURE__ */ jsxRuntimeExports.jsxs("div", { className: "flex gap-3 justify-end", children: [
+          /* @__PURE__ */ jsxRuntimeExports.jsx("button", { onClick: () => setConvToDelete(null), className: "px-4 py-2 bg-accent hover:bg-accent/80 rounded-xl text-sm font-medium transition-colors", children: "Cancel" }),
+          /* @__PURE__ */ jsxRuntimeExports.jsx("button", { onClick: () => confirmDelete(convToDelete), className: "px-4 py-2 bg-destructive text-destructive-foreground hover:bg-destructive/90 rounded-xl text-sm font-bold shadow-lg shadow-destructive/20 transition-all active:scale-95", children: "Delete" })
+        ] })
+      ] }) }),
       /* @__PURE__ */ jsxRuntimeExports.jsxs("header", { className: "px-6 py-3 border-b border-border flex justify-between items-center bg-card/80 backdrop-blur-md sticky top-0 z-30", children: [
         /* @__PURE__ */ jsxRuntimeExports.jsxs("div", { className: "flex flex-col", children: [
           /* @__PURE__ */ jsxRuntimeExports.jsx("h1", { className: "text-lg font-bold flex items-center gap-2", children: activeConv ? activeConv.title : "New Chat" }),
@@ -138544,7 +140415,6 @@ ${m2.content}
                 value: input,
                 onChange: (e3) => setInput(e3.target.value),
                 onKeyDown: handleKeyDown2,
-                disabled: loading && !streaming,
                 placeholder: !selectedModel ? "Select a model..." : "Message AI Assistant... (Shift+Enter for new line)",
                 className: "w-full max-h-48 resize-none bg-transparent py-2 px-1 focus:outline-none placeholder:text-muted-foreground/70",
                 rows: 1
@@ -141667,7 +143537,17 @@ function DashboardEntryCard({
             ] }) }),
             /* @__PURE__ */ jsxRuntimeExports.jsx("p", { className: "text-sm text-muted-foreground line-clamp-3 leading-relaxed mb-3", children: preview.length > 3 ? preview : "Empty entry" }),
             images.length > 0 && /* @__PURE__ */ jsxRuntimeExports.jsxs("div", { className: "flex gap-1 mb-3 overflow-hidden h-10", children: [
-              images.slice(0, 4).map((src, i2) => /* @__PURE__ */ jsxRuntimeExports.jsx("img", { src, className: "w-10 h-10 rounded-md object-cover border border-border bg-accent/50", alt: "thumbnail" }, i2)),
+              images.slice(0, 4).map((src, i2) => {
+                const isVideo = /\.(mp4|webm|ogg|mov|mkv)$/i.test(src);
+                const isAudio = /\.(mp3|wav|ogg|m4a|aac)$/i.test(src);
+                if (isVideo) {
+                  return /* @__PURE__ */ jsxRuntimeExports.jsx("div", { className: "w-10 h-10 rounded-md bg-accent/50 flex items-center justify-center border border-border shrink-0", title: "Video", children: /* @__PURE__ */ jsxRuntimeExports.jsx(Film, { size: 18, className: "text-muted-foreground" }) }, i2);
+                }
+                if (isAudio) {
+                  return /* @__PURE__ */ jsxRuntimeExports.jsx("div", { className: "w-10 h-10 rounded-md bg-accent/50 flex items-center justify-center border border-border shrink-0", title: "Audio", children: /* @__PURE__ */ jsxRuntimeExports.jsx(Music, { size: 18, className: "text-muted-foreground" }) }, i2);
+                }
+                return /* @__PURE__ */ jsxRuntimeExports.jsx("img", { src, className: "w-10 h-10 rounded-md object-cover border border-border bg-accent/50", alt: "thumbnail" }, i2);
+              }),
               images.length > 4 && /* @__PURE__ */ jsxRuntimeExports.jsxs("div", { className: "w-10 h-10 rounded-md bg-accent text-[10px] flex items-center justify-center font-bold text-muted-foreground border border-border shrink-0", children: [
                 "+",
                 images.length - 4
@@ -141681,10 +143561,12 @@ function DashboardEntryCard({
                   " ",
                   entry.photos.length
                 ] }),
-                entry.tags && entry.tags.length > 0 && /* @__PURE__ */ jsxRuntimeExports.jsxs("span", { className: "flex items-center gap-1 bg-accent/50 px-2 py-0.5 rounded text-foreground", children: [
-                  entry.tags.length,
-                  " tag",
-                  entry.tags.length > 1 ? "s" : ""
+                entry.tags && entry.tags.length > 0 && /* @__PURE__ */ jsxRuntimeExports.jsxs("div", { className: "flex gap-1 overflow-hidden items-center justify-end", children: [
+                  entry.tags.slice(0, 3).map((tag, i2) => /* @__PURE__ */ jsxRuntimeExports.jsx("span", { className: "bg-accent/50 px-2 py-0.5 rounded text-foreground truncate max-w-[70px]", children: tag }, i2)),
+                  entry.tags.length > 3 && /* @__PURE__ */ jsxRuntimeExports.jsxs("span", { className: "bg-accent/50 px-1.5 py-0.5 rounded text-foreground", children: [
+                    "+",
+                    entry.tags.length - 3
+                  ] })
                 ] })
               ] })
             ] })
@@ -142654,6 +144536,7 @@ function MemoryCapsules() {
   const [capsules, setCapsules] = reactExports.useState([]);
   const [loading, setLoading] = reactExports.useState(true);
   const [isCreating, setIsCreating] = reactExports.useState(false);
+  const [showSuccessOverlay, setShowSuccessOverlay] = reactExports.useState(false);
   const [selectedCapsule, setSelectedCapsule] = reactExports.useState(null);
   const [isSelectionMode, setIsSelectionMode] = reactExports.useState(false);
   const [selectedIds, setSelectedIds] = reactExports.useState(/* @__PURE__ */ new Set());
@@ -142741,6 +144624,20 @@ function MemoryCapsules() {
   reactExports.useEffect(() => {
     loadData();
   }, []);
+  const location = useLocation();
+  reactExports.useEffect(() => {
+    const highlightId = new URLSearchParams(location.search).get("highlight");
+    if (highlightId && !loading && capsules.length > 0) {
+      setTimeout(() => {
+        const el2 = document.getElementById(`capsule-${highlightId}`);
+        if (el2) {
+          el2.scrollIntoView({ behavior: "smooth", block: "center" });
+          el2.classList.add("ring-4", "ring-primary", "shadow-2xl", "shadow-primary/40", "animate-[pulse_2s_ease-in-out_3]", "z-50");
+          setTimeout(() => el2.classList.remove("ring-4", "ring-primary", "shadow-2xl", "shadow-primary/40", "animate-[pulse_2s_ease-in-out_3]", "z-50"), 4e3);
+        }
+      }, 500);
+    }
+  }, [location.search, loading, capsules.length]);
   const handleCreate = async () => {
     if (!title.trim() || !message.trim()) return;
     const now2 = Date.now();
@@ -142753,11 +144650,15 @@ function MemoryCapsules() {
     };
     try {
       await window.api.db.insert("memoryCapsules", newCapsule);
-      setIsCreating(false);
-      setTitle("");
-      setMessage("");
       loadData();
       NotificationEngine.notify("info", "Memory Capsule Sealed", `Your message is locked until ${new Date(newCapsule.unlockDate).toLocaleDateString()}`, "Memory Capsules");
+      setShowSuccessOverlay(true);
+      setTimeout(() => {
+        setShowSuccessOverlay(false);
+        setIsCreating(false);
+        setTitle("");
+        setMessage("");
+      }, 3e3);
     } catch (e3) {
       console.error(e3);
     }
@@ -142922,7 +144823,8 @@ function MemoryCapsules() {
                 return /* @__PURE__ */ jsxRuntimeExports.jsxs(
                   "div",
                   {
-                    className: `relative p-6 rounded-2xl border transition-all ${isSelected ? "ring-2 ring-primary border-primary bg-primary/5" : isLocked ? "bg-background border-border" : cap2.status === "unlocked" ? "bg-pink-500/10 border-pink-500/30 cursor-pointer hover:bg-pink-500/20 hover:shadow-md" : "bg-card border-border cursor-pointer hover:shadow-sm hover:border-border/80"}`,
+                    id: `capsule-${cap2._id}`,
+                    className: `relative p-6 rounded-2xl border transition-all duration-1000 ${isSelected ? "ring-2 ring-primary border-primary bg-primary/5" : isLocked ? "bg-background border-border" : cap2.status === "unlocked" ? "bg-pink-500/10 border-pink-500/30 cursor-pointer hover:bg-pink-500/20 hover:shadow-md" : "bg-card border-border cursor-pointer hover:shadow-sm hover:border-border/80"}`,
                     onClick: () => {
                       if (isSelectionMode) {
                         const s3 = new Set(selectedIds);
@@ -142959,7 +144861,80 @@ function MemoryCapsules() {
               }) })
             }
           ),
-          isCreating && /* @__PURE__ */ jsxRuntimeExports.jsx("div", { className: "fixed inset-0 z-50 flex items-center justify-center bg-background/80 backdrop-blur-sm animate-in fade-in", children: /* @__PURE__ */ jsxRuntimeExports.jsxs("div", { className: "bg-card w-full max-w-lg border border-border rounded-2xl shadow-2xl flex flex-col p-6 animate-in slide-in-from-bottom-4", children: [
+          isCreating && /* @__PURE__ */ jsxRuntimeExports.jsx("div", { className: "fixed inset-0 z-50 flex items-center justify-center bg-background/80 backdrop-blur-sm animate-in fade-in", children: showSuccessOverlay ? /* @__PURE__ */ jsxRuntimeExports.jsxs("div", { className: "fixed inset-0 z-[100] flex items-center justify-center bg-[radial-gradient(ellipse_at_center,_var(--tw-gradient-stops))] from-pink-500/30 via-background/80 to-background/95 backdrop-blur-sm animate-in fade-in duration-300", children: [
+            /* @__PURE__ */ jsxRuntimeExports.jsx("style", { children: `
+                @keyframes spinCapsule {
+                  0% { transform: scale(0) rotate(180deg); opacity: 0; }
+                  40% { transform: scale(1.1) rotate(-10deg); opacity: 1; }
+                  60% { transform: scale(0.95) rotate(5deg); }
+                  80% { transform: scale(1.05) rotate(-2deg); }
+                  100% { transform: scale(1) rotate(0deg); opacity: 1; }
+                }
+                @keyframes floatUpFade {
+                  0% { transform: translate(0, 0) scale(0); opacity: 0; }
+                  20% { opacity: 1; scale: 1; }
+                  100% { transform: translate(var(--tx), var(--ty)) scale(0.5); opacity: 0; }
+                }
+                @keyframes pulseRing {
+                  0% { transform: scale(0.9); opacity: 0.8; }
+                  50% { transform: scale(1.1); opacity: 0.4; }
+                  100% { transform: scale(0.9); opacity: 0.8; }
+                }
+                @keyframes lockSnap {
+                  0% { transform: translateY(-20px); opacity: 0; }
+                  50% { transform: translateY(5px); opacity: 1; }
+                  100% { transform: translateY(0); opacity: 1; }
+                }
+              ` }),
+            /* @__PURE__ */ jsxRuntimeExports.jsxs("div", { className: "relative flex flex-col items-center justify-center gap-8", style: { animation: "spinCapsule 1.2s cubic-bezier(0.34, 1.56, 0.64, 1) forwards" }, children: [
+              /* @__PURE__ */ jsxRuntimeExports.jsxs("svg", { width: "240", height: "240", viewBox: "0 0 240 240", fill: "none", xmlns: "http://www.w3.org/2000/svg", className: "drop-shadow-2xl", children: [
+                /* @__PURE__ */ jsxRuntimeExports.jsx("circle", { cx: "120", cy: "120", r: "100", fill: "none", stroke: "#fbcfe8", strokeWidth: "2", opacity: "0.3", style: { animation: "pulseRing 3s ease-in-out infinite" } }),
+                /* @__PURE__ */ jsxRuntimeExports.jsx("circle", { cx: "120", cy: "120", r: "85", fill: "none", stroke: "#f472b6", strokeWidth: "4", opacity: "0.4", style: { animation: "pulseRing 3s ease-in-out infinite reverse" } }),
+                /* @__PURE__ */ jsxRuntimeExports.jsx("rect", { x: "75", y: "45", width: "90", height: "150", rx: "45", fill: "#831843", opacity: "0.4", transform: "translate(10, 10) rotate(-5 120 120)" }),
+                /* @__PURE__ */ jsxRuntimeExports.jsx("rect", { x: "75", y: "45", width: "90", height: "150", rx: "45", fill: "#be185d", opacity: "0.6", transform: "translate(5, 5) rotate(-2 120 120)" }),
+                /* @__PURE__ */ jsxRuntimeExports.jsx("path", { d: "M 75 120 L 165 120 L 165 150 C 165 175, 145 195, 120 195 C 95 195, 75 175, 75 150 Z", fill: "#94a3b8" }),
+                /* @__PURE__ */ jsxRuntimeExports.jsx("path", { d: "M 75 120 L 120 120 L 120 195 C 95 195, 75 175, 75 150 Z", fill: "#cbd5e1", opacity: "0.5" }),
+                /* @__PURE__ */ jsxRuntimeExports.jsx("path", { d: "M 75 120 L 165 120 L 165 90 C 165 65, 145 45, 120 45 C 95 45, 75 65, 75 90 Z", fill: "#ec4899" }),
+                /* @__PURE__ */ jsxRuntimeExports.jsx("path", { d: "M 75 120 L 120 120 L 120 45 C 95 45, 75 65, 75 90 Z", fill: "#f472b6", opacity: "0.5" }),
+                /* @__PURE__ */ jsxRuntimeExports.jsx("path", { d: "M 85 70 C 85 55, 95 48, 110 48", stroke: "#fbcfe8", strokeWidth: "6", strokeLinecap: "round", opacity: "0.8" }),
+                /* @__PURE__ */ jsxRuntimeExports.jsx("rect", { x: "70", y: "115", width: "100", height: "10", rx: "5", fill: "#334155" }),
+                /* @__PURE__ */ jsxRuntimeExports.jsx("rect", { x: "70", y: "115", width: "100", height: "4", rx: "2", fill: "#64748b" }),
+                /* @__PURE__ */ jsxRuntimeExports.jsx("rect", { x: "95", y: "145", width: "50", height: "20", rx: "4", fill: "#0f172a" }),
+                /* @__PURE__ */ jsxRuntimeExports.jsx("text", { x: "120", y: "159", fontFamily: "monospace", fontSize: "10", fontWeight: "bold", fill: "#ec4899", textAnchor: "middle", letterSpacing: "1", children: "00:00" }),
+                /* @__PURE__ */ jsxRuntimeExports.jsxs("g", { style: { animation: "lockSnap 1s cubic-bezier(0.175, 0.885, 0.32, 1.275) 0.5s both" }, children: [
+                  /* @__PURE__ */ jsxRuntimeExports.jsx("rect", { x: "105", y: "105", width: "30", height: "26", rx: "4", fill: "#f59e0b" }),
+                  /* @__PURE__ */ jsxRuntimeExports.jsx("rect", { x: "105", y: "105", width: "30", height: "26", rx: "4", fill: "#fbbf24", opacity: "0.6", transform: "translate(-2, -2)" }),
+                  /* @__PURE__ */ jsxRuntimeExports.jsx("path", { d: "M 112 105 L 112 95 C 112 90, 128 90, 128 95 L 128 105", fill: "none", stroke: "#d97706", strokeWidth: "4", strokeLinecap: "round" }),
+                  /* @__PURE__ */ jsxRuntimeExports.jsx("circle", { cx: "120", cy: "118", r: "3", fill: "#78350f" }),
+                  /* @__PURE__ */ jsxRuntimeExports.jsx("path", { d: "M 119 121 L 121 121 L 121 126 L 119 126 Z", fill: "#78350f" })
+                ] })
+              ] }),
+              [...Array(15)].map((_2, i2) => {
+                const angle = i2 * 24 * Math.PI / 180;
+                const dist = 100 + Math.random() * 50;
+                const tx = `${Math.cos(angle) * dist}px`;
+                const ty = `${Math.sin(angle) * dist}px`;
+                return /* @__PURE__ */ jsxRuntimeExports.jsx(
+                  "svg",
+                  {
+                    width: "24",
+                    height: "24",
+                    viewBox: "0 0 24 24",
+                    fill: "none",
+                    className: `absolute top-1/2 left-1/2 -ml-3 -mt-10 ${i2 % 3 === 0 ? "text-pink-300" : i2 % 3 === 1 ? "text-rose-400" : "text-fuchsia-400"}`,
+                    style: {
+                      "--tx": tx,
+                      "--ty": ty,
+                      animation: `floatUpFade 1.5s ease-out forwards ${0.3 + Math.random() * 0.3}s`
+                    },
+                    children: i2 % 2 === 0 ? /* @__PURE__ */ jsxRuntimeExports.jsx("path", { d: "M12 21.35l-1.45-1.32C5.4 15.36 2 12.28 2 8.5 2 5.42 4.42 3 7.5 3c1.74 0 3.41.81 4.5 2.09C13.09 3.81 14.76 3 16.5 3 19.58 3 22 5.42 22 8.5c0 3.78-3.4 6.86-8.55 11.54L12 21.35z", fill: "currentColor" }) : /* @__PURE__ */ jsxRuntimeExports.jsx("rect", { x: "10", y: "10", width: "4", height: "4", rx: "2", fill: "currentColor" })
+                  },
+                  `star-${i2}`
+                );
+              }),
+              /* @__PURE__ */ jsxRuntimeExports.jsx("h2", { className: "text-4xl font-extrabold text-pink-500 drop-shadow-lg tracking-tight text-center z-50", children: "Capsule Sealed!" })
+            ] })
+          ] }) : /* @__PURE__ */ jsxRuntimeExports.jsxs("div", { className: "bg-card w-full max-w-lg border border-border rounded-2xl shadow-2xl flex flex-col p-6 animate-in slide-in-from-bottom-4", children: [
             /* @__PURE__ */ jsxRuntimeExports.jsxs("h2", { className: "text-2xl font-bold mb-2 flex items-center gap-2", children: [
               /* @__PURE__ */ jsxRuntimeExports.jsx(Send, { size: 24, className: "text-pink-500" }),
               " Seal a New Capsule"
@@ -143134,34 +145109,31 @@ function NavLink({ to, icon: Icon2, children: children2 }) {
       Link$2,
       {
         to,
-        className: `flex items-center gap-3 px-3 py-2.5 rounded-md text-sm font-medium transition-colors duration-200 ${isActive2 ? "bg-primary/10 text-primary" : "text-muted-foreground hover:bg-accent hover:text-accent-foreground"}`,
+        className: `flex items-center gap-4 px-3 py-2.5 mx-2 rounded-md text-sm font-medium transition-colors duration-200 overflow-hidden ${isActive2 ? "bg-primary/10 text-primary" : "text-muted-foreground hover:bg-accent hover:text-accent-foreground"}`,
         children: [
-          /* @__PURE__ */ jsxRuntimeExports.jsx(Icon2, { size: 18 }),
-          children2
+          /* @__PURE__ */ jsxRuntimeExports.jsx("div", { className: "shrink-0 flex items-center justify-center ml-0.5", children: /* @__PURE__ */ jsxRuntimeExports.jsx(Icon2, { size: 20 }) }),
+          /* @__PURE__ */ jsxRuntimeExports.jsx("span", { className: "whitespace-nowrap opacity-0 group-hover:opacity-100 transition-opacity duration-300", children: children2 })
         ]
       }
     ) }),
-    /* @__PURE__ */ jsxRuntimeExports.jsxs(TooltipContent, { side: "right", children: [
-      "Navigate to ",
-      children2
-    ] })
+    /* @__PURE__ */ jsxRuntimeExports.jsx(TooltipContent, { side: "right", className: "group-hover:hidden", children: children2 })
   ] });
 }
 function NavGroup({ title, defaultOpen = true, children: children2 }) {
   const [isOpen, setIsOpen] = reactExports.useState(defaultOpen);
   return /* @__PURE__ */ jsxRuntimeExports.jsxs("div", { className: "space-y-1 mb-4", children: [
-    /* @__PURE__ */ jsxRuntimeExports.jsxs(
+    /* @__PURE__ */ jsxRuntimeExports.jsx(
       "button",
       {
         onClick: () => setIsOpen(!isOpen),
-        className: "w-full flex items-center justify-between px-3 py-1 text-xs font-semibold text-muted-foreground uppercase tracking-wider hover:text-foreground transition-colors group outline-none",
-        children: [
+        className: "w-full flex items-center px-5 py-1 text-xs font-semibold text-muted-foreground uppercase tracking-wider hover:text-foreground transition-colors group/btn outline-none overflow-hidden whitespace-nowrap h-6",
+        children: /* @__PURE__ */ jsxRuntimeExports.jsxs("span", { className: "opacity-0 group-hover:opacity-100 transition-opacity duration-300 flex-1 text-left flex justify-between items-center w-full", children: [
           title,
-          /* @__PURE__ */ jsxRuntimeExports.jsx("span", { className: "opacity-50 group-hover:opacity-100 transition-opacity text-[10px]", children: isOpen ? "▼" : "▶" })
-        ]
+          /* @__PURE__ */ jsxRuntimeExports.jsx("span", { className: "opacity-50 group-hover/btn:opacity-100 transition-opacity text-[10px]", children: isOpen ? "▼" : "▶" })
+        ] })
       }
     ),
-    isOpen && /* @__PURE__ */ jsxRuntimeExports.jsx("div", { className: "space-y-1 animate-in slide-in-from-top-2 duration-200", children: children2 })
+    isOpen && /* @__PURE__ */ jsxRuntimeExports.jsx("div", { className: "space-y-1 animate-in slide-in-from-top-1 duration-200", children: children2 })
   ] });
 }
 let ErrorBoundary$1 = class ErrorBoundary extends React.Component {
@@ -143322,14 +145294,14 @@ function AppShell() {
     return () => window.removeEventListener("profileUpdated", handleProfileUpdate);
   }, []);
   return /* @__PURE__ */ jsxRuntimeExports.jsxs("div", { className: "flex h-screen bg-background text-foreground overflow-hidden", children: [
-    /* @__PURE__ */ jsxRuntimeExports.jsxs("aside", { className: "w-64 border-r border-border bg-card flex flex-col shadow-sm z-10", children: [
-      /* @__PURE__ */ jsxRuntimeExports.jsxs("div", { className: "h-16 px-6 border-b border-border flex items-center gap-3", children: [
+    /* @__PURE__ */ jsxRuntimeExports.jsxs("aside", { className: "group w-[72px] hover:w-64 transition-all duration-300 ease-in-out border-r border-border bg-card flex flex-col shadow-sm z-50 flex-shrink-0 overflow-hidden relative", children: [
+      /* @__PURE__ */ jsxRuntimeExports.jsxs("div", { className: "h-16 px-5 border-b border-border flex items-center gap-4 shrink-0 overflow-hidden", children: [
         /* @__PURE__ */ jsxRuntimeExports.jsxs(Tooltip, { children: [
           /* @__PURE__ */ jsxRuntimeExports.jsx(TooltipTrigger, { asChild: true, children: /* @__PURE__ */ jsxRuntimeExports.jsx(
             "button",
             {
               onClick: () => setIsProfileOpen(true),
-              className: "w-8 h-8 bg-gradient-to-br from-primary to-blue-600 rounded-lg flex items-center justify-center text-white font-bold shadow-md hover:opacity-80 transition-opacity cursor-pointer",
+              className: "w-8 h-8 shrink-0 bg-gradient-to-br from-primary to-blue-600 rounded-lg flex items-center justify-center text-white font-bold shadow-md hover:opacity-80 transition-opacity cursor-pointer",
               children: userProfile?.photoPath ? /* @__PURE__ */ jsxRuntimeExports.jsx(
                 "img",
                 {
@@ -143340,11 +145312,11 @@ function AppShell() {
               ) : userProfile?.fullName ? userProfile.fullName.split(" ").map((n2) => n2[0]).join("").substring(0, 2).toUpperCase() : "K"
             }
           ) }),
-          /* @__PURE__ */ jsxRuntimeExports.jsx(TooltipContent, { side: "bottom", children: "Edit Profile settings" })
+          /* @__PURE__ */ jsxRuntimeExports.jsx(TooltipContent, { side: "bottom", className: "group-hover:hidden", children: "Profile & Settings" })
         ] }),
-        /* @__PURE__ */ jsxRuntimeExports.jsx("span", { className: "font-bold text-lg tracking-tight", children: currentProfile === "private" ? `👤 ${userProfile?.fullName?.split(" ")[0] || "Private"}` : "Kiseki Record" })
+        /* @__PURE__ */ jsxRuntimeExports.jsx("span", { className: "font-bold text-lg tracking-tight whitespace-nowrap opacity-0 group-hover:opacity-100 transition-opacity duration-300", children: currentProfile === "private" ? `👤 ${userProfile?.fullName?.split(" ")[0] || "Private"}` : "Kiseki Record" })
       ] }),
-      /* @__PURE__ */ jsxRuntimeExports.jsxs("div", { className: "flex-1 overflow-y-auto py-4 px-3", children: [
+      /* @__PURE__ */ jsxRuntimeExports.jsxs("div", { className: "flex-1 overflow-y-auto overflow-x-hidden py-4 scrollbar-none custom-scrollbar-sidebar", children: [
         /* @__PURE__ */ jsxRuntimeExports.jsxs(NavGroup, { title: "Overview", children: [
           /* @__PURE__ */ jsxRuntimeExports.jsx(NavLink, { to: "/", icon: LayoutDashboard, children: "Dashboard" }),
           /* @__PURE__ */ jsxRuntimeExports.jsx(NavLink, { to: "/reports", icon: FileChartColumnIncreasing, children: "Reports" })
@@ -143363,17 +145335,17 @@ function AppShell() {
         ] }),
         /* @__PURE__ */ jsxRuntimeExports.jsx(NavGroup, { title: "Intelligence", children: /* @__PURE__ */ jsxRuntimeExports.jsx(NavLink, { to: "/assistant", icon: Bot, children: "AI Assistant" }) }),
         devModeEnabled && /* @__PURE__ */ jsxRuntimeExports.jsx(NavGroup, { title: "Developer", defaultOpen: false, children: /* @__PURE__ */ jsxRuntimeExports.jsx(NavLink, { to: "/logs", icon: TriangleAlert, children: "Errors & Logs" }) }),
-        /* @__PURE__ */ jsxRuntimeExports.jsxs(NavGroup, { title: "System", children: [
-          /* @__PURE__ */ jsxRuntimeExports.jsx(NavLink, { to: "/reports", icon: FileChartColumnIncreasing, children: "Reports" }),
-          /* @__PURE__ */ jsxRuntimeExports.jsx(NavLink, { to: "/notifications", icon: Bell, children: /* @__PURE__ */ jsxRuntimeExports.jsxs("div", { className: "flex items-center justify-between w-full", children: [
-            /* @__PURE__ */ jsxRuntimeExports.jsx("span", { children: "Notifications" }),
-            /* @__PURE__ */ jsxRuntimeExports.jsx(NotificationBadge, {})
-          ] }) })
-        ] })
+        /* @__PURE__ */ jsxRuntimeExports.jsx(NavGroup, { title: "System", children: /* @__PURE__ */ jsxRuntimeExports.jsx(NavLink, { to: "/notifications", icon: Bell, children: /* @__PURE__ */ jsxRuntimeExports.jsxs("div", { className: "flex items-center justify-between w-full", children: [
+          /* @__PURE__ */ jsxRuntimeExports.jsx("span", { children: "Notifications" }),
+          /* @__PURE__ */ jsxRuntimeExports.jsx(NotificationBadge, {})
+        ] }) }) })
       ] }),
-      /* @__PURE__ */ jsxRuntimeExports.jsx("div", { className: "h-16 border-t border-border px-6 flex items-center justify-start bg-card/50", children: /* @__PURE__ */ jsxRuntimeExports.jsxs(Tooltip, { children: [
-        /* @__PURE__ */ jsxRuntimeExports.jsx(TooltipTrigger, { asChild: true, children: /* @__PURE__ */ jsxRuntimeExports.jsx(Link$2, { to: "/settings", className: "text-muted-foreground hover:text-foreground transition-colors p-2 hover:bg-accent rounded-md", children: /* @__PURE__ */ jsxRuntimeExports.jsx(Settings$1, { size: 18 }) }) }),
-        /* @__PURE__ */ jsxRuntimeExports.jsx(TooltipContent, { side: "right", children: "Application Settings" })
+      /* @__PURE__ */ jsxRuntimeExports.jsx("div", { className: "h-16 border-t border-border px-5 flex items-center shrink-0 bg-card/50 overflow-hidden", children: /* @__PURE__ */ jsxRuntimeExports.jsxs(Tooltip, { children: [
+        /* @__PURE__ */ jsxRuntimeExports.jsx(TooltipTrigger, { asChild: true, children: /* @__PURE__ */ jsxRuntimeExports.jsxs(Link$2, { to: "/settings", className: "flex items-center gap-4 text-muted-foreground hover:text-foreground transition-colors p-2 hover:bg-accent rounded-md overflow-hidden", children: [
+          /* @__PURE__ */ jsxRuntimeExports.jsx(Settings$1, { size: 20, className: "shrink-0" }),
+          /* @__PURE__ */ jsxRuntimeExports.jsx("span", { className: "whitespace-nowrap font-medium opacity-0 group-hover:opacity-100 transition-opacity duration-300", children: "Settings" })
+        ] }) }),
+        /* @__PURE__ */ jsxRuntimeExports.jsx(TooltipContent, { side: "right", className: "group-hover:hidden", children: "Application Settings" })
       ] }) })
     ] }),
     /* @__PURE__ */ jsxRuntimeExports.jsxs("div", { className: "flex-1 flex flex-col bg-background relative", children: [
