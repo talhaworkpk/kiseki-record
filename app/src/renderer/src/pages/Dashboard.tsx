@@ -710,8 +710,9 @@ export default function Dashboard() {
           url.searchParams.delete('calendarMemoryDay')
           window.history.replaceState({}, '', url.pathname + url.search)
         }} 
-        date={memoryModalDate} 
-        existingMemories={data.calendarMemories || []}
+        selectedDate={memoryModalDate} 
+        memories={data.calendarMemories || []}
+        onSave={() => loadDashboard()}
       />
 
       {/* Quick Add Modal */}
