@@ -21,8 +21,8 @@ export const appConfig = {
   
   // Latest release information - update this when releasing new versions
   latestRelease: {
-    version: '1.1.0',
-    downloadUrl: 'https://github.com/talhaworkpk/kiseki-record/releases/download/v1.1.0/Kiseki.Record.Setup.1.0.0.exe',
+    version: '1.2.0',
+    downloadUrl: 'https://github.com/talhaworkpk/kiseki-record/releases/download/v1.2.0/Kiseki.Record.Setup.1.0.0.exe',
     fileSize: '92.3 MB',
     releaseDate: new Date().toISOString().split('T')[0],
     sha256: 'placeholder-sha256-hash-will-be-added-on-release',
@@ -88,6 +88,17 @@ export const appConfig = {
   
   // Changelog history
   changelog: [
+    {
+      version: '1.2.0',
+      date: new Date().toISOString().split('T')[0],
+      changes: [
+        'Added rich media (audio/video) support for Journal entries with custom icons',
+        'Added an interactive 3D shooting stars background for the Career Goals page',
+        'Improved Journal Cards to display individual colored tag badges',
+        'Enhanced keyboard navigation (Arrow keys and ESC shortcuts) for search and menus',
+        'Improved dark mode theme integration and icon color syncing',
+      ],
+    },
     {
       version: '1.1.0',
       date: new Date().toISOString().split('T')[0],

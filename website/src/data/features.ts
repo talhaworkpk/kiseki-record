@@ -6,6 +6,16 @@ export interface Feature {
 
 export const features: Feature[] = [
   {
+    icon: 'Image',
+    title: 'Rich Media Journaling',
+    description: 'Beautifully display audio, video, and image attachments within your journal entries.',
+  },
+  {
+    icon: 'Sparkles',
+    title: 'Dynamic Theming & UI',
+    description: 'Immersive 3D interactive backgrounds and beautifully synced dark mode integration.',
+  },
+  {
     icon: 'Bot',
     title: 'AI Chat',
     description: 'Integrated AI assistant powered by local Ollama for intelligent conversations and insights.',
