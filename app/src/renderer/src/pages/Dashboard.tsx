@@ -711,7 +711,7 @@ export default function Dashboard() {
           window.history.replaceState({}, '', url.pathname + url.search)
         }} 
         selectedDate={memoryModalDate} 
-        memories={data.calendarMemories || []}
+        memories={(data.calendarMemories || []).filter((m: any) => m.month === memoryModalDate?.month && m.day === memoryModalDate?.day)}
         onSave={() => loadDashboard()}
       />
 
