@@ -90,6 +90,22 @@ export const appConfig = {
   // Changelog history
   changelog: [
     {
+      version: '1.4.0',
+      date: new Date().toISOString().split('T')[0],
+      changes: [
+        'Deep integration between Projects and Goals: Link goals directly to projects',
+        'Automatic Project progress calculation based on linked goals and sub-goals',
+        'Robust Conflict Resolution engine for JSON imports (Habits, Goals)',
+        'Redesigned global action menus (Three-dots menus) across Relationships, Habits, and Goals',
+        'New keyboard shortcuts (e.g., Ctrl+S to create memories)',
+        'UI enhancements and bug fixes for a smoother user experience'
+      ],
+      tips: [
+        'Pro Tip: Use the new Project dropdown when creating a Goal to automatically track its progress in your Project Portfolio!',
+        'You can now safely import backups—if a conflict is detected, you will be prompted to replace or skip the imported item.'
+      ]
+    },
+    {
       version: '1.2.0',
       date: new Date().toISOString().split('T')[0],
       changes: [
