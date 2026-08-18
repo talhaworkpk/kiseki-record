@@ -138,7 +138,7 @@ export const appConfig = {
     },
     {
       version: '1.1.0',
-      date: new Date().toISOString().split('T')[0],
+      date: '2026-08-06',
       changes: [
         'Added System Tray integration for background execution',
         'Added native Windows Desktop Notifications (Birthdays, Inactivity, Achievements)',
@@ -150,7 +150,7 @@ export const appConfig = {
     },
     {
       version: '1.0.0',
-      date: '2024-08-04',
+      date: '2026-08-04',
       changes: [
         'Initial Release',
         'AI Chat with local Ollama support',
