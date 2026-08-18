@@ -97,7 +97,7 @@ export const appConfig = {
         'Automatic Project progress calculation based on linked goals and sub-goals',
         'Robust Conflict Resolution engine for JSON imports (Habits, Goals)',
         'Redesigned global action menus (Three-dots menus) across Relationships, Habits, and Goals',
-        'New keyboard shortcuts (e.g., Ctrl+S to create memories)',
+        'New keyboard shortcuts (e.g., Ctrl+S to save memories)',
         'UI enhancements and bug fixes for a smoother user experience'
       ],
       tips: [
@@ -107,7 +107,7 @@ export const appConfig = {
     },
     {
       version: '1.3.0',
-      date: new Date().toISOString().split('T')[0],
+      date: '2026-08-13',
       changes: [
         'Added Sub-goals support to break down your main goals into actionable steps',
         'Added Grid/List view toggle in the Goals section for better organization',
@@ -122,7 +122,7 @@ export const appConfig = {
     },
     {
       version: '1.2.0',
-      date: new Date().toISOString().split('T')[0],
+      date: '2026-08-08',
       changes: [
         'Added a versatile "New" button in the dashboard for quick additions',
         'Enhanced "Search" functionality across the application',
