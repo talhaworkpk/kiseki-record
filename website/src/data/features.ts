@@ -37,8 +37,13 @@ export const features: Feature[] = [
   },
   {
     icon: 'Target',
-    title: 'Goals',
-    description: 'Set, track, and achieve your personal and professional goals with progress visualization.',
+    title: 'Goals & Sub-Goals',
+    description: 'Set, track, and achieve your personal and professional goals by breaking them down into actionable sub-goals.',
+  },
+  {
+    icon: 'Network',
+    title: 'Linked Projects',
+    description: 'Deeply link your goals to comprehensive projects with dynamic, auto-calculating progress visualization.',
   },
   {
     icon: 'BarChart3',
