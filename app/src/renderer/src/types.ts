@@ -25,8 +25,21 @@ export interface RecordItem {
   deletedAt?: number // Soft deletion timestamp
 }
 
+export interface SubGoal {
+  id: string
+  title: string
+  description?: string
+  completed: boolean
+  targetDate?: string
+  notes?: string
+  order: number
+  startDate?: string
+  completedAt?: string
+}
+
 export interface Goal {
   _id?: string
+  projectId?: string | null
   title: string
   description: string
   category: string
@@ -38,6 +51,9 @@ export interface Goal {
   notes?: string
   isFavorite?: boolean
   isArchived?: boolean
+  subGoals?: SubGoal[]
+  createdAt?: number
+  updatedAt?: number
 }
 
 export interface Habit {

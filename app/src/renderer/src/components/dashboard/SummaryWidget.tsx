@@ -1,5 +1,6 @@
 import React from 'react'
 import { Target, Zap, Book, Users, FileText } from 'lucide-react'
+import { isHabitActiveOnDay } from '../../pages/habits/HabitManager'
 import { LineChart, Line, ResponsiveContainer } from 'recharts'
 
 export function SummaryWidget({ data }: any) {
@@ -8,12 +9,13 @@ export function SummaryWidget({ data }: any) {
   const habits = data.habits || []
   const journal = data.journal || []
   const relationships = data.relationships || []
-
-  const habitsDone = habits.filter((h:any)=>h.completedToday).length
-  const habitsLeft = habits.length - habitsDone
+  
+  const todayHabits = habits.filter((h: any) => isHabitActiveOnDay(h, new Date()))
+  const habitsDone = todayHabits.filter((h:any)=>h.completedToday).length
+  const habitsLeft = todayHabits.length - habitsDone
   
   // Calculate Progress %
-  const progressPct = habits.length === 0 ? 0 : Math.round((habitsDone / habits.length) * 100)
+  const progressPct = todayHabits.length === 0 ? 0 : Math.round((habitsDone / todayHabits.length) * 100)
 
   // Calculate Streak based on consecutive journal entries
   const getStreak = () => {
@@ -117,7 +119,7 @@ export function SummaryWidget({ data }: any) {
       <div className="grid grid-cols-2 sm:grid-cols-3 xl:grid-cols-2 2xl:grid-cols-3 gap-4 xl:w-2/3">
         {[
           { label: 'Records', count: records.length, color: '#3b82f6', bg: 'bg-blue-500/10', icon: FileText, trend: getWeekTrend(records) },
-          { label: 'Habits', count: habits.length, color: '#22c55e', bg: 'bg-green-500/10', icon: Zap, trend: `${habits.length - habitsLeft}/${habits.length} Done` },
+          { label: 'Habits', count: todayHabits.length, color: '#22c55e', bg: 'bg-green-500/10', icon: Zap, trend: `${habitsDone}/${todayHabits.length} Today` },
           { label: 'Goals', count: goals.length, color: '#f97316', bg: 'bg-orange-500/10', icon: Target, trend: `${goals.filter((g:any)=>g.status === 'Completed').length}/${goals.length} Done` },
           { label: 'Journal', count: journal.length, color: '#a855f7', bg: 'bg-purple-500/10', icon: Book, trend: getWeekTrend(journal) },
           { label: 'People', count: relationships.length, color: '#ec4899', bg: 'bg-pink-500/10', icon: Users, trend: `${relationships.length} Connected` }

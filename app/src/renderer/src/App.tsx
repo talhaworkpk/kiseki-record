@@ -1,6 +1,6 @@
 import React, { useState, useEffect, ErrorInfo } from 'react'
 import { HashRouter as Router, Routes, Route, Link, useLocation, useNavigate } from 'react-router-dom'
-import { Book, LayoutDashboard, Settings as SettingsIcon, FileText, Target, Zap, Users, GraduationCap, BrainCircuit, Bot, AlertTriangle, FileBarChart, CheckCircle2, Info, XCircle, Award, Mail, Bell } from 'lucide-react'
+import { Book, LayoutDashboard, Settings as SettingsIcon, FileText, Target, Zap, Users, GraduationCap, BrainCircuit, Bot, AlertTriangle, FileBarChart, CheckCircle2, Info, XCircle, Award, Mail, Bell, ChevronLeft, ChevronRight } from 'lucide-react'
 import Records from './pages/Records'
 import Journal from './pages/Journal'
 import Settings from './pages/Settings'
@@ -23,10 +23,66 @@ import { PrivateAuthModal } from './components/auth/PrivateAuthModal'
 import Notifications from './pages/Notifications'
 import MemoryCapsules from './pages/MemoryCapsules'
 import { UserProfile } from './types'
-import { NavigationHistoryProvider } from './contexts/NavigationHistoryContext'
+import { NavigationHistoryProvider, useNavigationHistory } from './contexts/NavigationHistoryContext'
 import { NotificationProvider, useNotificationContext } from './contexts/NotificationContext'
 import { useKeyboardShortcuts } from './hooks/useKeyboardShortcuts'
 import { Tooltip, TooltipTrigger, TooltipContent, TooltipProvider } from './components/ui/tooltip'
+
+function NavigationButtons() {
+  const { canGoBack, canGoForward, goBack, goForward } = useNavigationHistory()
+
+  useEffect(() => {
+    const handleKeyDown = (e: KeyboardEvent) => {
+      if (e.ctrlKey) {
+        if (e.key === 'ArrowLeft' && canGoBack) {
+          e.preventDefault()
+          goBack()
+        } else if (e.key === 'ArrowRight' && canGoForward) {
+          e.preventDefault()
+          goForward()
+        }
+      }
+    }
+
+    window.addEventListener('keydown', handleKeyDown)
+    return () => window.removeEventListener('keydown', handleKeyDown)
+  }, [canGoBack, canGoForward, goBack, goForward])
+
+  return (
+    <div className="flex items-center gap-2">
+      <Tooltip>
+        <TooltipTrigger asChild>
+          <button
+            onClick={goBack}
+            disabled={!canGoBack}
+            className="p-2 rounded-lg hover:bg-accent disabled:opacity-30 disabled:cursor-not-allowed transition-colors"
+            title="Go Back (Ctrl + Left Arrow)"
+          >
+            <ChevronLeft size={20} />
+          </button>
+        </TooltipTrigger>
+        <TooltipContent side="bottom">
+          Go Back (Ctrl + ←)
+        </TooltipContent>
+      </Tooltip>
+      <Tooltip>
+        <TooltipTrigger asChild>
+          <button
+            onClick={goForward}
+            disabled={!canGoForward}
+            className="p-2 rounded-lg hover:bg-accent disabled:opacity-30 disabled:cursor-not-allowed transition-colors"
+            title="Go Forward (Ctrl + Right Arrow)"
+          >
+            <ChevronRight size={20} />
+          </button>
+        </TooltipTrigger>
+        <TooltipContent side="bottom">
+          Go Forward (Ctrl + →)
+        </TooltipContent>
+      </Tooltip>
+    </div>
+  )
+}
 
 function NavLink({ to, icon: Icon, children }: { to: string, icon: any, children: React.ReactNode }) {
   const location = useLocation()
@@ -134,6 +190,36 @@ function AppShell() {
   const [currentProfile, setCurrentProfile] = useState<'public' | 'private'>('public')
   const [showPrivateSetup, setShowPrivateSetup] = useState(false)
   const [showPrivateAuth, setShowPrivateAuth] = useState(false)
+
+  // Activity tracking to prevent auto-lock while active
+  useEffect(() => {
+    if (currentProfile !== 'private') return
+
+    let lastActivityTime = Date.now()
+    const MIN_INTERVAL = 30000 // Send activity at most every 30 seconds
+
+    const trackActivity = () => {
+      const now = Date.now()
+      if (now - lastActivityTime > MIN_INTERVAL) {
+        lastActivityTime = now
+        // @ts-ignore
+        if (window.api.profile?.activity) {
+          // @ts-ignore
+          window.api.profile.activity().catch(console.error)
+        }
+      }
+    }
+
+    window.addEventListener('mousemove', trackActivity, { passive: true })
+    window.addEventListener('keydown', trackActivity, { passive: true })
+    window.addEventListener('click', trackActivity, { passive: true })
+
+    return () => {
+      window.removeEventListener('mousemove', trackActivity)
+      window.removeEventListener('keydown', trackActivity)
+      window.removeEventListener('click', trackActivity)
+    }
+  }, [currentProfile])
 
   // Profile management & shortcut
   useEffect(() => {
@@ -369,7 +455,7 @@ function AppShell() {
       {/* Main Content Area */}
       <div className="flex-1 flex flex-col bg-background relative">
         <header className="h-16 border-b border-border bg-card/50 backdrop-blur-sm flex items-center justify-between px-6 z-50">
-          <div className="text-sm text-muted-foreground font-medium">Local Mode</div>
+          <NavigationButtons />
           <div className="flex items-center gap-4">
             <NotificationDropdown devModeEnabled={devModeEnabled} />
             <Tooltip>

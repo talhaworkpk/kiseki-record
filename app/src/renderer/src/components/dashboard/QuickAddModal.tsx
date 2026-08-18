@@ -131,7 +131,27 @@ export function QuickAddModal({ isOpen, onClose, onSuccess }: QuickAddModalProps
         entry = { ...entry, ...formData, category: 'Career', priority: formData.priority || 'medium', status: formData.status || 'Active', startDate: formData.startDate || todayStr, targetDate: formData.targetDate || todayStr, progress: Number(formData.progress) || 0 }
       } else if (type === 'relationships') {
         if (targetPersonId === 'new') {
-          entry = { ...entry, ...formData, tags: [], relationshipScore: 50, relationshipType: formData.relationshipType || 'Friend', profilePicture: finalProfilePicture || photos[0], photos, audio: audios, video: videos, attachments }
+          // Calculate initial score based on provided information
+          let initialScore = 50
+          if (formData.relationshipType) {
+            // Different relationship types start with different base scores
+            const typeScores: Record<string, number> = {
+              'Partner': 70,
+              'Best Friend': 65,
+              'Family': 60,
+              'Friend': 50,
+              'Colleague': 40,
+              'Acquaintance': 30,
+              'Other': 35
+            }
+            initialScore = typeScores[formData.relationshipType] || 50
+          }
+          // Add points for having profile picture
+          if (finalProfilePicture || photos.length > 0) initialScore += 5
+          // Add points for having media
+          if (audios.length > 0 || videos.length > 0 || attachments.length > 0) initialScore += 3
+
+          entry = { ...entry, ...formData, tags: [], relationshipScore: Math.min(100, initialScore), relationshipType: formData.relationshipType || 'Friend', profilePicture: finalProfilePicture || photos[0], photos, audio: audios, video: videos, attachments }
         } else {
           shouldInsert = false
           const existingPerson = savedRelationships.find(r => r._id === targetPersonId)

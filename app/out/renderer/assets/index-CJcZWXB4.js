@@ -35925,6 +35925,26 @@ function RecordCard({ record, viewMode, isSelectionMode, isSelected, onToggleSel
   const [showMore, setShowMore] = reactExports.useState(false);
   const [contextMenu, setContextMenu] = reactExports.useState(null);
   const menuRef = reactExports.useRef(null);
+  const [localRelationships, setLocalRelationships] = reactExports.useState(relationships);
+  reactExports.useEffect(() => {
+    const loadRelationships = async () => {
+      try {
+        const rels = await window.api.db.find("relationships", {});
+        console.log("RecordCard: Loaded relationships:", rels.length, "for record:", record._id);
+        console.log("RecordCard: Memory people IDs:", record.people);
+        console.log("RecordCard: Available relationship IDs:", rels.map((r2) => r2._id));
+        setLocalRelationships(rels);
+      } catch (e3) {
+        console.error("RecordCard: Error loading relationships:", e3);
+        setLocalRelationships(relationships);
+      }
+    };
+    if (relationships.length === 0) {
+      loadRelationships();
+    } else {
+      setLocalRelationships(relationships);
+    }
+  }, [record._id, record.people, relationships]);
   reactExports.useEffect(() => {
     if (!contextMenu) return;
     const handleClick2 = (e3) => {
@@ -35958,8 +35978,12 @@ function RecordCard({ record, viewMode, isSelectionMode, isSelected, onToggleSel
   const firstImage = record.type === "Photo" && record.attachments && record.attachments.length > 0 ? record.attachments[0] : record.attachments?.find((a2) => a2.match(/\.(jpeg|jpg|gif|png|webp|gfif|bmp|tiff|svg|ico|heic|heif|raw|cr2|nef|orf|sr2)$/i));
   const firstVideo = record.attachments?.find((a2) => a2.match(/\.(mp4|webm|mkv|avi|mov|wmv|flv)$/i));
   const relatedPeople = record.people?.map((personId) => {
-    const person = relationships.find((r2) => r2._id === personId);
-    return person ? person.name : personId;
+    const person = localRelationships.find((r2) => r2._id === personId);
+    if (!person) {
+      console.log("Relationship not found for ID:", personId, "Available relationships:", localRelationships.map((r2) => ({ id: r2._id, name: r2.name })));
+      return "Unknown Person";
+    }
+    return person.name;
   }).filter(Boolean) || [];
   const cleanDesc = record.description?.replace(/<[^>]*>?/gm, "") || "";
   const isLongDesc = cleanDesc.length > 150;
@@ -35983,7 +36007,7 @@ function RecordCard({ record, viewMode, isSelectionMode, isSelected, onToggleSel
             firstImage ? /* @__PURE__ */ jsxRuntimeExports.jsx(SafeImage, { src: firstImage, className: "w-full h-full" }) : firstVideo || record.type === "Video" && record.attachments && record.attachments.length > 0 ? /* @__PURE__ */ jsxRuntimeExports.jsx(
               "video",
               {
-                src: getSafeMediaUrl(firstVideo || record.attachments[0]) + "#t=1",
+                src: getSafeMediaUrl(firstVideo || (record.attachments?.[0] || "")) + "#t=1",
                 preload: "metadata",
                 className: "w-full h-full object-cover"
               }
@@ -36280,6 +36304,8 @@ function RecordsStatistics({ records, setFilters }) {
     photos: 0,
     events: 0,
     memories: 0,
+    audio: 0,
+    video: 0,
     archived: 0,
     favorites: 0
   };
@@ -36294,6 +36320,14 @@ function RecordsStatistics({ records, setFilters }) {
     if (t2.includes("photo")) stats.photos++;
     else if (t2.includes("event")) stats.events++;
     else if (t2.includes("memory")) stats.memories++;
+    else if (t2.includes("audio") || t2.includes("voice")) stats.audio++;
+    else if (t2.includes("video")) stats.video++;
+    if (r2.attachments && r2.attachments.length > 0) {
+      const hasAudio = r2.attachments.some((a2) => a2.match(/\.(mp3|wav|ogg|m4a)$/i));
+      const hasVideo = r2.attachments.some((a2) => a2.match(/\.(mp4|webm|mkv|avi|mov|wmv|flv)$/i));
+      if (hasAudio && t2 !== "audio" && t2 !== "voice") stats.audio++;
+      if (hasVideo && t2 !== "video") stats.video++;
+    }
     if (r2.isFavorite) stats.favorites++;
   });
   const setType = (type) => {
@@ -36302,7 +36336,7 @@ function RecordsStatistics({ records, setFilters }) {
   const toggleBoolean = (key) => {
     if (setFilters) setFilters((f2) => ({ ...f2, type: "all", isFavorite: false, isArchived: false, hasImages: false, hasAttachments: false, dateRange: "all", mood: "", [key]: true }));
   };
-  return /* @__PURE__ */ jsxRuntimeExports.jsxs("div", { className: "grid grid-cols-2 md:grid-cols-3 lg:grid-cols-6 gap-3 mb-6", children: [
+  return /* @__PURE__ */ jsxRuntimeExports.jsxs("div", { className: "grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 xl:grid-cols-8 gap-3 mb-6", children: [
     /* @__PURE__ */ jsxRuntimeExports.jsxs("button", { onClick: () => setType("all"), className: "bg-card border border-border rounded-2xl p-4 flex items-center gap-4 hover:border-primary/50 hover:shadow-md transition-all text-left", children: [
       /* @__PURE__ */ jsxRuntimeExports.jsx("div", { className: "w-10 h-10 rounded-xl bg-primary/10 text-primary flex items-center justify-center shrink-0", children: /* @__PURE__ */ jsxRuntimeExports.jsx(FileText, { size: 20 }) }),
       /* @__PURE__ */ jsxRuntimeExports.jsxs("div", { children: [
@@ -36329,6 +36363,20 @@ function RecordsStatistics({ records, setFilters }) {
       /* @__PURE__ */ jsxRuntimeExports.jsxs("div", { children: [
         /* @__PURE__ */ jsxRuntimeExports.jsx("div", { className: "text-2xl font-black", children: stats.memories }),
         /* @__PURE__ */ jsxRuntimeExports.jsx("div", { className: "text-[10px] uppercase font-bold text-muted-foreground tracking-widest", children: "Memories" })
+      ] })
+    ] }),
+    /* @__PURE__ */ jsxRuntimeExports.jsxs("button", { onClick: () => setType("Audio"), className: "bg-card border border-border rounded-2xl p-4 flex items-center gap-4 hover:border-cyan-500/50 hover:shadow-md transition-all text-left", children: [
+      /* @__PURE__ */ jsxRuntimeExports.jsx("div", { className: "w-10 h-10 rounded-xl bg-cyan-500/10 text-cyan-500 flex items-center justify-center shrink-0", children: /* @__PURE__ */ jsxRuntimeExports.jsx(Music, { size: 20 }) }),
+      /* @__PURE__ */ jsxRuntimeExports.jsxs("div", { children: [
+        /* @__PURE__ */ jsxRuntimeExports.jsx("div", { className: "text-2xl font-black", children: stats.audio }),
+        /* @__PURE__ */ jsxRuntimeExports.jsx("div", { className: "text-[10px] uppercase font-bold text-muted-foreground tracking-widest", children: "Audio" })
+      ] })
+    ] }),
+    /* @__PURE__ */ jsxRuntimeExports.jsxs("button", { onClick: () => setType("Video"), className: "bg-card border border-border rounded-2xl p-4 flex items-center gap-4 hover:border-red-500/50 hover:shadow-md transition-all text-left", children: [
+      /* @__PURE__ */ jsxRuntimeExports.jsx("div", { className: "w-10 h-10 rounded-xl bg-red-500/10 text-red-500 flex items-center justify-center shrink-0", children: /* @__PURE__ */ jsxRuntimeExports.jsx(Film, { size: 20 }) }),
+      /* @__PURE__ */ jsxRuntimeExports.jsxs("div", { children: [
+        /* @__PURE__ */ jsxRuntimeExports.jsx("div", { className: "text-2xl font-black", children: stats.video }),
+        /* @__PURE__ */ jsxRuntimeExports.jsx("div", { className: "text-[10px] uppercase font-bold text-muted-foreground tracking-widest", children: "Video" })
       ] })
     ] }),
     /* @__PURE__ */ jsxRuntimeExports.jsxs("button", { onClick: () => toggleBoolean("isFavorite"), className: "bg-card border border-border rounded-2xl p-4 flex items-center gap-4 hover:border-yellow-500/50 hover:shadow-md transition-all text-left", children: [
@@ -36458,6 +36506,8 @@ function Records() {
       const data = await window.api.db.find("records", {});
       setRecords(data);
       const relData = await window.api.db.find("relationships", {});
+      console.log("Records page: Loaded", relData.length, "relationships");
+      console.log("Records page: All relationship IDs:", relData.map((r2) => ({ id: r2._id, name: r2.name })));
       setRelationships(relData);
     } catch (err) {
       console.error(err);
@@ -36470,16 +36520,27 @@ function Records() {
   }, []);
   const location = useLocation();
   reactExports.useEffect(() => {
-    const highlightId = new URLSearchParams(location.search).get("highlight");
-    if (highlightId && !loading && records.length > 0) {
-      setTimeout(() => {
-        const el2 = document.getElementById(`record-${highlightId}`);
-        if (el2) {
-          el2.scrollIntoView({ behavior: "smooth", block: "center" });
-          el2.classList.add("ring-4", "ring-primary", "shadow-2xl", "shadow-primary/40", "animate-[pulse_2s_ease-in-out_3]", "z-50");
-          setTimeout(() => el2.classList.remove("ring-4", "ring-primary", "shadow-2xl", "shadow-primary/40", "animate-[pulse_2s_ease-in-out_3]", "z-50"), 4e3);
+    const params = new URLSearchParams(location.search);
+    const highlightId = params.get("highlight");
+    const editId = params.get("edit");
+    if (!loading && records.length > 0) {
+      if (editId) {
+        const targetRecord = records.find((r2) => r2._id === editId);
+        if (targetRecord) {
+          setEditForm(targetRecord);
+          setTagsText(targetRecord.tags?.join(", ") || "");
+          setIsEditing(true);
         }
-      }, 500);
+      } else if (highlightId) {
+        setTimeout(() => {
+          const el2 = document.getElementById(`record-${highlightId}`);
+          if (el2) {
+            el2.scrollIntoView({ behavior: "smooth", block: "center" });
+            el2.classList.add("ring-4", "ring-primary", "shadow-2xl", "shadow-primary/40", "animate-[pulse_2s_ease-in-out_3]", "z-50");
+            setTimeout(() => el2.classList.remove("ring-4", "ring-primary", "shadow-2xl", "shadow-primary/40", "animate-[pulse_2s_ease-in-out_3]", "z-50"), 4e3);
+          }
+        }, 500);
+      }
     }
   }, [location.search, loading, records.length]);
   reactExports.useEffect(() => {
@@ -36774,6 +36835,18 @@ function Records() {
       NotificationEngine.notify("error", "Error Saving Record", "There was a problem saving your record.", "Records");
     }
   };
+  reactExports.useEffect(() => {
+    const down = (e3) => {
+      if (e3.ctrlKey && e3.key.toLowerCase() === "s") {
+        if (isEditing) {
+          e3.preventDefault();
+          saveRecord(e3);
+        }
+      }
+    };
+    window.addEventListener("keydown", down);
+    return () => window.removeEventListener("keydown", down);
+  }, [isEditing, editForm]);
   return /* @__PURE__ */ jsxRuntimeExports.jsxs("div", { className: "flex flex-col h-full bg-background animate-in fade-in duration-500 relative overflow-hidden", children: [
     /* @__PURE__ */ jsxRuntimeExports.jsxs("div", { className: "absolute inset-0 overflow-hidden pointer-events-none z-0", children: [
       /* @__PURE__ */ jsxRuntimeExports.jsx("div", { className: "absolute -top-[10%] -left-[10%] w-[50%] h-[50%] rounded-full bg-primary/20 blur-[120px] opacity-70 animate-[pulse_8s_ease-in-out_infinite]" }),
@@ -40796,32 +40869,32 @@ function EntryCard({ entry, active, onClick }) {
     }
   );
 }
-var __defProp$j = Object.defineProperty;
-var __name$j = (target, value) => __defProp$j(target, "name", { value, configurable: true });
+var __defProp$k = Object.defineProperty;
+var __name$k = (target, value) => __defProp$k(target, "name", { value, configurable: true });
 var canUseDOM = !!(typeof window !== "undefined" && window.document && window.document.createElement);
 function composeEventHandlers(originalEventHandler, ourEventHandler, { checkForDefaultPrevented = true } = {}) {
-  return /* @__PURE__ */ __name$j(function handleEvent(event) {
+  return /* @__PURE__ */ __name$k(function handleEvent(event) {
     originalEventHandler?.(event);
     if (checkForDefaultPrevented === false || !event || !event.defaultPrevented) {
       return ourEventHandler?.(event);
     }
   }, "handleEvent");
 }
-__name$j(composeEventHandlers, "composeEventHandlers");
+__name$k(composeEventHandlers, "composeEventHandlers");
 function getOwnerWindow(element2) {
   if (!canUseDOM) {
     throw new Error("Cannot access window outside of the DOM");
   }
   return element2?.ownerDocument?.defaultView ?? window;
 }
-__name$j(getOwnerWindow, "getOwnerWindow");
+__name$k(getOwnerWindow, "getOwnerWindow");
 function getOwnerDocument(element2) {
   if (!canUseDOM) {
     throw new Error("Cannot access document outside of the DOM");
   }
   return element2?.ownerDocument ?? document;
 }
-__name$j(getOwnerDocument, "getOwnerDocument");
+__name$k(getOwnerDocument, "getOwnerDocument");
 function getActiveElement(node2, activeDescendant = false) {
   const { activeElement } = getOwnerDocument(node2);
   if (!activeElement?.nodeName) {
@@ -40841,18 +40914,18 @@ function getActiveElement(node2, activeDescendant = false) {
   }
   return activeElement;
 }
-__name$j(getActiveElement, "getActiveElement");
+__name$k(getActiveElement, "getActiveElement");
 function isFrame(element2) {
   return element2.tagName === "IFRAME";
 }
-__name$j(isFrame, "isFrame");
-var __defProp$i = Object.defineProperty;
-var __name$i = (target, value) => __defProp$i(target, "name", { value, configurable: true });
+__name$k(isFrame, "isFrame");
+var __defProp$j = Object.defineProperty;
+var __name$j = (target, value) => __defProp$j(target, "name", { value, configurable: true });
 // @__NO_SIDE_EFFECTS__
 function createContext2(rootComponentName, defaultContext) {
   const Context = reactExports.createContext(defaultContext);
   Context.displayName = rootComponentName + "Context";
-  const Provider2 = /* @__PURE__ */ __name$i((props) => {
+  const Provider2 = /* @__PURE__ */ __name$j((props) => {
     const { children: children2, ...context } = props;
     const value = reactExports.useMemo(() => context, Object.values(context));
     return /* @__PURE__ */ jsxRuntimeExports.jsx(Context.Provider, { value, children: children2 });
@@ -40866,10 +40939,10 @@ function createContext2(rootComponentName, defaultContext) {
     if (optional) return void 0;
     throw new Error(`\`${consumerName}\` must be used within \`${rootComponentName}\``);
   }
-  __name$i(useContext2, "useContext");
+  __name$j(useContext2, "useContext");
   return [Provider2, useContext2];
 }
-__name$i(createContext2, "createContext");
+__name$j(createContext2, "createContext");
 // @__NO_SIDE_EFFECTS__
 function createContextScope(scopeName, createContextScopeDeps = []) {
   let defaultContexts = [];
@@ -40878,7 +40951,7 @@ function createContextScope(scopeName, createContextScopeDeps = []) {
     BaseContext.displayName = rootComponentName + "Context";
     const index2 = defaultContexts.length;
     defaultContexts = [...defaultContexts, defaultContext];
-    const Provider2 = /* @__PURE__ */ __name$i((props) => {
+    const Provider2 = /* @__PURE__ */ __name$j((props) => {
       const { scope, children: children2, ...context } = props;
       const Context = scope?.[scopeName]?.[index2] || BaseContext;
       const value = reactExports.useMemo(() => context, Object.values(context));
@@ -40894,15 +40967,15 @@ function createContextScope(scopeName, createContextScopeDeps = []) {
       if (optional) return void 0;
       throw new Error(`\`${consumerName}\` must be used within \`${rootComponentName}\``);
     }
-    __name$i(useContext2, "useContext");
+    __name$j(useContext2, "useContext");
     return [Provider2, useContext2];
   }
-  __name$i(createContext3, "createContext");
-  const createScope = /* @__PURE__ */ __name$i(() => {
+  __name$j(createContext3, "createContext");
+  const createScope = /* @__PURE__ */ __name$j(() => {
     const scopeContexts = defaultContexts.map((defaultContext) => {
       return reactExports.createContext(defaultContext);
     });
-    return /* @__PURE__ */ __name$i(function useScope(scope) {
+    return /* @__PURE__ */ __name$j(function useScope(scope) {
       const contexts = scope?.[scopeName] || scopeContexts;
       return reactExports.useMemo(
         () => ({ [`__scope${scopeName}`]: { ...scope, [scopeName]: contexts } }),
@@ -40913,16 +40986,16 @@ function createContextScope(scopeName, createContextScopeDeps = []) {
   createScope.scopeName = scopeName;
   return [createContext3, composeContextScopes(createScope, ...createContextScopeDeps)];
 }
-__name$i(createContextScope, "createContextScope");
+__name$j(createContextScope, "createContextScope");
 function composeContextScopes(...scopes) {
   const baseScope = scopes[0];
   if (scopes.length === 1) return baseScope;
-  const createScope = /* @__PURE__ */ __name$i(() => {
+  const createScope = /* @__PURE__ */ __name$j(() => {
     const scopeHooks = scopes.map((createScope2) => ({
       useScope: createScope2(),
       scopeName: createScope2.scopeName
     }));
-    return /* @__PURE__ */ __name$i(function useComposedScopes(overrideScopes) {
+    return /* @__PURE__ */ __name$j(function useComposedScopes(overrideScopes) {
       const nextScopes = scopeHooks.reduce((nextScopes2, { useScope, scopeName }) => {
         const scopeProps = useScope(overrideScopes);
         const currentScope = scopeProps[`__scope${scopeName}`];
@@ -40934,9 +41007,9 @@ function composeContextScopes(...scopes) {
   createScope.scopeName = baseScope.scopeName;
   return createScope;
 }
-__name$i(composeContextScopes, "composeContextScopes");
-var __defProp$h = Object.defineProperty;
-var __name$h = (target, value) => __defProp$h(target, "name", { value, configurable: true });
+__name$j(composeContextScopes, "composeContextScopes");
+var __defProp$i = Object.defineProperty;
+var __name$i = (target, value) => __defProp$i(target, "name", { value, configurable: true });
 function setRef$1(ref, value) {
   if (typeof ref === "function") {
     return ref(value);
@@ -40944,7 +41017,7 @@ function setRef$1(ref, value) {
     ref.current = value;
   }
 }
-__name$h(setRef$1, "setRef");
+__name$i(setRef$1, "setRef");
 function composeRefs(...refs) {
   return (node2) => {
     let hasCleanup = false;
@@ -40969,13 +41042,13 @@ function composeRefs(...refs) {
     }
   };
 }
-__name$h(composeRefs, "composeRefs");
+__name$i(composeRefs, "composeRefs");
 function useComposedRefs(...refs) {
   return reactExports.useCallback(composeRefs(...refs), refs);
 }
-__name$h(useComposedRefs, "useComposedRefs");
-var __defProp$g = Object.defineProperty;
-var __name$g = (target, value) => __defProp$g(target, "name", { value, configurable: true });
+__name$i(useComposedRefs, "useComposedRefs");
+var __defProp$h = Object.defineProperty;
+var __name$h = (target, value) => __defProp$h(target, "name", { value, configurable: true });
 // @__NO_SIDE_EFFECTS__
 function createSlot(ownerName) {
   const Slot2 = reactExports.forwardRef((props, forwardedRef) => {
@@ -41030,17 +41103,17 @@ function createSlot(ownerName) {
   Slot2.displayName = `${ownerName}.Slot`;
   return Slot2;
 }
-__name$g(createSlot, "createSlot");
+__name$h(createSlot, "createSlot");
 var SLOTTABLE_IDENTIFIER = Symbol.for("radix.slottable");
 // @__NO_SIDE_EFFECTS__
 function createSlottable(ownerName) {
-  const Slottable2 = /* @__PURE__ */ __name$g((props) => "child" in props ? props.children(props.child) : props.children, "Slottable");
+  const Slottable2 = /* @__PURE__ */ __name$h((props) => "child" in props ? props.children(props.child) : props.children, "Slottable");
   Slottable2.displayName = `${ownerName}.Slottable`;
   Slottable2.__radixId = SLOTTABLE_IDENTIFIER;
   return Slottable2;
 }
-__name$g(createSlottable, "createSlottable");
-var getSlottableElementFromSlottable = /* @__PURE__ */ __name$g((slottable, child) => {
+__name$h(createSlottable, "createSlottable");
+var getSlottableElementFromSlottable = /* @__PURE__ */ __name$h((slottable, child) => {
   if ("child" in slottable.props) {
     const child2 = slottable.props.child;
     if (!reactExports.isValidElement(child2)) return null;
@@ -41072,7 +41145,7 @@ function mergeProps(slotProps, childProps) {
   }
   return { ...slotProps, ...overrideProps };
 }
-__name$g(mergeProps, "mergeProps");
+__name$h(mergeProps, "mergeProps");
 function getElementRef$1(element2) {
   let getter = Object.getOwnPropertyDescriptor(element2.props, "ref")?.get;
   let mayWarn = getter && "isReactWarning" in getter && getter.isReactWarning;
@@ -41086,29 +41159,29 @@ function getElementRef$1(element2) {
   }
   return element2.props.ref || element2.ref;
 }
-__name$g(getElementRef$1, "getElementRef");
+__name$h(getElementRef$1, "getElementRef");
 function isSlottable(child) {
   return reactExports.isValidElement(child) && typeof child.type === "function" && "__radixId" in child.type && child.type.__radixId === SLOTTABLE_IDENTIFIER;
 }
-__name$g(isSlottable, "isSlottable");
+__name$h(isSlottable, "isSlottable");
 var REACT_LAZY_TYPE = Symbol.for("react.lazy");
 function isLazyComponent(element2) {
   return element2 != null && typeof element2 === "object" && "$$typeof" in element2 && element2.$$typeof === REACT_LAZY_TYPE && "_payload" in element2 && isPromiseLike(element2._payload);
 }
-__name$g(isLazyComponent, "isLazyComponent");
+__name$h(isLazyComponent, "isLazyComponent");
 function isPromiseLike(value) {
   return typeof value === "object" && value !== null && "then" in value;
 }
-__name$g(isPromiseLike, "isPromiseLike");
-var createSlotError = /* @__PURE__ */ __name$g((ownerName) => {
+__name$h(isPromiseLike, "isPromiseLike");
+var createSlotError = /* @__PURE__ */ __name$h((ownerName) => {
   return `${ownerName} failed to slot onto its children. Expected a single React element child or \`Slottable\`.`;
 }, "createSlotError");
-var createSlottableError = /* @__PURE__ */ __name$g((ownerName) => {
+var createSlottableError = /* @__PURE__ */ __name$h((ownerName) => {
   return `${ownerName} failed to slot onto its \`Slottable\`. Expected \`Slottable\` to receive a single React element child.`;
 }, "createSlottableError");
 var use = React2[" use ".trim().toString()];
-var __defProp$f = Object.defineProperty;
-var __name$f = (target, value) => __defProp$f(target, "name", { value, configurable: true });
+var __defProp$g = Object.defineProperty;
+var __name$g = (target, value) => __defProp$g(target, "name", { value, configurable: true });
 // @__NO_SIDE_EFFECTS__
 function createCollection(name2) {
   const PROVIDER_NAME2 = name2 + "CollectionProvider";
@@ -41117,7 +41190,7 @@ function createCollection(name2) {
     PROVIDER_NAME2,
     { collectionRef: { current: null }, itemMap: /* @__PURE__ */ new Map() }
   );
-  const CollectionProvider = /* @__PURE__ */ __name$f((props) => {
+  const CollectionProvider = /* @__PURE__ */ __name$g((props) => {
     const { scope, children: children2 } = props;
     const ref = reactExports.useRef(null);
     const itemMap = reactExports.useRef(/* @__PURE__ */ new Map()).current;
@@ -41166,18 +41239,18 @@ function createCollection(name2) {
     }, [context.collectionRef, context.itemMap]);
     return getItems;
   }
-  __name$f(useCollection2, "useCollection");
+  __name$g(useCollection2, "useCollection");
   return [
     { Provider: CollectionProvider, Slot: CollectionSlot, ItemSlot: CollectionItemSlot },
     useCollection2,
     createCollectionScope2
   ];
 }
-__name$f(createCollection, "createCollection");
+__name$g(createCollection, "createCollection");
 var __instanciated = /* @__PURE__ */ new WeakMap();
 var OrderedDict = class _OrderedDict extends Map {
   static {
-    __name$f(this, "OrderedDict");
+    __name$g(this, "OrderedDict");
   }
   #keys;
   constructor(entries) {
@@ -41471,18 +41544,18 @@ function at(array2, index2) {
   const actualIndex = toSafeIndex(array2, index2);
   return actualIndex === -1 ? void 0 : array2[actualIndex];
 }
-__name$f(at, "at");
+__name$g(at, "at");
 function toSafeIndex(array2, index2) {
   const length = array2.length;
   const relativeIndex = toSafeInteger(index2);
   const actualIndex = relativeIndex >= 0 ? relativeIndex : length + relativeIndex;
   return actualIndex < 0 || actualIndex >= length ? -1 : actualIndex;
 }
-__name$f(toSafeIndex, "toSafeIndex");
+__name$g(toSafeIndex, "toSafeIndex");
 function toSafeInteger(number2) {
   return number2 !== number2 || number2 === 0 ? 0 : Math.trunc(number2);
 }
-__name$f(toSafeInteger, "toSafeInteger");
+__name$g(toSafeInteger, "toSafeInteger");
 // @__NO_SIDE_EFFECTS__
 function createCollection2(name2) {
   const PROVIDER_NAME2 = name2 + "CollectionProvider";
@@ -41494,19 +41567,19 @@ function createCollection2(name2) {
       collectionRef: { current: null },
       collectionRefObject: { current: null },
       itemMap: new OrderedDict(),
-      setItemMap: /* @__PURE__ */ __name$f(() => void 0, "setItemMap")
+      setItemMap: /* @__PURE__ */ __name$g(() => void 0, "setItemMap")
     }
   );
-  const CollectionProvider = /* @__PURE__ */ __name$f(({ state, ...props }) => {
+  const CollectionProvider = /* @__PURE__ */ __name$g(({ state, ...props }) => {
     return state ? /* @__PURE__ */ jsxRuntimeExports.jsx(CollectionProviderImpl, { ...props, state }) : /* @__PURE__ */ jsxRuntimeExports.jsx(CollectionInit, { ...props });
   }, "CollectionProvider");
   CollectionProvider.displayName = PROVIDER_NAME2;
-  const CollectionInit = /* @__PURE__ */ __name$f((props) => {
+  const CollectionInit = /* @__PURE__ */ __name$g((props) => {
     const state = useInitCollection();
     return /* @__PURE__ */ jsxRuntimeExports.jsx(CollectionProviderImpl, { ...props, state });
   }, "CollectionInit");
   CollectionInit.displayName = PROVIDER_NAME2 + "Init";
-  const CollectionProviderImpl = /* @__PURE__ */ __name$f((props) => {
+  const CollectionProviderImpl = /* @__PURE__ */ __name$g((props) => {
     const { scope, children: children2, state } = props;
     const ref = reactExports.useRef(null);
     const [collectionElement, setCollectionElement] = reactExports.useState(
@@ -41596,12 +41669,12 @@ function createCollection2(name2) {
   function useInitCollection() {
     return reactExports.useState(new OrderedDict());
   }
-  __name$f(useInitCollection, "useInitCollection");
+  __name$g(useInitCollection, "useInitCollection");
   function useCollection2(scope) {
     const { itemMap } = useCollectionContext(name2 + "CollectionConsumer", scope);
     return itemMap;
   }
-  __name$f(useCollection2, "useCollection");
+  __name$g(useCollection2, "useCollection");
   const functions = {
     createCollectionScope: createCollectionScope2,
     useCollection: useCollection2,
@@ -41612,7 +41685,7 @@ function createCollection2(name2) {
     functions
   ];
 }
-__name$f(createCollection2, "createCollection");
+__name$g(createCollection2, "createCollection");
 function shallowEqual$1(a2, b2) {
   if (a2 === b2) return true;
   if (typeof a2 !== "object" || typeof b2 !== "object") return false;
@@ -41626,15 +41699,15 @@ function shallowEqual$1(a2, b2) {
   }
   return true;
 }
-__name$f(shallowEqual$1, "shallowEqual");
+__name$g(shallowEqual$1, "shallowEqual");
 function isElementPreceding(a2, b2) {
   return !!(b2.compareDocumentPosition(a2) & Node.DOCUMENT_POSITION_PRECEDING);
 }
-__name$f(isElementPreceding, "isElementPreceding");
+__name$g(isElementPreceding, "isElementPreceding");
 function sortByDocumentPosition(a2, b2) {
   return !a2[1].element || !b2[1].element ? 0 : isElementPreceding(a2[1].element, b2[1].element) ? -1 : 1;
 }
-__name$f(sortByDocumentPosition, "sortByDocumentPosition");
+__name$g(sortByDocumentPosition, "sortByDocumentPosition");
 function getChildListObserver(callback) {
   const observer = new MutationObserver((mutationsList) => {
     for (const mutation of mutationsList) {
@@ -41646,11 +41719,11 @@ function getChildListObserver(callback) {
   });
   return observer;
 }
-__name$f(getChildListObserver, "getChildListObserver");
+__name$g(getChildListObserver, "getChildListObserver");
 var useLayoutEffect2 = globalThis?.document ? reactExports.useLayoutEffect : () => {
 };
-var __defProp$e = Object.defineProperty;
-var __name$e = (target, value) => __defProp$e(target, "name", { value, configurable: true });
+var __defProp$f = Object.defineProperty;
+var __name$f = (target, value) => __defProp$f(target, "name", { value, configurable: true });
 var useReactId = React2[" useId ".trim().toString()] || (() => void 0);
 var count = 0;
 function useId(deterministicId) {
@@ -41660,9 +41733,9 @@ function useId(deterministicId) {
   }, [deterministicId]);
   return deterministicId || (id2 ? `radix-${id2}` : "");
 }
-__name$e(useId, "useId");
-var __defProp$d = Object.defineProperty;
-var __name$d = (target, value) => __defProp$d(target, "name", { value, configurable: true });
+__name$f(useId, "useId");
+var __defProp$e = Object.defineProperty;
+var __name$e = (target, value) => __defProp$e(target, "name", { value, configurable: true });
 var NODES = [
   "a",
   "button",
@@ -41698,9 +41771,9 @@ var Primitive = NODES.reduce((primitive, node2) => {
 function dispatchDiscreteCustomEvent(target, event) {
   if (target) reactDomExports.flushSync(() => target.dispatchEvent(event));
 }
-__name$d(dispatchDiscreteCustomEvent, "dispatchDiscreteCustomEvent");
-var __defProp$c = Object.defineProperty;
-var __name$c = (target, value) => __defProp$c(target, "name", { value, configurable: true });
+__name$e(dispatchDiscreteCustomEvent, "dispatchDiscreteCustomEvent");
+var __defProp$d = Object.defineProperty;
+var __name$d = (target, value) => __defProp$d(target, "name", { value, configurable: true });
 function useCallbackRef(callback) {
   const callbackRef = reactExports.useRef(callback);
   reactExports.useEffect(() => {
@@ -41708,9 +41781,9 @@ function useCallbackRef(callback) {
   });
   return reactExports.useMemo(() => (...args) => callbackRef.current?.(...args), []);
 }
-__name$c(useCallbackRef, "useCallbackRef");
-var __defProp$b = Object.defineProperty;
-var __name$b = (target, value) => __defProp$b(target, "name", { value, configurable: true });
+__name$d(useCallbackRef, "useCallbackRef");
+var __defProp$c = Object.defineProperty;
+var __name$c = (target, value) => __defProp$c(target, "name", { value, configurable: true });
 var useReactEffectEvent = React2[" useEffectEvent ".trim().toString()];
 var useReactInsertionEffect = React2[" useInsertionEffect ".trim().toString()];
 function useEffectEvent(callback) {
@@ -41731,14 +41804,14 @@ function useEffectEvent(callback) {
   }
   return reactExports.useMemo(() => (...args) => ref.current?.(...args), []);
 }
-__name$b(useEffectEvent, "useEffectEvent");
-var __defProp$a = Object.defineProperty;
-var __name$a = (target, value) => __defProp$a(target, "name", { value, configurable: true });
+__name$c(useEffectEvent, "useEffectEvent");
+var __defProp$b = Object.defineProperty;
+var __name$b = (target, value) => __defProp$b(target, "name", { value, configurable: true });
 var useInsertionEffect = React2[" useInsertionEffect ".trim().toString()] || useLayoutEffect2;
 function useControllableState({
   prop,
   defaultProp,
-  onChange: onChange15 = /* @__PURE__ */ __name$a(() => {
+  onChange: onChange15 = /* @__PURE__ */ __name$b(() => {
   }, "onChange"),
   caller
 }) {
@@ -41763,7 +41836,7 @@ function useControllableState({
   );
   return [value, setValue];
 }
-__name$a(useControllableState, "useControllableState");
+__name$b(useControllableState, "useControllableState");
 function useUncontrolledState({
   defaultProp,
   onChange: onChange15
@@ -41782,11 +41855,11 @@ function useUncontrolledState({
   }, [value, prevValueRef]);
   return [value, setValue, onChangeRef];
 }
-__name$a(useUncontrolledState, "useUncontrolledState");
+__name$b(useUncontrolledState, "useUncontrolledState");
 function isFunction$4(value) {
   return typeof value === "function";
 }
-__name$a(isFunction$4, "isFunction");
+__name$b(isFunction$4, "isFunction");
 var SYNC_STATE = Symbol("RADIX:SYNC_STATE");
 function useControllableStateReducer(reducer, userArgs, initialArg, init5) {
   const { prop: controlledState, defaultProp, onChange: onChangeProp, caller } = userArgs;
@@ -41833,17 +41906,17 @@ function useControllableStateReducer(reducer, userArgs, initialArg, init5) {
   }, [controlledState, internalState.state, isControlled]);
   return [state, dispatch2];
 }
-__name$a(useControllableStateReducer, "useControllableStateReducer");
-var __defProp$9 = Object.defineProperty;
-var __name$9 = (target, value) => __defProp$9(target, "name", { value, configurable: true });
+__name$b(useControllableStateReducer, "useControllableStateReducer");
+var __defProp$a = Object.defineProperty;
+var __name$a = (target, value) => __defProp$a(target, "name", { value, configurable: true });
 var DirectionContext = reactExports.createContext(void 0);
 function useDirection(localDir) {
   const globalDir = reactExports.useContext(DirectionContext);
   return localDir || globalDir || "ltr";
 }
-__name$9(useDirection, "useDirection");
-var __defProp$8 = Object.defineProperty;
-var __name$8 = (target, value) => __defProp$8(target, "name", { value, configurable: true });
+__name$a(useDirection, "useDirection");
+var __defProp$9 = Object.defineProperty;
+var __name$9 = (target, value) => __defProp$9(target, "name", { value, configurable: true });
 var _isHydrated = false;
 function useIsHydrated() {
   const [isHydrated, setIsHydrated] = reactExports.useState(_isHydrated);
@@ -41855,13 +41928,13 @@ function useIsHydrated() {
   }, []);
   return isHydrated;
 }
-__name$8(useIsHydrated, "useIsHydrated");
+__name$9(useIsHydrated, "useIsHydrated");
 var useReactSyncExternalStore = React2[" useSyncExternalStore ".trim().toString()];
 function subscribe() {
   return () => {
   };
 }
-__name$8(subscribe, "subscribe");
+__name$9(subscribe, "subscribe");
 function useIsHydratedModern() {
   return useReactSyncExternalStore(
     subscribe,
@@ -41869,10 +41942,10 @@ function useIsHydratedModern() {
     () => false
   );
 }
-__name$8(useIsHydratedModern, "useIsHydratedModern");
+__name$9(useIsHydratedModern, "useIsHydratedModern");
 var useIsHydrated2 = typeof useReactSyncExternalStore === "function" ? useIsHydratedModern : useIsHydrated;
-var __defProp$7 = Object.defineProperty;
-var __name$7 = (target, value) => __defProp$7(target, "name", { value, configurable: true });
+var __defProp$8 = Object.defineProperty;
+var __name$8 = (target, value) => __defProp$8(target, "name", { value, configurable: true });
 var ENTRY_FOCUS = "rovingFocusGroup.onEntryFocus";
 var EVENT_OPTIONS = { bubbles: false, cancelable: true };
 var GROUP_NAME = "RovingFocusGroup";
@@ -41884,11 +41957,11 @@ var [createRovingFocusGroupContext, createRovingFocusGroupScope] = /* @__PURE__ 
 var [RovingFocusProvider, useRovingFocusContext] = createRovingFocusGroupContext(GROUP_NAME);
 var RovingFocusGroup = /* @__PURE__ */ reactExports.forwardRef(
   // blank line to reduce diff noise
-  /* @__PURE__ */ __name$7(function RovingFocusGroup2(props, forwardedRef) {
+  /* @__PURE__ */ __name$8(function RovingFocusGroup2(props, forwardedRef) {
     return /* @__PURE__ */ jsxRuntimeExports.jsx(Collection.Provider, { scope: props.__scopeRovingFocusGroup, children: /* @__PURE__ */ jsxRuntimeExports.jsx(Collection.Slot, { scope: props.__scopeRovingFocusGroup, children: /* @__PURE__ */ jsxRuntimeExports.jsx(RovingFocusGroupImpl, { ...props, ref: forwardedRef }) }) });
   }, "RovingFocusGroup")
 );
-var RovingFocusGroupImpl = /* @__PURE__ */ reactExports.forwardRef(/* @__PURE__ */ __name$7(function RovingFocusGroupImpl2(props, forwardedRef) {
+var RovingFocusGroupImpl = /* @__PURE__ */ reactExports.forwardRef(/* @__PURE__ */ __name$8(function RovingFocusGroupImpl2(props, forwardedRef) {
   const {
     __scopeRovingFocusGroup,
     orientation: orientation2,
@@ -41981,7 +42054,7 @@ var RovingFocusGroupImpl = /* @__PURE__ */ reactExports.forwardRef(/* @__PURE__ 
 var ITEM_NAME = "RovingFocusGroupItem";
 var RovingFocusGroupItem = /* @__PURE__ */ reactExports.forwardRef(
   // blank line to reduce diff noise
-  /* @__PURE__ */ __name$7(function RovingFocusGroupItem2(props, forwardedRef) {
+  /* @__PURE__ */ __name$8(function RovingFocusGroupItem2(props, forwardedRef) {
     const {
       __scopeRovingFocusGroup,
       focusable = true,
@@ -42072,14 +42145,14 @@ function getDirectionAwareKey(key, dir) {
   if (dir !== "rtl") return key;
   return key === "ArrowLeft" ? "ArrowRight" : key === "ArrowRight" ? "ArrowLeft" : key;
 }
-__name$7(getDirectionAwareKey, "getDirectionAwareKey");
+__name$8(getDirectionAwareKey, "getDirectionAwareKey");
 function getFocusIntent(event, orientation2, dir) {
   const key = getDirectionAwareKey(event.key, dir);
   if (orientation2 === "vertical" && ["ArrowLeft", "ArrowRight"].includes(key)) return void 0;
   if (orientation2 === "horizontal" && ["ArrowUp", "ArrowDown"].includes(key)) return void 0;
   return MAP_KEY_TO_FOCUS_INTENT[key];
 }
-__name$7(getFocusIntent, "getFocusIntent");
+__name$8(getFocusIntent, "getFocusIntent");
 function focusFirst(candidates, preventScroll = false) {
   const PREVIOUSLY_FOCUSED_ELEMENT = document.activeElement;
   for (const candidate of candidates) {
@@ -42088,23 +42161,23 @@ function focusFirst(candidates, preventScroll = false) {
     if (document.activeElement !== PREVIOUSLY_FOCUSED_ELEMENT) return;
   }
 }
-__name$7(focusFirst, "focusFirst");
+__name$8(focusFirst, "focusFirst");
 function wrapArray(array2, startIndex) {
   return array2.map((_2, index2) => array2[(startIndex + index2) % array2.length]);
 }
-__name$7(wrapArray, "wrapArray");
+__name$8(wrapArray, "wrapArray");
 var Root$1 = RovingFocusGroup;
 var Item2 = RovingFocusGroupItem;
-var __defProp$6 = Object.defineProperty;
-var __name$6 = (target, value) => __defProp$6(target, "name", { value, configurable: true });
+var __defProp$7 = Object.defineProperty;
+var __name$7 = (target, value) => __defProp$7(target, "name", { value, configurable: true });
 function useStateMachine(initialState, machine) {
   return reactExports.useReducer((state, event) => {
     const nextState = machine[state][event];
     return nextState ?? state;
   }, initialState);
 }
-__name$6(useStateMachine, "useStateMachine");
-var Presence = /* @__PURE__ */ __name$6((props) => {
+__name$7(useStateMachine, "useStateMachine");
+var Presence = /* @__PURE__ */ __name$7((props) => {
   const { present, children: children2 } = props;
   const presence = usePresence(present);
   const child = typeof children2 === "function" ? children2({ present: presence.isPresent }) : reactExports.Children.only(children2);
@@ -42167,7 +42240,7 @@ function usePresence(present) {
     if (node2) {
       let timeoutId;
       const ownerWindow = node2.ownerDocument.defaultView ?? window;
-      const handleAnimationEnd = /* @__PURE__ */ __name$6((event) => {
+      const handleAnimationEnd = /* @__PURE__ */ __name$7((event) => {
         const currentAnimationName = getAnimationName(stylesRef.current);
         const isCurrentAnimation = currentAnimationName.includes(CSS.escape(event.animationName));
         if (event.target === node2 && isCurrentAnimation) {
@@ -42183,7 +42256,7 @@ function usePresence(present) {
           }
         }
       }, "handleAnimationEnd");
-      const handleAnimationStart = /* @__PURE__ */ __name$6((event) => {
+      const handleAnimationStart = /* @__PURE__ */ __name$7((event) => {
         if (event.target === node2) {
           prevAnimationNameRef.current = getAnimationName(stylesRef.current);
         }
@@ -42215,7 +42288,7 @@ function usePresence(present) {
     }, [])
   };
 }
-__name$6(usePresence, "usePresence");
+__name$7(usePresence, "usePresence");
 function setRef(ref, value) {
   if (typeof ref === "function") {
     return ref(value);
@@ -42223,7 +42296,7 @@ function setRef(ref, value) {
     ref.current = value;
   }
 }
-__name$6(setRef, "setRef");
+__name$7(setRef, "setRef");
 function useStableComposedRefs(...refs) {
   const refsRef = reactExports.useRef(refs);
   refsRef.current = refs;
@@ -42251,11 +42324,11 @@ function useStableComposedRefs(...refs) {
     }
   }, []);
 }
-__name$6(useStableComposedRefs, "useStableComposedRefs");
+__name$7(useStableComposedRefs, "useStableComposedRefs");
 function getAnimationName(styles) {
   return styles?.animationName || "none";
 }
-__name$6(getAnimationName, "getAnimationName");
+__name$7(getAnimationName, "getAnimationName");
 function getElementRef(element2) {
   let getter = Object.getOwnPropertyDescriptor(element2.props, "ref")?.get;
   let mayWarn = getter && "isReactWarning" in getter && getter.isReactWarning;
@@ -42269,9 +42342,9 @@ function getElementRef(element2) {
   }
   return element2.props.ref || element2.ref;
 }
-__name$6(getElementRef, "getElementRef");
-var __defProp$5 = Object.defineProperty;
-var __name$5 = (target, value) => __defProp$5(target, "name", { value, configurable: true });
+__name$7(getElementRef, "getElementRef");
+var __defProp$6 = Object.defineProperty;
+var __name$6 = (target, value) => __defProp$6(target, "name", { value, configurable: true });
 var TABS_NAME = "Tabs";
 var [createTabsContext, createTabsScope] = /* @__PURE__ */ createContextScope(TABS_NAME, [
   createRovingFocusGroupScope
@@ -42280,7 +42353,7 @@ var useRovingFocusGroupScope = createRovingFocusGroupScope();
 var [TabsProvider, useTabsContext] = createTabsContext(TABS_NAME);
 var Tabs = /* @__PURE__ */ reactExports.forwardRef(
   // blank line to reduce diff noise
-  /* @__PURE__ */ __name$5(function Tabs2(props, forwardedRef) {
+  /* @__PURE__ */ __name$6(function Tabs2(props, forwardedRef) {
     const {
       __scopeTabs,
       value: valueProp,
@@ -42324,7 +42397,7 @@ var Tabs = /* @__PURE__ */ reactExports.forwardRef(
 var TAB_LIST_NAME = "TabsList";
 var TabsList = /* @__PURE__ */ reactExports.forwardRef(
   // blank line to reduce diff noise
-  /* @__PURE__ */ __name$5(function TabsList2(props, forwardedRef) {
+  /* @__PURE__ */ __name$6(function TabsList2(props, forwardedRef) {
     const { __scopeTabs, loop = true, ...listProps } = props;
     const context = useTabsContext(TAB_LIST_NAME, __scopeTabs);
     const rovingFocusGroupScope = useRovingFocusGroupScope(__scopeTabs);
@@ -42351,7 +42424,7 @@ var TabsList = /* @__PURE__ */ reactExports.forwardRef(
 );
 var TRIGGER_NAME$1 = "TabsTrigger";
 var TabsTrigger = /* @__PURE__ */ reactExports.forwardRef(
-  /* @__PURE__ */ __name$5(function TabsTrigger2(props, forwardedRef) {
+  /* @__PURE__ */ __name$6(function TabsTrigger2(props, forwardedRef) {
     const { __scopeTabs, value, disabled = false, ...triggerProps } = props;
     const context = useTabsContext(TRIGGER_NAME$1, __scopeTabs);
     const rovingFocusGroupScope = useRovingFocusGroupScope(__scopeTabs);
@@ -42407,7 +42480,7 @@ var TabsTrigger = /* @__PURE__ */ reactExports.forwardRef(
 );
 var CONTENT_NAME$2 = "TabsContent";
 var TabsContent = /* @__PURE__ */ reactExports.forwardRef(
-  /* @__PURE__ */ __name$5(function TabsContent2(props, forwardedRef) {
+  /* @__PURE__ */ __name$6(function TabsContent2(props, forwardedRef) {
     const { __scopeTabs, value, forceMount, children: children2, ...contentProps } = props;
     const context = useTabsContext(CONTENT_NAME$2, __scopeTabs);
     const triggerId = makeTriggerId(context.baseId, value);
@@ -42442,11 +42515,11 @@ var TabsContent = /* @__PURE__ */ reactExports.forwardRef(
 function makeTriggerId(baseId, value) {
   return `${baseId}-trigger-${value}`;
 }
-__name$5(makeTriggerId, "makeTriggerId");
+__name$6(makeTriggerId, "makeTriggerId");
 function makeContentId(baseId, value) {
   return `${baseId}-content-${value}`;
 }
-__name$5(makeContentId, "makeContentId");
+__name$6(makeContentId, "makeContentId");
 var Root2$1 = Tabs;
 var List = TabsList;
 var Trigger$1 = TabsTrigger;
@@ -53019,6 +53092,122 @@ function DynamicWelcome({ data }) {
     ] })
   ] });
 }
+const todayStr = (/* @__PURE__ */ new Date()).toISOString().split("T")[0];
+const runHabitMigrations = async () => {
+  try {
+    const habits = await window.api.db.find("habits", {});
+    let migratedCount = 0;
+    for (const h2 of habits) {
+      if (h2.priority === void 0 || h2.isTimerEnabled === void 0) {
+        const newHabit = {
+          title: h2.title,
+          category: h2.category || "General",
+          icon: h2.icon === "Sparkles" ? "✨" : h2.icon || "✨",
+          scheduleType: h2.scheduleType || "daily",
+          scheduleDays: h2.scheduleDays || [0, 1, 2, 3, 4, 5, 6],
+          priority: h2.priority || "medium",
+          isTimerEnabled: h2.isTimerEnabled || false,
+          targetDuration: h2.targetDuration || 1800,
+          startDate: h2.startDate || (h2.createdAt ? new Date(h2.createdAt).toISOString().split("T")[0] : todayStr),
+          archived: h2.archived || false,
+          createdAt: h2.createdAt || Date.now(),
+          updatedAt: Date.now()
+        };
+        await window.api.db.update("habits", { _id: h2._id }, { $set: newHabit });
+        migratedCount++;
+      }
+    }
+    if (migratedCount > 0) console.log(`Migrated ${migratedCount} habits to new schema.`);
+  } catch (err) {
+    console.error("Habit migration failed:", err);
+  }
+};
+const isHabitActiveOnDay = (habit, date2 = /* @__PURE__ */ new Date()) => {
+  const day = date2.getDay();
+  if (habit.scheduleType === "weekdays") return day >= 1 && day <= 5;
+  if (habit.scheduleType === "weekends") return day === 0 || day === 6;
+  if (habit.scheduleType === "specific_days" && habit.scheduleDays) {
+    return habit.scheduleDays.includes(day);
+  }
+  return true;
+};
+const getEffectiveDeadline = (h2, elapsed = 0) => {
+  const deadlineStr = h2.deadlineTime || h2.preferredTime || "23:59";
+  const [hh2, mm] = deadlineStr.split(":");
+  const baseTime = /* @__PURE__ */ new Date();
+  baseTime.setHours(parseInt(hh2), parseInt(mm), 59, 999);
+  if (h2.isTimerEnabled && h2.targetDuration) {
+    const remainingDuration = Math.max(0, h2.targetDuration - elapsed);
+    return new Date(baseTime.getTime() - remainingDuration * 1e3);
+  }
+  return baseTime;
+};
+const calculateHabitStats = async () => {
+  try {
+    const allHabits = await window.api.db.find("habits", { archived: { $ne: true } });
+    const allLogs = await window.api.db.find("habitLogs", {});
+    const allBreaks = await window.api.db.find("habitBreaks", {});
+    const logsToday = allLogs.filter((l2) => l2.date === todayStr);
+    const completedToday = logsToday.filter((l2) => l2.status === "completed").length;
+    const habitsToday = allHabits.filter((h2) => isHabitActiveOnDay(h2, /* @__PURE__ */ new Date()));
+    const totalToday = habitsToday.length;
+    const totalEligible = allHabits.length * (new Set(allLogs.map((l2) => l2.date)).size || 1);
+    const totalCompleted = allLogs.filter((l2) => l2.status === "completed").length;
+    const completionRate = totalEligible ? Math.round(totalCompleted / totalEligible * 100) : 0;
+    let currentStreak = 0;
+    let longestStreak2 = 0;
+    return {
+      score: Math.min(100, Math.round(completionRate * 1.1)),
+      completedToday,
+      totalToday,
+      currentStreak,
+      longestStreak: longestStreak2,
+      completionRate,
+      allHabits,
+      habitsToday,
+      allLogs,
+      logsToday
+    };
+  } catch (err) {
+    console.error(err);
+    return null;
+  }
+};
+const logHabitActivity = async (habitId, action, details) => {
+  const log2 = {
+    habitId,
+    action,
+    timestamp: Date.now(),
+    details
+  };
+  await window.api.db.insert("habitActivityLogs", log2);
+  await window.api.db.update("habits", { _id: habitId }, { $set: { updatedAt: Date.now() } }, {});
+};
+const checkAutoMisses = async () => {
+  try {
+    const allHabits = await window.api.db.find("habits", { archived: { $ne: true } });
+    const allLogs = await window.api.db.find("habitLogs", {});
+    const now2 = /* @__PURE__ */ new Date();
+    for (const h2 of allHabits) {
+      const log2 = allLogs.find((l2) => l2.habitId === h2._id && l2.date === todayStr);
+      if (!log2 || log2.status === "pending") {
+        const effectiveDeadline = getEffectiveDeadline(h2);
+        if (now2 > effectiveDeadline) {
+          const newStatus = h2.category === "Bad Habit" ? "completed" : "missed";
+          await window.api.db.update(
+            "habitLogs",
+            { habitId: h2._id, date: todayStr },
+            { $set: { status: newStatus, updatedAt: Date.now() } },
+            { upsert: true }
+          );
+          if (h2._id) await logHabitActivity(h2._id, `auto_${newStatus}`, "Effective deadline passed.");
+        }
+      }
+    }
+  } catch (e3) {
+    console.error(e3);
+  }
+};
 var isArray$f = Array.isArray;
 var isArray_1 = isArray$f;
 var freeGlobal$2 = typeof commonjsGlobal == "object" && commonjsGlobal && commonjsGlobal.Object === Object && commonjsGlobal;
@@ -76944,9 +77133,10 @@ function SummaryWidget({ data }) {
   const habits = data.habits || [];
   const journal = data.journal || [];
   const relationships = data.relationships || [];
-  const habitsDone = habits.filter((h2) => h2.completedToday).length;
-  const habitsLeft = habits.length - habitsDone;
-  const progressPct = habits.length === 0 ? 0 : Math.round(habitsDone / habits.length * 100);
+  const todayHabits = habits.filter((h2) => isHabitActiveOnDay(h2, /* @__PURE__ */ new Date()));
+  const habitsDone = todayHabits.filter((h2) => h2.completedToday).length;
+  const habitsLeft = todayHabits.length - habitsDone;
+  const progressPct = todayHabits.length === 0 ? 0 : Math.round(habitsDone / todayHabits.length * 100);
   const getStreak = () => {
     if (journal.length === 0) return 0;
     let streak = 0;
@@ -77036,7 +77226,7 @@ function SummaryWidget({ data }) {
     ] }),
     /* @__PURE__ */ jsxRuntimeExports.jsx("div", { className: "grid grid-cols-2 sm:grid-cols-3 xl:grid-cols-2 2xl:grid-cols-3 gap-4 xl:w-2/3", children: [
       { label: "Records", count: records.length, color: "#3b82f6", bg: "bg-blue-500/10", icon: FileText, trend: getWeekTrend(records) },
-      { label: "Habits", count: habits.length, color: "#22c55e", bg: "bg-green-500/10", icon: Zap, trend: `${habits.length - habitsLeft}/${habits.length} Done` },
+      { label: "Habits", count: todayHabits.length, color: "#22c55e", bg: "bg-green-500/10", icon: Zap, trend: `${habitsDone}/${todayHabits.length} Today` },
       { label: "Goals", count: goals.length, color: "#f97316", bg: "bg-orange-500/10", icon: Target, trend: `${goals.filter((g2) => g2.status === "Completed").length}/${goals.length} Done` },
       { label: "Journal", count: journal.length, color: "#a855f7", bg: "bg-purple-500/10", icon: Book, trend: getWeekTrend(journal) },
       { label: "People", count: relationships.length, color: "#ec4899", bg: "bg-pink-500/10", icon: Users, trend: `${relationships.length} Connected` }
@@ -77056,14 +77246,38 @@ function SummaryWidget({ data }) {
     ] }, i2)) })
   ] });
 }
-function MemoryPreviewModal({ isOpen, onClose, memory, relationships, onEdit, onDelete, onDuplicate }) {
+function MemoryPreviewModal({ isOpen, onClose, memory, relationships, onEdit, onDelete }) {
   const [slideshowActive, setSlideshowActive] = reactExports.useState(false);
   const [slideIndex, setSlideIndex] = reactExports.useState(0);
+  const [localRelationships, setLocalRelationships] = reactExports.useState(relationships);
+  const [isSlideshowPaused, setIsSlideshowPaused] = reactExports.useState(false);
+  reactExports.useEffect(() => {
+    if (isOpen && memory) {
+      setLocalRelationships(relationships);
+      const loadRelationships = async () => {
+        try {
+          const rels = await window.api.db.find("relationships", {});
+          console.log("MemoryPreviewModal: Loaded", rels.length, "relationships");
+          console.log("MemoryPreviewModal: All relationship IDs:", rels.map((r2) => ({ id: r2._id, name: r2.name })));
+          console.log("MemoryPreviewModal: Looking for people IDs:", memory?.people);
+          if (memory?.people && memory.people.includes("0hHYbrurc7uCba6T")) {
+            console.log("MemoryPreviewModal: Problematic ID 0hHYbrurc7uCba6T found in memory.people");
+            const exists = rels.find((r2) => r2._id === "0hHYbrurc7uCba6T");
+            console.log("MemoryPreviewModal: Does 0hHYbrurc7uCba6T exist in DB?", !!exists);
+          }
+          setLocalRelationships(rels);
+        } catch (e3) {
+          console.error(e3);
+        }
+      };
+      loadRelationships();
+    }
+  }, [isOpen, relationships, memory?._id]);
   const photos = memory?.type === "Photo" && memory?.attachments ? memory.attachments : memory?.attachments?.filter((a2) => a2.match(/\.(jpeg|jpg|gif|png|webp|gfif|bmp|tiff|svg|ico|heic|heif|raw|cr2|nef|orf|sr2)$/i)) || [];
   const videos = memory?.attachments?.filter((a2) => a2.match(/\.(mp4|webm|ogg|mov)$/i)) || [];
   const audio = memory?.attachments?.filter((a2) => a2.match(/\.(mp3|wav|ogg|m4a)$/i)) || [];
   const files = memory?.attachments?.filter((a2) => !a2.match(/\.(jpeg|jpg|gif|png|webp|gfif|bmp|tiff|svg|ico|heic|heif|raw|cr2|nef|orf|sr2|mp4|webm|ogg|mov|mp3|wav|m4a)$/i)) || [];
-  const getVisualMedia = () => [...photos, ...videos];
+  const getAllMedia = () => [...photos, ...videos, ...audio];
   reactExports.useEffect(() => {
     if (!isOpen) {
       setSlideshowActive(false);
@@ -77072,14 +77286,14 @@ function MemoryPreviewModal({ isOpen, onClose, memory, relationships, onEdit, on
   }, [isOpen]);
   reactExports.useEffect(() => {
     let interval2;
-    const visualMedia = getVisualMedia();
-    if (slideshowActive && visualMedia.length > 0) {
+    const allMedia = getAllMedia();
+    if (slideshowActive && allMedia.length > 0 && !isSlideshowPaused) {
       interval2 = setInterval(() => {
-        setSlideIndex((prev) => (prev + 1) % visualMedia.length);
+        setSlideIndex((prev) => (prev + 1) % allMedia.length);
       }, 3e3);
     }
     return () => clearInterval(interval2);
-  }, [slideshowActive, memory]);
+  }, [slideshowActive, memory, isSlideshowPaused]);
   reactExports.useEffect(() => {
     const handleKeyDown2 = (e3) => {
       if (!isOpen) return;
@@ -77093,15 +77307,31 @@ function MemoryPreviewModal({ isOpen, onClose, memory, relationships, onEdit, on
           onClose();
         }
       }
+      if (e3.key === " " && slideshowActive) {
+        e3.preventDefault();
+        setIsSlideshowPaused(true);
+      }
+    };
+    const handleKeyUp = (e3) => {
+      if (e3.key === " " && slideshowActive) {
+        setIsSlideshowPaused(false);
+      }
     };
     window.addEventListener("keydown", handleKeyDown2);
-    return () => window.removeEventListener("keydown", handleKeyDown2);
+    window.addEventListener("keyup", handleKeyUp);
+    return () => {
+      window.removeEventListener("keydown", handleKeyDown2);
+      window.removeEventListener("keyup", handleKeyUp);
+    };
   }, [isOpen, slideshowActive, onClose]);
-  if (!isOpen || !memory) return null;
-  const dateObj = new Date(memory.date);
-  const displayDate = dateObj.toLocaleDateString([], { month: "long", day: "numeric", year: "numeric" });
+  const dateObj = memory ? new Date(memory.date) : /* @__PURE__ */ new Date();
+  const displayDate = memory ? dateObj.toLocaleDateString([], { month: "long", day: "numeric", year: "numeric" }) : "";
   const handleExport = () => {
+    if (!memory) return;
     const data = { ...memory };
+    if (data.attachments) {
+      data.attachments = [...data.attachments];
+    }
     const blob = new Blob([JSON.stringify(data, null, 2)], { type: "application/json" });
     const url = URL.createObjectURL(blob);
     const a2 = document.createElement("a");
@@ -77110,152 +77340,219 @@ function MemoryPreviewModal({ isOpen, onClose, memory, relationships, onEdit, on
     a2.click();
     URL.revokeObjectURL(url);
   };
+  if (!memory) return /* @__PURE__ */ jsxRuntimeExports.jsx(jsxRuntimeExports.Fragment, {});
   if (slideshowActive) {
-    const visualMedia = getVisualMedia();
-    const currentMedia = visualMedia[slideIndex];
+    const allMedia = getAllMedia();
+    const currentMedia = allMedia[slideIndex];
     const isVideo = currentMedia?.match(/\.(mp4|webm|ogg|mov)$/i);
-    return /* @__PURE__ */ jsxRuntimeExports.jsxs("div", { className: "fixed inset-0 bg-black z-[100] flex flex-col items-center justify-center animate-in fade-in duration-1000", children: [
-      /* @__PURE__ */ jsxRuntimeExports.jsx("button", { onClick: () => setSlideshowActive(false), className: "absolute top-6 right-6 p-3 bg-white/10 hover:bg-white/30 text-white rounded-full backdrop-blur-sm transition-colors z-10", children: /* @__PURE__ */ jsxRuntimeExports.jsx(X, { size: 32 }) }),
-      /* @__PURE__ */ jsxRuntimeExports.jsxs("div", { className: "absolute top-6 left-6 text-white text-xl font-black drop-shadow-md z-10 opacity-70", children: [
-        slideIndex + 1,
-        " / ",
-        visualMedia.length
-      ] }),
-      visualMedia.length > 0 ? /* @__PURE__ */ jsxRuntimeExports.jsxs("div", { className: "w-full h-full flex items-center justify-center relative p-12", children: [
-        isVideo ? /* @__PURE__ */ jsxRuntimeExports.jsx("video", { src: currentMedia, autoPlay: true, controls: true, className: "max-w-full max-h-full object-contain shadow-2xl rounded-lg animate-in zoom-in-95 duration-700" }) : /* @__PURE__ */ jsxRuntimeExports.jsx("img", { src: currentMedia, className: "max-w-full max-h-full object-contain shadow-2xl rounded-lg animate-in zoom-in-95 duration-700" }, currentMedia),
-        /* @__PURE__ */ jsxRuntimeExports.jsx("div", { className: "absolute bottom-12 left-1/2 -translate-x-1/2 bg-black/50 backdrop-blur-md px-6 py-3 rounded-full text-white text-lg font-medium shadow-2xl", children: memory.title })
-      ] }) : /* @__PURE__ */ jsxRuntimeExports.jsx("div", { className: "text-white text-2xl font-bold", children: "No photos or videos to show." })
-    ] });
-  }
-  return /* @__PURE__ */ jsxRuntimeExports.jsx("div", { className: "fixed inset-0 bg-background/90 backdrop-blur-sm z-50 flex items-center justify-center p-4", children: /* @__PURE__ */ jsxRuntimeExports.jsxs("div", { className: "bg-card border border-border w-full max-w-5xl h-[92vh] rounded-3xl shadow-2xl flex flex-col overflow-hidden animate-in zoom-in-95 duration-200", children: [
-    /* @__PURE__ */ jsxRuntimeExports.jsxs("div", { className: "px-8 py-6 border-b border-border flex justify-between items-start bg-card z-10 shrink-0", children: [
-      /* @__PURE__ */ jsxRuntimeExports.jsxs("div", { children: [
-        /* @__PURE__ */ jsxRuntimeExports.jsx("h2", { className: "text-4xl font-black mb-3", children: memory.title }),
-        /* @__PURE__ */ jsxRuntimeExports.jsxs("div", { className: "flex flex-wrap gap-4 text-sm font-bold text-muted-foreground", children: [
-          /* @__PURE__ */ jsxRuntimeExports.jsxs("span", { className: "flex items-center gap-1.5 text-foreground", children: [
-            /* @__PURE__ */ jsxRuntimeExports.jsx(Calendar, { size: 16 }),
-            " ",
-            displayDate
-          ] }),
-          memory.location && /* @__PURE__ */ jsxRuntimeExports.jsxs("span", { className: "flex items-center gap-1.5", children: [
-            /* @__PURE__ */ jsxRuntimeExports.jsx(MapPin, { size: 16 }),
-            " ",
-            memory.location
-          ] }),
-          /* @__PURE__ */ jsxRuntimeExports.jsxs("span", { className: "flex items-center gap-1.5 bg-accent px-3 py-1 rounded-md text-foreground", children: [
-            /* @__PURE__ */ jsxRuntimeExports.jsx(Folder, { size: 16 }),
-            " ",
-            memory.category || "General",
-            " Album"
-          ] })
-        ] })
-      ] }),
-      /* @__PURE__ */ jsxRuntimeExports.jsxs("div", { className: "flex items-center gap-3", children: [
-        getVisualMedia().length > 0 && /* @__PURE__ */ jsxRuntimeExports.jsxs("button", { onClick: () => {
-          setSlideIndex(0);
-          setSlideshowActive(true);
-        }, className: "px-4 py-2 bg-primary text-primary-foreground font-bold rounded-xl hover:scale-105 transition-transform flex items-center gap-2 shadow-lg shadow-primary/20", children: [
-          /* @__PURE__ */ jsxRuntimeExports.jsx(CirclePlay, { size: 18 }),
-          " Slideshow"
-        ] }),
-        /* @__PURE__ */ jsxRuntimeExports.jsx("button", { onClick: onClose, className: "p-2 hover:bg-accent rounded-full transition-colors text-muted-foreground", children: /* @__PURE__ */ jsxRuntimeExports.jsx(X, { size: 24 }) })
-      ] })
-    ] }),
-    /* @__PURE__ */ jsxRuntimeExports.jsxs("div", { className: "flex-1 overflow-y-auto p-8 flex flex-col lg:flex-row gap-12", children: [
-      /* @__PURE__ */ jsxRuntimeExports.jsxs("div", { className: "flex-1 space-y-12", children: [
-        memory.description && /* @__PURE__ */ jsxRuntimeExports.jsxs("div", { children: [
-          /* @__PURE__ */ jsxRuntimeExports.jsxs("h3", { className: "text-sm font-bold text-muted-foreground uppercase mb-4 flex items-center gap-2 tracking-widest", children: [
-            /* @__PURE__ */ jsxRuntimeExports.jsx(FileText, { size: 16 }),
-            " Story"
-          ] }),
-          /* @__PURE__ */ jsxRuntimeExports.jsx(
-            "div",
-            {
-              className: "prose prose-invert max-w-none prose-sm md:prose-base bg-accent/20 p-8 rounded-3xl border border-border leading-loose",
-              dangerouslySetInnerHTML: { __html: memory.description }
-            }
-          )
-        ] }),
-        (photos.length > 0 || videos.length > 0) && /* @__PURE__ */ jsxRuntimeExports.jsxs("div", { children: [
-          /* @__PURE__ */ jsxRuntimeExports.jsxs("h3", { className: "text-sm font-bold text-muted-foreground uppercase mb-4 flex items-center gap-2 tracking-widest", children: [
-            /* @__PURE__ */ jsxRuntimeExports.jsx(Image$2, { size: 16 }),
-            " Visual Memories"
-          ] }),
-          /* @__PURE__ */ jsxRuntimeExports.jsx("div", { className: "columns-2 md:columns-3 gap-4 space-y-4", children: getVisualMedia().map((url, i2) => {
-            const isVid = url.match(/\.(mp4|webm|ogg|mov)$/i);
-            return /* @__PURE__ */ jsxRuntimeExports.jsx("div", { className: "break-inside-avoid relative rounded-2xl overflow-hidden border border-border group shadow-sm hover:shadow-xl transition-all", children: isVid ? /* @__PURE__ */ jsxRuntimeExports.jsx("video", { src: url, controls: true, className: "w-full object-cover" }) : /* @__PURE__ */ jsxRuntimeExports.jsx("a", { href: url, target: "_blank", rel: "noreferrer", className: "block w-full", children: /* @__PURE__ */ jsxRuntimeExports.jsx("img", { src: url, alt: `Memory ${i2 + 1}`, className: "w-full object-cover group-hover:scale-105 transition-transform duration-700" }) }) }, i2);
-          }) })
-        ] })
-      ] }),
-      /* @__PURE__ */ jsxRuntimeExports.jsxs("div", { className: "w-full lg:w-80 shrink-0 space-y-8", children: [
-        /* @__PURE__ */ jsxRuntimeExports.jsxs("div", { className: "bg-accent/30 rounded-3xl p-6 border border-border space-y-6", children: [
-          /* @__PURE__ */ jsxRuntimeExports.jsxs("div", { className: "flex justify-between items-center", children: [
-            /* @__PURE__ */ jsxRuntimeExports.jsxs("div", { children: [
-              /* @__PURE__ */ jsxRuntimeExports.jsx("div", { className: "text-xs font-bold text-muted-foreground uppercase mb-1", children: "Mood" }),
-              /* @__PURE__ */ jsxRuntimeExports.jsx("div", { className: "text-xl font-bold bg-background border border-border inline-block px-3 py-1.5 rounded-xl shadow-sm", children: memory.mood || "N/A" })
+    const isAudio = currentMedia?.match(/\.(mp3|wav|ogg|m4a)$/i);
+    const handleMouseDown = () => setIsSlideshowPaused(true);
+    const handleMouseUp = () => setIsSlideshowPaused(false);
+    const handleMouseLeave = () => setIsSlideshowPaused(false);
+    return reactDomExports.createPortal(
+      /* @__PURE__ */ jsxRuntimeExports.jsxs(
+        "div",
+        {
+          className: "fixed inset-0 bg-black z-[9999] flex flex-col items-center justify-center animate-in fade-in duration-1000",
+          onMouseDown: handleMouseDown,
+          onMouseUp: handleMouseUp,
+          onMouseLeave: handleMouseLeave,
+          children: [
+            /* @__PURE__ */ jsxRuntimeExports.jsx("button", { onClick: () => setSlideshowActive(false), className: "absolute top-6 right-6 p-3 bg-white/10 hover:bg-white/30 text-white rounded-full backdrop-blur-sm transition-colors z-10", children: /* @__PURE__ */ jsxRuntimeExports.jsx(X, { size: 32 }) }),
+            /* @__PURE__ */ jsxRuntimeExports.jsxs("div", { className: "absolute top-6 left-6 text-white text-xl font-black drop-shadow-md z-10 opacity-70", children: [
+              slideIndex + 1,
+              " / ",
+              allMedia.length
             ] }),
-            /* @__PURE__ */ jsxRuntimeExports.jsxs("div", { className: "text-right", children: [
-              /* @__PURE__ */ jsxRuntimeExports.jsx("div", { className: "text-xs font-bold text-muted-foreground uppercase mb-1", children: "Rating" }),
-              /* @__PURE__ */ jsxRuntimeExports.jsxs("div", { className: "text-xl font-black text-yellow-500 bg-background border border-border inline-block px-3 py-1.5 rounded-xl shadow-sm", children: [
-                memory.importance || 0,
-                " / 10"
+            allMedia.length > 0 ? /* @__PURE__ */ jsxRuntimeExports.jsxs("div", { className: "w-full h-full flex items-center justify-center relative p-12", children: [
+              isVideo ? /* @__PURE__ */ jsxRuntimeExports.jsx("video", { src: getSafeMediaUrl(currentMedia), autoPlay: true, controls: true, className: "max-w-full max-h-full object-contain shadow-2xl rounded-lg animate-in zoom-in-95 duration-700" }) : isAudio ? /* @__PURE__ */ jsxRuntimeExports.jsxs("div", { className: "flex flex-col items-center gap-6 animate-in zoom-in-95 duration-700", children: [
+                /* @__PURE__ */ jsxRuntimeExports.jsx("div", { className: "w-32 h-32 rounded-full bg-cyan-500/20 text-cyan-500 flex items-center justify-center", children: /* @__PURE__ */ jsxRuntimeExports.jsx(Music, { size: 64 }) }),
+                /* @__PURE__ */ jsxRuntimeExports.jsx("audio", { src: getSafeMediaUrl(currentMedia), controls: true, className: "w-96" }),
+                /* @__PURE__ */ jsxRuntimeExports.jsx("div", { className: "text-white text-lg font-medium", children: currentMedia.split(/[\\/]/).pop() })
+              ] }) : /* @__PURE__ */ jsxRuntimeExports.jsx("img", { src: currentMedia, className: "max-w-full max-h-full object-contain shadow-2xl rounded-lg animate-in zoom-in-95 duration-700" }, currentMedia),
+              /* @__PURE__ */ jsxRuntimeExports.jsx("div", { className: "absolute bottom-12 left-1/2 -translate-x-1/2 bg-black/50 backdrop-blur-md px-6 py-3 rounded-full text-white text-lg font-medium shadow-2xl", children: memory.title })
+            ] }) : /* @__PURE__ */ jsxRuntimeExports.jsx("div", { className: "text-white text-2xl font-bold", children: "No photos, videos, or audio to show." })
+          ]
+        }
+      ),
+      document.body
+    );
+  }
+  return reactDomExports.createPortal(
+    /* @__PURE__ */ jsxRuntimeExports.jsx(
+      "div",
+      {
+        className: "fixed inset-0 bg-background/90 backdrop-blur-sm z-[9999] flex items-center justify-center p-4",
+        onMouseDown: (e3) => e3.stopPropagation(),
+        children: /* @__PURE__ */ jsxRuntimeExports.jsxs("div", { className: "bg-card border border-border w-full max-w-6xl h-auto max-h-[85vh] rounded-3xl shadow-2xl flex flex-col overflow-hidden animate-in zoom-in-95 duration-200", children: [
+          /* @__PURE__ */ jsxRuntimeExports.jsxs("div", { className: "px-8 py-6 border-b border-border flex justify-between items-start bg-card z-10 shrink-0", children: [
+            /* @__PURE__ */ jsxRuntimeExports.jsxs("div", { children: [
+              /* @__PURE__ */ jsxRuntimeExports.jsx("h2", { className: "text-4xl font-black mb-3", children: memory.title }),
+              /* @__PURE__ */ jsxRuntimeExports.jsxs("div", { className: "flex flex-wrap gap-4 text-sm font-bold text-muted-foreground", children: [
+                /* @__PURE__ */ jsxRuntimeExports.jsxs("span", { className: "flex items-center gap-1.5 text-foreground", children: [
+                  /* @__PURE__ */ jsxRuntimeExports.jsx(Calendar, { size: 16 }),
+                  " ",
+                  displayDate
+                ] }),
+                memory.location && /* @__PURE__ */ jsxRuntimeExports.jsxs("span", { className: "flex items-center gap-1.5", children: [
+                  /* @__PURE__ */ jsxRuntimeExports.jsx(MapPin, { size: 16 }),
+                  " ",
+                  memory.location
+                ] }),
+                /* @__PURE__ */ jsxRuntimeExports.jsxs("span", { className: "flex items-center gap-1.5 bg-accent px-3 py-1 rounded-md text-foreground", children: [
+                  /* @__PURE__ */ jsxRuntimeExports.jsx(Folder, { size: 16 }),
+                  " ",
+                  memory.category || "General",
+                  " Album"
+                ] })
+              ] })
+            ] }),
+            /* @__PURE__ */ jsxRuntimeExports.jsxs("div", { className: "flex items-center gap-3", children: [
+              getAllMedia().length > 0 && /* @__PURE__ */ jsxRuntimeExports.jsxs("button", { onClick: () => {
+                setSlideIndex(0);
+                setSlideshowActive(true);
+              }, className: "px-4 py-2 bg-primary text-primary-foreground font-bold rounded-xl hover:scale-105 transition-transform flex items-center gap-2 shadow-lg shadow-primary/20", children: [
+                /* @__PURE__ */ jsxRuntimeExports.jsx(CirclePlay, { size: 18 }),
+                " Slideshow"
+              ] }),
+              /* @__PURE__ */ jsxRuntimeExports.jsx("button", { onClick: onClose, className: "p-2 hover:bg-accent rounded-full transition-colors text-muted-foreground", children: /* @__PURE__ */ jsxRuntimeExports.jsx(X, { size: 24 }) })
+            ] })
+          ] }),
+          /* @__PURE__ */ jsxRuntimeExports.jsxs("div", { className: "flex-1 overflow-y-auto p-8 flex flex-col lg:flex-row gap-12", children: [
+            /* @__PURE__ */ jsxRuntimeExports.jsxs("div", { className: "flex-1 space-y-12", children: [
+              memory.description && /* @__PURE__ */ jsxRuntimeExports.jsxs("div", { children: [
+                /* @__PURE__ */ jsxRuntimeExports.jsxs("h3", { className: "text-sm font-bold text-muted-foreground uppercase mb-4 flex items-center gap-2 tracking-widest", children: [
+                  /* @__PURE__ */ jsxRuntimeExports.jsx(FileText, { size: 16 }),
+                  " Story"
+                ] }),
+                /* @__PURE__ */ jsxRuntimeExports.jsx(
+                  "div",
+                  {
+                    className: "prose dark:prose-invert text-foreground max-w-none prose-sm md:prose-base bg-accent/20 p-8 rounded-3xl border border-border leading-loose",
+                    dangerouslySetInnerHTML: { __html: memory.description }
+                  }
+                )
+              ] }),
+              photos.length > 0 && /* @__PURE__ */ jsxRuntimeExports.jsxs("div", { children: [
+                /* @__PURE__ */ jsxRuntimeExports.jsxs("h3", { className: "text-sm font-bold text-muted-foreground uppercase mb-4 flex items-center gap-2 tracking-widest", children: [
+                  /* @__PURE__ */ jsxRuntimeExports.jsx(Image$2, { size: 16 }),
+                  " Photos"
+                ] }),
+                /* @__PURE__ */ jsxRuntimeExports.jsx("div", { className: "columns-2 md:columns-3 gap-4 space-y-4", children: photos.map((url, i2) => /* @__PURE__ */ jsxRuntimeExports.jsx("div", { className: "break-inside-avoid relative rounded-2xl overflow-hidden border border-border group shadow-sm hover:shadow-xl transition-all", children: /* @__PURE__ */ jsxRuntimeExports.jsx("a", { href: normalizeUrl(url), target: "_blank", rel: "noreferrer", className: "block w-full", children: /* @__PURE__ */ jsxRuntimeExports.jsx("img", { src: normalizeUrl(url), alt: `Photo ${i2 + 1}`, className: "w-full object-cover group-hover:scale-105 transition-transform duration-700" }) }) }, i2)) })
+              ] }),
+              videos.length > 0 && /* @__PURE__ */ jsxRuntimeExports.jsxs("div", { children: [
+                /* @__PURE__ */ jsxRuntimeExports.jsxs("h3", { className: "text-sm font-bold text-muted-foreground uppercase mb-4 flex items-center gap-2 tracking-widest", children: [
+                  /* @__PURE__ */ jsxRuntimeExports.jsx(Film, { size: 16 }),
+                  " Videos"
+                ] }),
+                /* @__PURE__ */ jsxRuntimeExports.jsx("div", { className: "grid grid-cols-1 md:grid-cols-2 gap-4", children: videos.map((url, i2) => /* @__PURE__ */ jsxRuntimeExports.jsxs("div", { className: "group relative bg-gradient-to-br from-slate-900/50 to-slate-800/50 border border-border rounded-2xl overflow-hidden hover:border-primary/50 transition-all duration-300 shadow-lg hover:shadow-xl", children: [
+                  /* @__PURE__ */ jsxRuntimeExports.jsx("div", { className: "relative aspect-video bg-black", children: /* @__PURE__ */ jsxRuntimeExports.jsx(
+                    "video",
+                    {
+                      src: getSafeMediaUrl(url),
+                      controls: true,
+                      className: "w-full h-full object-contain",
+                      preload: "metadata"
+                    }
+                  ) }),
+                  /* @__PURE__ */ jsxRuntimeExports.jsx("div", { className: "absolute bottom-0 left-0 right-0 bg-gradient-to-t from-black/80 to-transparent p-3 opacity-0 group-hover:opacity-100 transition-opacity duration-300", children: /* @__PURE__ */ jsxRuntimeExports.jsx("p", { className: "text-white text-xs font-medium truncate", title: url.split(/[\\/]/).pop(), children: url.split(/[\\/]/).pop() }) })
+                ] }, i2)) })
+              ] }),
+              audio.length > 0 && /* @__PURE__ */ jsxRuntimeExports.jsxs("div", { children: [
+                /* @__PURE__ */ jsxRuntimeExports.jsxs("h3", { className: "text-sm font-bold text-muted-foreground uppercase mb-4 flex items-center gap-2 tracking-widest", children: [
+                  /* @__PURE__ */ jsxRuntimeExports.jsx(Music, { size: 16 }),
+                  " Audio"
+                ] }),
+                /* @__PURE__ */ jsxRuntimeExports.jsx("div", { className: "grid grid-cols-1 md:grid-cols-2 gap-4", children: audio.map((url, i2) => /* @__PURE__ */ jsxRuntimeExports.jsx("div", { className: "group relative bg-gradient-to-br from-cyan-900/30 to-blue-900/30 border border-border rounded-2xl overflow-hidden hover:border-cyan-500/50 transition-all duration-300 shadow-lg hover:shadow-xl", children: /* @__PURE__ */ jsxRuntimeExports.jsxs("div", { className: "p-5", children: [
+                  /* @__PURE__ */ jsxRuntimeExports.jsxs("div", { className: "flex items-center gap-4 mb-3", children: [
+                    /* @__PURE__ */ jsxRuntimeExports.jsx("div", { className: "w-14 h-14 rounded-xl bg-gradient-to-br from-cyan-500/20 to-blue-500/20 text-cyan-400 flex items-center justify-center shrink-0 border border-cyan-500/30 group-hover:scale-110 transition-transform duration-300", children: /* @__PURE__ */ jsxRuntimeExports.jsx(Music, { size: 28 }) }),
+                    /* @__PURE__ */ jsxRuntimeExports.jsx("div", { className: "flex-1 min-w-0", children: /* @__PURE__ */ jsxRuntimeExports.jsx("p", { className: "text-sm font-bold text-foreground truncate", title: url.split(/[\\/]/).pop(), children: url.split(/[\\/]/).pop() }) })
+                  ] }),
+                  /* @__PURE__ */ jsxRuntimeExports.jsx(
+                    "audio",
+                    {
+                      src: getSafeMediaUrl(url),
+                      controls: true,
+                      className: "w-full h-10 [&::-webkit-media-controls-panel]:bg-accent/50 [&::-webkit-media-controls-current-time-display]:text-xs [&::-webkit-media-controls-time-remaining-display]:text-xs",
+                      preload: "metadata"
+                    }
+                  )
+                ] }) }, i2)) })
+              ] })
+            ] }),
+            /* @__PURE__ */ jsxRuntimeExports.jsxs("div", { className: "w-full lg:w-80 shrink-0 space-y-8", children: [
+              /* @__PURE__ */ jsxRuntimeExports.jsxs("div", { className: "bg-accent/30 rounded-3xl p-6 border border-border space-y-6", children: [
+                /* @__PURE__ */ jsxRuntimeExports.jsxs("div", { className: "flex justify-between items-center", children: [
+                  /* @__PURE__ */ jsxRuntimeExports.jsxs("div", { children: [
+                    /* @__PURE__ */ jsxRuntimeExports.jsx("div", { className: "text-xs font-bold text-muted-foreground uppercase mb-1", children: "Mood" }),
+                    /* @__PURE__ */ jsxRuntimeExports.jsx("div", { className: "text-xl font-bold bg-background border border-border inline-block px-3 py-1.5 rounded-xl shadow-sm", children: memory.mood || "N/A" })
+                  ] }),
+                  /* @__PURE__ */ jsxRuntimeExports.jsxs("div", { className: "text-right", children: [
+                    /* @__PURE__ */ jsxRuntimeExports.jsx("div", { className: "text-xs font-bold text-muted-foreground uppercase mb-1", children: "Rating" }),
+                    /* @__PURE__ */ jsxRuntimeExports.jsxs("div", { className: "text-xl font-black text-yellow-500 bg-background border border-border inline-block px-3 py-1.5 rounded-xl shadow-sm", children: [
+                      memory.importance || 0,
+                      " / 10"
+                    ] })
+                  ] })
+                ] }),
+                /* @__PURE__ */ jsxRuntimeExports.jsxs("div", { children: [
+                  /* @__PURE__ */ jsxRuntimeExports.jsx("div", { className: "text-xs font-bold text-muted-foreground uppercase mb-3", children: "People Present" }),
+                  /* @__PURE__ */ jsxRuntimeExports.jsxs("div", { className: "flex flex-wrap gap-2", children: [
+                    memory.people?.map((pid) => {
+                      const p2 = localRelationships.find((r2) => r2._id === pid);
+                      const displayName = p2 ? p2.name : "Unknown Person";
+                      if (!p2) {
+                        console.log("Relationship not found for ID:", pid, "Available relationships:", localRelationships.map((r2) => ({ id: r2._id, name: r2.name })));
+                      }
+                      return /* @__PURE__ */ jsxRuntimeExports.jsxs("div", { className: "bg-background border border-border px-3 py-1.5 rounded-full text-sm font-bold flex items-center gap-2 shadow-sm", title: pid, children: [
+                        /* @__PURE__ */ jsxRuntimeExports.jsx(Users, { size: 14, className: "text-primary" }),
+                        " ",
+                        displayName
+                      ] }, pid);
+                    }),
+                    (!memory.people || memory.people.length === 0) && /* @__PURE__ */ jsxRuntimeExports.jsx("span", { className: "text-sm text-muted-foreground", children: "No one tagged." })
+                  ] })
+                ] }),
+                memory.tags && memory.tags.length > 0 && /* @__PURE__ */ jsxRuntimeExports.jsxs("div", { children: [
+                  /* @__PURE__ */ jsxRuntimeExports.jsx("div", { className: "text-xs font-bold text-muted-foreground uppercase mb-3", children: "Tags" }),
+                  /* @__PURE__ */ jsxRuntimeExports.jsx("div", { className: "flex flex-wrap gap-2", children: memory.tags.map((t2) => /* @__PURE__ */ jsxRuntimeExports.jsxs("span", { className: "text-xs font-bold px-3 py-1 bg-primary/10 text-primary rounded-lg border border-primary/20", children: [
+                    "#",
+                    t2
+                  ] }, t2)) })
+                ] }),
+                audio.length > 0 && /* @__PURE__ */ jsxRuntimeExports.jsxs("div", { children: [
+                  /* @__PURE__ */ jsxRuntimeExports.jsx("div", { className: "text-xs font-bold text-muted-foreground uppercase mb-3", children: "Voice Notes" }),
+                  /* @__PURE__ */ jsxRuntimeExports.jsx("div", { className: "space-y-3", children: audio.map((url, i2) => /* @__PURE__ */ jsxRuntimeExports.jsx("div", { className: "p-3 bg-background border border-border rounded-xl", children: /* @__PURE__ */ jsxRuntimeExports.jsx("audio", { src: getSafeMediaUrl(url), controls: true, className: "w-full h-8" }) }, i2)) })
+                ] }),
+                files.length > 0 && /* @__PURE__ */ jsxRuntimeExports.jsxs("div", { children: [
+                  /* @__PURE__ */ jsxRuntimeExports.jsx("div", { className: "text-xs font-bold text-muted-foreground uppercase mb-3", children: "Documents" }),
+                  /* @__PURE__ */ jsxRuntimeExports.jsx("div", { className: "space-y-2", children: files.map((url, i2) => /* @__PURE__ */ jsxRuntimeExports.jsxs("a", { href: url, download: true, className: "flex items-center gap-3 p-3 bg-background border border-border rounded-xl text-sm font-medium hover:bg-accent transition-colors group", children: [
+                    /* @__PURE__ */ jsxRuntimeExports.jsx(FileText, { size: 18, className: "text-blue-500 shrink-0 group-hover:scale-110 transition-transform" }),
+                    /* @__PURE__ */ jsxRuntimeExports.jsx("span", { className: "truncate", children: url.split("/").pop() })
+                  ] }, i2)) })
+                ] })
+              ] }),
+              /* @__PURE__ */ jsxRuntimeExports.jsxs("div", { className: "space-y-3", children: [
+                /* @__PURE__ */ jsxRuntimeExports.jsxs("button", { onClick: onEdit, className: "w-full flex items-center justify-center gap-2 py-3 bg-primary text-black font-bold rounded-xl hover:scale-105 transition-transform shadow-lg shadow-primary/20", children: [
+                  /* @__PURE__ */ jsxRuntimeExports.jsx(Pen, { size: 18 }),
+                  " Edit Memory"
+                ] }),
+                /* @__PURE__ */ jsxRuntimeExports.jsxs("button", { onClick: handleExport, className: "w-full flex items-center justify-center gap-2 py-3 bg-accent text-foreground font-bold rounded-xl hover:bg-accent/80 transition-colors", children: [
+                  /* @__PURE__ */ jsxRuntimeExports.jsx(Download, { size: 18 }),
+                  " Export JSON"
+                ] }),
+                /* @__PURE__ */ jsxRuntimeExports.jsxs("button", { onClick: onDelete, className: "w-full flex items-center justify-center gap-2 py-3 bg-red-500/10 text-red-500 font-bold rounded-xl hover:bg-red-500 hover:text-white transition-colors mt-6", children: [
+                  /* @__PURE__ */ jsxRuntimeExports.jsx(Trash2, { size: 18 }),
+                  " Delete Permanently"
+                ] })
               ] })
             ] })
-          ] }),
-          /* @__PURE__ */ jsxRuntimeExports.jsxs("div", { children: [
-            /* @__PURE__ */ jsxRuntimeExports.jsx("div", { className: "text-xs font-bold text-muted-foreground uppercase mb-3", children: "People Present" }),
-            /* @__PURE__ */ jsxRuntimeExports.jsxs("div", { className: "flex flex-wrap gap-2", children: [
-              memory.people?.map((pid) => {
-                const p2 = relationships.find((r2) => r2._id === pid);
-                return /* @__PURE__ */ jsxRuntimeExports.jsxs("div", { className: "bg-background border border-border px-3 py-1.5 rounded-full text-sm font-bold flex items-center gap-2 shadow-sm", children: [
-                  /* @__PURE__ */ jsxRuntimeExports.jsx(Users, { size: 14, className: "text-primary" }),
-                  " ",
-                  p2 ? p2.name : pid
-                ] }, pid);
-              }),
-              (!memory.people || memory.people.length === 0) && /* @__PURE__ */ jsxRuntimeExports.jsx("span", { className: "text-sm text-muted-foreground", children: "No one tagged." })
-            ] })
-          ] }),
-          memory.tags && memory.tags.length > 0 && /* @__PURE__ */ jsxRuntimeExports.jsxs("div", { children: [
-            /* @__PURE__ */ jsxRuntimeExports.jsx("div", { className: "text-xs font-bold text-muted-foreground uppercase mb-3", children: "Tags" }),
-            /* @__PURE__ */ jsxRuntimeExports.jsx("div", { className: "flex flex-wrap gap-2", children: memory.tags.map((t2) => /* @__PURE__ */ jsxRuntimeExports.jsxs("span", { className: "text-xs font-bold px-3 py-1 bg-primary/10 text-primary rounded-lg border border-primary/20", children: [
-              "#",
-              t2
-            ] }, t2)) })
-          ] }),
-          audio.length > 0 && /* @__PURE__ */ jsxRuntimeExports.jsxs("div", { children: [
-            /* @__PURE__ */ jsxRuntimeExports.jsx("div", { className: "text-xs font-bold text-muted-foreground uppercase mb-3", children: "Voice Notes" }),
-            /* @__PURE__ */ jsxRuntimeExports.jsx("div", { className: "space-y-3", children: audio.map((url, i2) => /* @__PURE__ */ jsxRuntimeExports.jsx("div", { className: "p-3 bg-background border border-border rounded-xl", children: /* @__PURE__ */ jsxRuntimeExports.jsx("audio", { src: url, controls: true, className: "w-full h-8" }) }, i2)) })
-          ] }),
-          files.length > 0 && /* @__PURE__ */ jsxRuntimeExports.jsxs("div", { children: [
-            /* @__PURE__ */ jsxRuntimeExports.jsx("div", { className: "text-xs font-bold text-muted-foreground uppercase mb-3", children: "Documents" }),
-            /* @__PURE__ */ jsxRuntimeExports.jsx("div", { className: "space-y-2", children: files.map((url, i2) => /* @__PURE__ */ jsxRuntimeExports.jsxs("a", { href: url, download: true, className: "flex items-center gap-3 p-3 bg-background border border-border rounded-xl text-sm font-medium hover:bg-accent transition-colors group", children: [
-              /* @__PURE__ */ jsxRuntimeExports.jsx(FileText, { size: 18, className: "text-blue-500 shrink-0 group-hover:scale-110 transition-transform" }),
-              /* @__PURE__ */ jsxRuntimeExports.jsx("span", { className: "truncate", children: url.split("/").pop() })
-            ] }, i2)) })
-          ] })
-        ] }),
-        /* @__PURE__ */ jsxRuntimeExports.jsxs("div", { className: "space-y-3", children: [
-          /* @__PURE__ */ jsxRuntimeExports.jsxs("button", { onClick: onEdit, className: "w-full flex items-center justify-center gap-2 py-3 bg-primary text-primary-foreground font-bold rounded-xl hover:scale-105 transition-transform shadow-lg shadow-primary/20", children: [
-            /* @__PURE__ */ jsxRuntimeExports.jsx(Pen, { size: 18 }),
-            " Edit Memory"
-          ] }),
-          /* @__PURE__ */ jsxRuntimeExports.jsxs("button", { onClick: onDuplicate, className: "w-full flex items-center justify-center gap-2 py-3 bg-accent text-foreground font-bold rounded-xl hover:bg-accent/80 transition-colors", children: [
-            /* @__PURE__ */ jsxRuntimeExports.jsx(Copy, { size: 18 }),
-            " Duplicate"
-          ] }),
-          /* @__PURE__ */ jsxRuntimeExports.jsxs("button", { onClick: handleExport, className: "w-full flex items-center justify-center gap-2 py-3 bg-accent text-foreground font-bold rounded-xl hover:bg-accent/80 transition-colors", children: [
-            /* @__PURE__ */ jsxRuntimeExports.jsx(Download, { size: 18 }),
-            " Export JSON"
-          ] }),
-          /* @__PURE__ */ jsxRuntimeExports.jsxs("button", { onClick: onDelete, className: "w-full flex items-center justify-center gap-2 py-3 bg-red-500/10 text-red-500 font-bold rounded-xl hover:bg-red-500 hover:text-white transition-colors mt-6", children: [
-            /* @__PURE__ */ jsxRuntimeExports.jsx(Trash2, { size: 18 }),
-            " Delete Permanently"
           ] })
         ] })
-      ] })
-    ] })
-  ] }) });
+      }
+    ),
+    document.body
+  );
 }
 function RecentMemoriesWidget({ data }) {
   const records = data.records || [];
@@ -77299,9 +77596,19 @@ function RecentMemoriesWidget({ data }) {
         onClose: () => setSelectedMemory(null),
         memory: selectedMemory,
         relationships,
-        onEdit: () => navigate("/records"),
-        onDelete: () => navigate("/records"),
-        onDuplicate: () => navigate("/records")
+        onEdit: () => navigate(`/records?edit=${selectedMemory._id}`),
+        onDelete: () => {
+          const handleDelete2 = async () => {
+            try {
+              await window.api.db.remove("records", selectedMemory._id);
+              setSelectedMemory(null);
+              window.location.reload();
+            } catch (e3) {
+              console.error("Failed to delete memory:", e3);
+            }
+          };
+          handleDelete2();
+        }
       }
     )
   ] });
@@ -77359,16 +77666,20 @@ function TimelineWidget({ data }) {
 function AiInsightWidget({ data }) {
   const rels = data.relationships || [];
   const habits = data.habits || [];
+  const navigate = useNavigate();
   let insight1 = "You're doing great!";
   let insight2 = "Keep tracking your life to generate more insights.";
   let recommendation = "Log a new memory today";
+  let navPath = "/records";
   if (rels.length > 0) {
     insight1 = `You have ${rels.length} people in your network.`;
     recommendation = `Message ${rels[0].name} today`;
-  }
-  if (habits.length > 0) {
+    navPath = `/relationships/${rels[0]._id}`;
+  } else if (habits.length > 0) {
     const topHabit = habits[0];
     insight2 = `Your habit '${topHabit.title}' is going strong.`;
+    recommendation = `Update ${topHabit.title}`;
+    navPath = `/habits`;
   }
   return /* @__PURE__ */ jsxRuntimeExports.jsxs("div", { className: "p-6 bg-gradient-to-br from-cyan-500/10 to-blue-600/10 rounded-2xl border border-cyan-500/20 h-full relative overflow-hidden group", children: [
     /* @__PURE__ */ jsxRuntimeExports.jsx("div", { className: "absolute top-0 right-0 p-4 opacity-10 transform group-hover:rotate-12 transition-transform text-cyan-500", children: /* @__PURE__ */ jsxRuntimeExports.jsx(Sparkles, { size: 100 }) }),
@@ -77383,10 +77694,17 @@ function AiInsightWidget({ data }) {
       ] }),
       /* @__PURE__ */ jsxRuntimeExports.jsxs("div", { className: "mt-6 pt-4 border-t border-cyan-500/20", children: [
         /* @__PURE__ */ jsxRuntimeExports.jsx("p", { className: "text-xs font-bold uppercase tracking-wider text-cyan-600/80 dark:text-cyan-400/80 mb-2", children: "Recommendation" }),
-        /* @__PURE__ */ jsxRuntimeExports.jsxs("button", { className: "w-full flex items-center justify-between p-3 bg-cyan-500 text-white rounded-xl hover:bg-cyan-600 transition-colors shadow-lg shadow-cyan-500/20 font-bold text-sm", children: [
-          recommendation,
-          /* @__PURE__ */ jsxRuntimeExports.jsx(ArrowRight, { size: 16 })
-        ] })
+        /* @__PURE__ */ jsxRuntimeExports.jsxs(
+          "button",
+          {
+            onClick: () => navigate(navPath),
+            className: "w-full flex items-center justify-between p-3 bg-cyan-500 text-white rounded-xl hover:bg-cyan-600 transition-colors shadow-lg shadow-cyan-500/20 font-bold text-sm",
+            children: [
+              recommendation,
+              /* @__PURE__ */ jsxRuntimeExports.jsx(ArrowRight, { size: 16 })
+            ]
+          }
+        )
       ] })
     ] })
   ] });
@@ -86949,8 +87267,11 @@ function buildKnowledgeGraph(data) {
   nodes.forEach((n2) => {
     if (n2.category === "Record" || n2.category === "Journal" || n2.category === "Habit") {
       let dStr = "";
-      if (n2.category === "Record") dStr = n2.originalData.date?.substring(0, 10);
-      if (n2.category === "Journal") dStr = n2.originalData.date?.substring(0, 10);
+      const dateValue = n2.originalData.date;
+      if (dateValue) {
+        const dateStr = typeof dateValue === "string" ? dateValue : new Date(dateValue).toISOString();
+        dStr = dateStr.substring(0, 10);
+      }
       if (dStr) {
         if (!dateMap.has(dStr)) dateMap.set(dStr, []);
         dateMap.get(dStr).push(n2.id);
@@ -87307,8 +87628,8 @@ const KnowledgeGraphWidget = () => {
     ] })
   ] });
 };
-var __defProp$4 = Object.defineProperty;
-var __name$4 = (target, value) => __defProp$4(target, "name", { value, configurable: true });
+var __defProp$5 = Object.defineProperty;
+var __name$5 = (target, value) => __defProp$5(target, "name", { value, configurable: true });
 var CONTEXT_UPDATE = "dismissableLayer.update";
 var POINTER_DOWN_OUTSIDE = "dismissableLayer.pointerDownOutside";
 var FOCUS_OUTSIDE = "dismissableLayer.focusOutside";
@@ -87326,7 +87647,7 @@ var DismissableLayerContext = reactExports.createContext({
 });
 var DismissableLayer = /* @__PURE__ */ reactExports.forwardRef(
   // blank line to reduce diff noise
-  /* @__PURE__ */ __name$4(function DismissableLayer2(props, forwardedRef) {
+  /* @__PURE__ */ __name$5(function DismissableLayer2(props, forwardedRef) {
     const {
       disableOutsidePointerEvents = false,
       deferPointerDownOutside = false,
@@ -87434,7 +87755,7 @@ var DismissableLayer = /* @__PURE__ */ reactExports.forwardRef(
       };
     }, [node2, context]);
     reactExports.useEffect(() => {
-      const handleUpdate = /* @__PURE__ */ __name$4(() => force({}), "handleUpdate");
+      const handleUpdate = /* @__PURE__ */ __name$5(() => force({}), "handleUpdate");
       document.addEventListener(CONTEXT_UPDATE, handleUpdate);
       return () => document.removeEventListener(CONTEXT_UPDATE, handleUpdate);
     }, []);
@@ -87471,8 +87792,8 @@ function useDismissableLayerSurface() {
   }, [node2, context.dismissableSurfaces]);
   return setNode2;
 }
-__name$4(useDismissableLayerSurface, "useDismissableLayerSurface");
-var IS_TRUE = /* @__PURE__ */ __name$4(() => true, "IS_TRUE");
+__name$5(useDismissableLayerSurface, "useDismissableLayerSurface");
+var IS_TRUE = /* @__PURE__ */ __name$5(() => true, "IS_TRUE");
 function usePointerDownOutside(onPointerDownOutside, args) {
   const {
     ownerDocument = globalThis?.document,
@@ -87493,11 +87814,11 @@ function usePointerDownOutside(onPointerDownOutside, args) {
       isDeferredPointerDownOutsideRef.current = false;
       interceptedOutsideInteractionEventsRef.current.clear();
     }
-    __name$4(resetOutsideInteraction, "resetOutsideInteraction");
+    __name$5(resetOutsideInteraction, "resetOutsideInteraction");
     function isOutsideInteractionIntercepted() {
       return Array.from(interceptedOutsideInteractionEventsRef.current.values()).some(Boolean);
     }
-    __name$4(isOutsideInteractionIntercepted, "isOutsideInteractionIntercepted");
+    __name$5(isOutsideInteractionIntercepted, "isOutsideInteractionIntercepted");
     function handleInteractionCapture(event) {
       if (!isPointerDownOutsideRef.current) {
         return;
@@ -87515,14 +87836,14 @@ function usePointerDownOutside(onPointerDownOutside, args) {
         }, 0);
       }
     }
-    __name$4(handleInteractionCapture, "handleInteractionCapture");
+    __name$5(handleInteractionCapture, "handleInteractionCapture");
     function handleInteractionBubble(event) {
       if (isPointerDownOutsideRef.current) {
         interceptedOutsideInteractionEventsRef.current.set(event.type, false);
       }
     }
-    __name$4(handleInteractionBubble, "handleInteractionBubble");
-    const handlePointerDown = /* @__PURE__ */ __name$4((event) => {
+    __name$5(handleInteractionBubble, "handleInteractionBubble");
+    const handlePointerDown = /* @__PURE__ */ __name$5((event) => {
       if (event.target && !isPointerInsideReactTreeRef.current) {
         let handleAndDispatchPointerDownOutsideEvent2 = function() {
           ownerDocument.removeEventListener("click", handleClickRef.current);
@@ -87537,7 +87858,7 @@ function usePointerDownOutside(onPointerDownOutside, args) {
             );
           }
         };
-        __name$4(handleAndDispatchPointerDownOutsideEvent2, "handleAndDispatchPointerDownOutsideEvent");
+        __name$5(handleAndDispatchPointerDownOutsideEvent2, "handleAndDispatchPointerDownOutsideEvent");
         if (!shouldHandlePointerDownOutside(event.target)) {
           ownerDocument.removeEventListener("click", handleClickRef.current);
           resetOutsideInteraction();
@@ -87595,15 +87916,15 @@ function usePointerDownOutside(onPointerDownOutside, args) {
   ]);
   return {
     // ensures we check React component tree (not just DOM tree)
-    onPointerDownCapture: /* @__PURE__ */ __name$4(() => isPointerInsideReactTreeRef.current = true, "onPointerDownCapture")
+    onPointerDownCapture: /* @__PURE__ */ __name$5(() => isPointerInsideReactTreeRef.current = true, "onPointerDownCapture")
   };
 }
-__name$4(usePointerDownOutside, "usePointerDownOutside");
+__name$5(usePointerDownOutside, "usePointerDownOutside");
 function useFocusOutside(onFocusOutside, ownerDocument = globalThis?.document) {
   const handleFocusOutside = useCallbackRef(onFocusOutside);
   const isFocusInsideReactTreeRef = reactExports.useRef(false);
   reactExports.useEffect(() => {
-    const handleFocus = /* @__PURE__ */ __name$4((event) => {
+    const handleFocus = /* @__PURE__ */ __name$5((event) => {
       if (event.target && !isFocusInsideReactTreeRef.current) {
         const eventDetail = { originalEvent: event };
         handleAndDispatchCustomEvent(FOCUS_OUTSIDE, handleFocusOutside, eventDetail, {
@@ -87615,16 +87936,16 @@ function useFocusOutside(onFocusOutside, ownerDocument = globalThis?.document) {
     return () => ownerDocument.removeEventListener("focusin", handleFocus);
   }, [ownerDocument, handleFocusOutside]);
   return {
-    onFocusCapture: /* @__PURE__ */ __name$4(() => isFocusInsideReactTreeRef.current = true, "onFocusCapture"),
-    onBlurCapture: /* @__PURE__ */ __name$4(() => isFocusInsideReactTreeRef.current = false, "onBlurCapture")
+    onFocusCapture: /* @__PURE__ */ __name$5(() => isFocusInsideReactTreeRef.current = true, "onFocusCapture"),
+    onBlurCapture: /* @__PURE__ */ __name$5(() => isFocusInsideReactTreeRef.current = false, "onBlurCapture")
   };
 }
-__name$4(useFocusOutside, "useFocusOutside");
+__name$5(useFocusOutside, "useFocusOutside");
 function dispatchUpdate() {
   const event = new CustomEvent(CONTEXT_UPDATE);
   document.dispatchEvent(event);
 }
-__name$4(dispatchUpdate, "dispatchUpdate");
+__name$5(dispatchUpdate, "dispatchUpdate");
 function handleAndDispatchCustomEvent(name2, handler, detail, { discrete }) {
   const target = detail.originalEvent.target;
   const event = new CustomEvent(name2, { bubbles: false, cancelable: true, detail });
@@ -87635,7 +87956,7 @@ function handleAndDispatchCustomEvent(name2, handler, detail, { discrete }) {
     target.dispatchEvent(event);
   }
 }
-__name$4(handleAndDispatchCustomEvent, "handleAndDispatchCustomEvent");
+__name$5(handleAndDispatchCustomEvent, "handleAndDispatchCustomEvent");
 const sides = ["top", "right", "bottom", "left"];
 const min = Math.min;
 const max = Math.max;
@@ -89526,8 +89847,8 @@ const arrow = (options, deps) => {
     options: [options, deps]
   };
 };
-var __defProp$3 = Object.defineProperty;
-var __name$3 = (target, value) => __defProp$3(target, "name", { value, configurable: true });
+var __defProp$4 = Object.defineProperty;
+var __name$4 = (target, value) => __defProp$4(target, "name", { value, configurable: true });
 function useSize(element2) {
   const [size2, setSize] = reactExports.useState(void 0);
   useLayoutEffect2(() => {
@@ -89562,13 +89883,13 @@ function useSize(element2) {
   }, [element2]);
   return size2;
 }
-__name$3(useSize, "useSize");
-var __defProp$2 = Object.defineProperty;
-var __name$2 = (target, value) => __defProp$2(target, "name", { value, configurable: true });
+__name$4(useSize, "useSize");
+var __defProp$3 = Object.defineProperty;
+var __name$3 = (target, value) => __defProp$3(target, "name", { value, configurable: true });
 var POPPER_NAME = "Popper";
 var [createPopperContext, createPopperScope] = /* @__PURE__ */ createContextScope(POPPER_NAME);
 var [PopperProvider, usePopperContext] = createPopperContext(POPPER_NAME);
-var Popper = /* @__PURE__ */ __name$2((props) => {
+var Popper = /* @__PURE__ */ __name$3((props) => {
   const { __scopePopper, children: children2 } = props;
   const [anchor, setAnchor] = reactExports.useState(null);
   const [placementState, setPlacementState] = reactExports.useState(void 0);
@@ -89586,7 +89907,7 @@ var Popper = /* @__PURE__ */ __name$2((props) => {
 }, "Popper");
 var ANCHOR_NAME = "PopperAnchor";
 var PopperAnchor = /* @__PURE__ */ reactExports.forwardRef(
-  /* @__PURE__ */ __name$2(function PopperAnchor2(props, forwardedRef) {
+  /* @__PURE__ */ __name$3(function PopperAnchor2(props, forwardedRef) {
     const { __scopePopper, virtualRef, ...anchorProps } = props;
     const context = usePopperContext(ANCHOR_NAME, __scopePopper);
     const ref = reactExports.useRef(null);
@@ -89629,7 +89950,7 @@ var PopperAnchor = /* @__PURE__ */ reactExports.forwardRef(
 var CONTENT_NAME$1 = "PopperContent";
 var [PopperContentProvider, useContentContext] = createPopperContext(CONTENT_NAME$1);
 var PopperContent = /* @__PURE__ */ reactExports.forwardRef(
-  /* @__PURE__ */ __name$2(function PopperContent2(props, forwardedRef) {
+  /* @__PURE__ */ __name$3(function PopperContent2(props, forwardedRef) {
     const {
       __scopePopper,
       side = "bottom",
@@ -89667,7 +89988,7 @@ var PopperContent = /* @__PURE__ */ reactExports.forwardRef(
       // default to `fixed` strategy so users don't have to pick and we also avoid focus scroll issues
       strategy: "fixed",
       placement: desiredPlacement,
-      whileElementsMounted: /* @__PURE__ */ __name$2((...args) => {
+      whileElementsMounted: /* @__PURE__ */ __name$3((...args) => {
         const cleanup = autoUpdate(...args, {
           animationFrame: updatePositionStrategy === "always"
         });
@@ -89687,7 +90008,7 @@ var PopperContent = /* @__PURE__ */ reactExports.forwardRef(
         avoidCollisions && flip({ ...detectOverflowOptions }),
         size({
           ...detectOverflowOptions,
-          apply: /* @__PURE__ */ __name$2(({ elements, rects, availableWidth, availableHeight }) => {
+          apply: /* @__PURE__ */ __name$3(({ elements, rects, availableWidth, availableHeight }) => {
             const { width: anchorWidth, height: anchorHeight } = rects.reference;
             const contentStyle = elements.floating.style;
             contentStyle.setProperty("--radix-popper-available-width", `${availableWidth}px`);
@@ -89792,8 +90113,8 @@ var PopperContent = /* @__PURE__ */ reactExports.forwardRef(
 function isNotNull(value) {
   return value !== null;
 }
-__name$2(isNotNull, "isNotNull");
-var transformOrigin = /* @__PURE__ */ __name$2((options) => ({
+__name$3(isNotNull, "isNotNull");
+var transformOrigin = /* @__PURE__ */ __name$3((options) => ({
   name: "transformOrigin",
   options,
   fn(data) {
@@ -89828,10 +90149,21 @@ function getSideAndAlignFromPlacement(placement) {
   const [side, align = "center"] = placement.split("-");
   return [side, align];
 }
-__name$2(getSideAndAlignFromPlacement, "getSideAndAlignFromPlacement");
+__name$3(getSideAndAlignFromPlacement, "getSideAndAlignFromPlacement");
 var Root2 = Popper;
 var Anchor = PopperAnchor;
 var Content = PopperContent;
+var __defProp$2 = Object.defineProperty;
+var __name$2 = (target, value) => __defProp$2(target, "name", { value, configurable: true });
+var Portal$1 = /* @__PURE__ */ reactExports.forwardRef(
+  /* @__PURE__ */ __name$2(function Portal2(props, forwardedRef) {
+    const { container: containerProp, ...portalProps } = props;
+    const [mounted, setMounted] = reactExports.useState(false);
+    useLayoutEffect2(() => setMounted(true), []);
+    const container = containerProp || mounted && globalThis?.document?.body;
+    return container ? reactDomExports.createPortal(/* @__PURE__ */ jsxRuntimeExports.jsx(Primitive.div, { ...portalProps, ref: forwardedRef }), container) : null;
+  }, "Portal")
+);
 var __defProp$1 = Object.defineProperty;
 var __name$1 = (target, value) => __defProp$1(target, "name", { value, configurable: true });
 var VISUALLY_HIDDEN_STYLES = Object.freeze({
@@ -90061,6 +90393,11 @@ var PORTAL_NAME = "TooltipPortal";
 var [PortalProvider, usePortalContext] = createTooltipContext(PORTAL_NAME, {
   forceMount: void 0
 });
+var TooltipPortal = /* @__PURE__ */ __name((props) => {
+  const { __scopeTooltip, forceMount, children: children2, container } = props;
+  const context = useTooltipContext(PORTAL_NAME, __scopeTooltip);
+  return /* @__PURE__ */ jsxRuntimeExports.jsx(PortalProvider, { scope: __scopeTooltip, forceMount, children: /* @__PURE__ */ jsxRuntimeExports.jsx(Presence, { present: forceMount || context.open, children: /* @__PURE__ */ jsxRuntimeExports.jsx(Portal$1, { asChild: true, container, children: children2 }) }) });
+}, "TooltipPortal");
 var CONTENT_NAME = "TooltipContent";
 var TooltipContent$1 = /* @__PURE__ */ reactExports.forwardRef(
   /* @__PURE__ */ __name(function TooltipContent2(props, forwardedRef) {
@@ -90332,11 +90669,12 @@ __name(getHullPresorted, "getHullPresorted");
 var Provider = TooltipProvider$1;
 var Root3 = Tooltip$1;
 var Trigger = TooltipTrigger$1;
+var Portal = TooltipPortal;
 var Content2 = TooltipContent$1;
 const TooltipProvider = Provider;
 const Tooltip = Root3;
 const TooltipTrigger = Trigger;
-const TooltipContent = reactExports.forwardRef(({ className, sideOffset = 4, ...props }, ref) => /* @__PURE__ */ jsxRuntimeExports.jsx(
+const TooltipContent = reactExports.forwardRef(({ className, sideOffset = 4, ...props }, ref) => /* @__PURE__ */ jsxRuntimeExports.jsx(Portal, { children: /* @__PURE__ */ jsxRuntimeExports.jsx(
   Content2,
   {
     ref,
@@ -90347,7 +90685,7 @@ const TooltipContent = reactExports.forwardRef(({ className, sideOffset = 4, ...
     ),
     ...props
   }
-));
+) }));
 TooltipContent.displayName = Content2.displayName;
 function CalendarWidget({ data, calendarMemories, onOpenMemoryModal }) {
   const now2 = /* @__PURE__ */ new Date();
@@ -90933,7 +91271,22 @@ function QuickAddModal({ isOpen, onClose, onSuccess }) {
         entry = { ...entry, ...formData, category: "Career", priority: formData.priority || "medium", status: formData.status || "Active", startDate: formData.startDate || todayStr2, targetDate: formData.targetDate || todayStr2, progress: Number(formData.progress) || 0 };
       } else if (type === "relationships") {
         if (targetPersonId === "new") {
-          entry = { ...entry, ...formData, tags: [], relationshipScore: 50, relationshipType: formData.relationshipType || "Friend", profilePicture: finalProfilePicture || photos[0], photos, audio: audios, video: videos, attachments };
+          let initialScore = 50;
+          if (formData.relationshipType) {
+            const typeScores = {
+              "Partner": 70,
+              "Best Friend": 65,
+              "Family": 60,
+              "Friend": 50,
+              "Colleague": 40,
+              "Acquaintance": 30,
+              "Other": 35
+            };
+            initialScore = typeScores[formData.relationshipType] || 50;
+          }
+          if (finalProfilePicture || photos.length > 0) initialScore += 5;
+          if (audios.length > 0 || videos.length > 0 || attachments.length > 0) initialScore += 3;
+          entry = { ...entry, ...formData, tags: [], relationshipScore: Math.min(100, initialScore), relationshipType: formData.relationshipType || "Friend", profilePicture: finalProfilePicture || photos[0], photos, audio: audios, video: videos, attachments };
         } else {
           shouldInsert = false;
           const existingPerson = savedRelationships.find((r2) => r2._id === targetPersonId);
@@ -91467,6 +91820,12 @@ function Dashboard$1() {
         window.api.db.find("career", {}),
         window.api.db.find("education", {})
       ]);
+      console.log("Dashboard: Loaded", relationships.length, "relationships");
+      console.log("Dashboard: All relationship IDs:", relationships.map((r2) => ({ id: r2._id, name: r2.name })));
+      const memoryRecords = records.filter((r2) => r2.type === "Memory");
+      memoryRecords.forEach((m2) => {
+        console.log("Dashboard: Memory", m2._id, "title:", m2.title, "people IDs:", m2.people);
+      });
       const userProfile = profiles && profiles.length > 0 ? profiles[0] : null;
       const habits = rawHabits.filter((h2) => h2.archived !== true).map((h2) => ({
         ...h2,
@@ -91484,8 +91843,9 @@ function Dashboard$1() {
     const savedVisibility = localStorage.getItem("dashboard_widget_visibility");
     if (savedOrder) {
       const parsed = JSON.parse(savedOrder);
-      const missing = Object.keys(WIDGET_REGISTRY).filter((k2) => !parsed.includes(k2));
-      setWidgetOrder([...parsed, ...missing]);
+      const validParsed = parsed.filter((k2) => Object.keys(WIDGET_REGISTRY).includes(k2));
+      const missing = Object.keys(WIDGET_REGISTRY).filter((k2) => !validParsed.includes(k2));
+      setWidgetOrder([...validParsed, ...missing]);
     }
     if (savedVisibility) {
       setWidgetVisibility(JSON.parse(savedVisibility));
@@ -91889,7 +92249,7 @@ function Dashboard$1() {
           /* @__PURE__ */ jsxRuntimeExports.jsxs("div", { className: "grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-6 p-2 relative pb-32", children: [
             /* @__PURE__ */ jsxRuntimeExports.jsx("div", { className: "col-span-1 md:col-span-2 xl:col-span-3", children: /* @__PURE__ */ jsxRuntimeExports.jsx(DynamicWelcome, { data: filteredData }) }),
             widgetOrder.map((id2) => {
-              if (!widgetVisibility[id2]) return null;
+              if (!widgetVisibility[id2] || !WIDGET_REGISTRY[id2]) return null;
               const Component = WIDGET_REGISTRY[id2].component;
               const gridCol = WIDGET_REGISTRY[id2].gridCol;
               return /* @__PURE__ */ jsxRuntimeExports.jsxs(
@@ -91914,7 +92274,17 @@ function Dashboard$1() {
                       ] }),
                       "Drag to reorder"
                     ] }),
-                    /* @__PURE__ */ jsxRuntimeExports.jsx(Component, { data: filteredData })
+                    /* @__PURE__ */ jsxRuntimeExports.jsx(
+                      Component,
+                      {
+                        data: filteredData,
+                        calendarMemories: filteredData.calendarMemories,
+                        onOpenMemoryModal: (date2) => {
+                          setMemoryModalDate(date2);
+                          setIsMemoryModalOpen(true);
+                        }
+                      }
+                    )
                   ]
                 },
                 id2
@@ -91936,8 +92306,9 @@ function Dashboard$1() {
           url.searchParams.delete("calendarMemoryDay");
           window.history.replaceState({}, "", url.pathname + url.search);
         },
-        date: memoryModalDate,
-        existingMemories: data.calendarMemories || []
+        selectedDate: memoryModalDate,
+        memories: (data.calendarMemories || []).filter((m2) => m2.month === memoryModalDate?.month && m2.day === memoryModalDate?.day),
+        onSave: () => loadDashboard()
       }
     ),
     /* @__PURE__ */ jsxRuntimeExports.jsx(
@@ -92207,102 +92578,7 @@ function Goals$1() {
     ] })
   ] });
 }
-const todayStr = (/* @__PURE__ */ new Date()).toISOString().split("T")[0];
-const runHabitMigrations = async () => {
-  try {
-    const habits = await window.api.db.find("habits", {});
-    let migratedCount = 0;
-    for (const h2 of habits) {
-      if (h2.priority === void 0 || h2.isTimerEnabled === void 0) {
-        const newHabit = {
-          title: h2.title,
-          category: h2.category || "General",
-          icon: h2.icon === "Sparkles" ? "✨" : h2.icon || "✨",
-          scheduleType: h2.scheduleType || "daily",
-          scheduleDays: h2.scheduleDays || [0, 1, 2, 3, 4, 5, 6],
-          priority: h2.priority || "medium",
-          isTimerEnabled: h2.isTimerEnabled || false,
-          targetDuration: h2.targetDuration || 1800,
-          startDate: h2.startDate || (h2.createdAt ? new Date(h2.createdAt).toISOString().split("T")[0] : todayStr),
-          archived: h2.archived || false,
-          createdAt: h2.createdAt || Date.now(),
-          updatedAt: Date.now()
-        };
-        await window.api.db.update("habits", { _id: h2._id }, { $set: newHabit });
-        migratedCount++;
-      }
-    }
-    if (migratedCount > 0) console.log(`Migrated ${migratedCount} habits to new schema.`);
-  } catch (err) {
-    console.error("Habit migration failed:", err);
-  }
-};
-const calculateHabitStats = async () => {
-  try {
-    const allHabits = await window.api.db.find("habits", { archived: { $ne: true } });
-    const allLogs = await window.api.db.find("habitLogs", {});
-    const allBreaks = await window.api.db.find("habitBreaks", {});
-    const logsToday = allLogs.filter((l2) => l2.date === todayStr);
-    const completedToday = logsToday.filter((l2) => l2.status === "completed").length;
-    const totalToday = allHabits.length;
-    const totalEligible = allHabits.length * (new Set(allLogs.map((l2) => l2.date)).size || 1);
-    const totalCompleted = allLogs.filter((l2) => l2.status === "completed").length;
-    const completionRate = totalEligible ? Math.round(totalCompleted / totalEligible * 100) : 0;
-    let currentStreak = 0;
-    let longestStreak2 = 0;
-    return {
-      score: Math.min(100, Math.round(completionRate * 1.1)),
-      completedToday,
-      totalToday,
-      currentStreak,
-      longestStreak: longestStreak2,
-      completionRate,
-      allHabits,
-      allLogs,
-      logsToday
-    };
-  } catch (err) {
-    console.error(err);
-    return null;
-  }
-};
-const logHabitActivity = async (habitId, action, details) => {
-  const log2 = {
-    habitId,
-    action,
-    timestamp: Date.now(),
-    details
-  };
-  await window.api.db.insert("habitActivityLogs", log2);
-};
-const checkAutoMisses = async () => {
-  try {
-    const allHabits = await window.api.db.find("habits", { archived: { $ne: true } });
-    const allLogs = await window.api.db.find("habitLogs", {});
-    for (const h2 of allHabits) {
-      if (!h2.deadlineTime) continue;
-      const now2 = /* @__PURE__ */ new Date();
-      const deadline = /* @__PURE__ */ new Date();
-      const [hh2, mm] = h2.deadlineTime.split(":");
-      deadline.setHours(parseInt(hh2), parseInt(mm), 0, 0);
-      if (now2 > deadline) {
-        const log2 = allLogs.find((l2) => l2.habitId === h2._id && l2.date === todayStr);
-        if (!log2 || log2.status === "pending") {
-          await window.api.db.update(
-            "habitLogs",
-            { habitId: h2._id, date: todayStr },
-            { $set: { status: "missed", updatedAt: Date.now() } },
-            { upsert: true }
-          );
-          if (h2._id) await logHabitActivity(h2._id, "auto_missed", "Deadline passed without completion.");
-        }
-      }
-    }
-  } catch (e3) {
-    console.error(e3);
-  }
-};
-const CATEGORIES$1 = ["Health", "Productivity", "Learning", "Fitness", "Mindfulness", "Finance", "Social", "Hobbies"];
+const CATEGORIES$1 = ["Health", "Productivity", "Learning", "Fitness", "Mindfulness", "Finance", "Social", "Hobbies", "Bad Habit"];
 function HabitFormModal({ isOpen, onClose, initialData, onSave, onDelete }) {
   const [loading, setLoading] = reactExports.useState(false);
   const [showSuccessOverlay, setShowSuccessOverlay] = reactExports.useState(false);
@@ -92341,7 +92617,6 @@ function HabitFormModal({ isOpen, onClose, initialData, onSave, onDelete }) {
       }
     }
   }, [isOpen, initialData]);
-  if (!isOpen) return null;
   const handleSubmit = async (e3) => {
     e3.preventDefault();
     if (!formData.title) return;
@@ -92373,6 +92648,19 @@ function HabitFormModal({ isOpen, onClose, initialData, onSave, onDelete }) {
       setLoading(false);
     }
   };
+  reactExports.useEffect(() => {
+    const down = (e3) => {
+      if (e3.ctrlKey && e3.key.toLowerCase() === "s") {
+        if (isOpen) {
+          e3.preventDefault();
+          handleSubmit(e3);
+        }
+      }
+    };
+    window.addEventListener("keydown", down);
+    return () => window.removeEventListener("keydown", down);
+  }, [isOpen, formData, initialData]);
+  if (!isOpen) return null;
   const handleDeleteReq = (mode) => {
     if (mode === "delete" && !confirm("Delete this habit permanently? Its completion history, timer sessions, streaks, and analytics will also be deleted.")) return;
     if (onDelete && initialData && initialData._id) {
@@ -92638,6 +92926,8 @@ function Dashboard() {
   const [activeTimerHabit, setActiveTimerHabit] = reactExports.useState(null);
   const [timerElapsed, setTimerElapsed] = reactExports.useState({});
   const timerRef = reactExports.useRef(null);
+  const [currentTime, setCurrentTime] = reactExports.useState(/* @__PURE__ */ new Date());
+  const processingMissesRef = reactExports.useRef(/* @__PURE__ */ new Set());
   const todayStr2 = (/* @__PURE__ */ new Date()).toISOString().split("T")[0];
   const loadData = async () => {
     try {
@@ -92646,12 +92936,12 @@ function Dashboard() {
       const s3 = await calculateHabitStats();
       if (s3) {
         setStats(s3);
-        setHabits(s3.allHabits);
+        setHabits(s3.habitsToday);
         setLogs(s3.allLogs);
         const tMap = {};
         s3.logsToday.forEach((l2) => tMap[l2.habitId] = l2);
         setTodayLogsMap(tMap);
-        const pending = s3.allHabits.filter((h2) => !tMap[h2._id] || tMap[h2._id].status === "pending");
+        const pending = s3.habitsToday.filter((h2) => !tMap[h2._id] || tMap[h2._id].status === "pending");
         if (pending.length > 0) {
           pending.sort((a2, b2) => (a2.deadlineTime || "23:59").localeCompare(b2.deadlineTime || "23:59"));
           setNextHabit({ title: pending[0].title, due: pending[0].deadlineTime ? `Due by ${pending[0].deadlineTime}` : "Anytime" });
@@ -92713,6 +93003,31 @@ function Dashboard() {
       }
     }
   }, [timerElapsed, activeTimerHabit]);
+  reactExports.useEffect(() => {
+    const timer2 = setInterval(() => {
+      setCurrentTime(/* @__PURE__ */ new Date());
+    }, 1e3);
+    return () => clearInterval(timer2);
+  }, []);
+  reactExports.useEffect(() => {
+    if (!habits || habits.length === 0) return;
+    const now2 = currentTime.getTime();
+    habits.forEach((h2) => {
+      const statusLog = todayLogsMap[h2._id];
+      const status = statusLog ? statusLog.status : "pending";
+      if (status === "pending" && !processingMissesRef.current.has(h2._id)) {
+        const elapsed = timerElapsed[h2._id] || 0;
+        const effectiveDeadline = getEffectiveDeadline(h2, elapsed).getTime();
+        if (now2 > effectiveDeadline) {
+          processingMissesRef.current.add(h2._id);
+          const newStatus = h2.category === "Bad Habit" ? "completed" : "missed";
+          handleToggle(h2._id, newStatus).finally(() => {
+            setTimeout(() => processingMissesRef.current.delete(h2._id), 2e3);
+          });
+        }
+      }
+    });
+  }, [currentTime, habits, todayLogsMap, timerElapsed]);
   const showToast = (message, onUndo) => {
     setToast({ message, onUndo });
     if (toastTimeout.current) clearTimeout(toastTimeout.current);
@@ -92791,7 +93106,7 @@ function Dashboard() {
   const handleDelete2 = async (habitId, mode) => {
     try {
       if (mode === "archive") {
-        await window.api.db.update("habits", { _id: habitId }, { $set: { archived: true } });
+        await window.api.db.update("habits", { _id: habitId }, { $set: { archived: true, updatedAt: Date.now() } });
         await logHabitActivity(habitId, "archived");
         NotificationEngine.notify("info", "Habit Archived", "The habit has been moved to archives.", "Habits");
       } else {
@@ -92938,9 +93253,19 @@ function Dashboard() {
                   const s3 = secs % 60;
                   return `${m2}:${s3.toString().padStart(2, "0")}`;
                 };
+                const formatCountdown = (deadline, now2) => {
+                  const diff2 = Math.max(0, Math.floor((deadline.getTime() - now2.getTime()) / 1e3));
+                  const h22 = Math.floor(diff2 / 3600);
+                  const m2 = Math.floor(diff2 % 3600 / 60);
+                  const s3 = diff2 % 60;
+                  return `${h22.toString().padStart(2, "0")}:${m2.toString().padStart(2, "0")}:${s3.toString().padStart(2, "0")}`;
+                };
                 return /* @__PURE__ */ jsxRuntimeExports.jsxs("div", { id: `habit-${h2._id}`, className: `flex items-center justify-between p-4 rounded-2xl border transition-all duration-1000 ${status === "completed" ? "bg-green-500/5 border-green-500/30 shadow-inner" : status === "missed" ? "bg-red-500/5 border-red-500/30 opacity-75" : activeTimerHabit === h2._id ? "bg-blue-500/10 border-blue-500/50 shadow-md ring-2 ring-blue-500/20" : "bg-card border-border hover:border-primary/50"}`, children: [
                   /* @__PURE__ */ jsxRuntimeExports.jsxs("div", { className: "flex flex-col", children: [
-                    /* @__PURE__ */ jsxRuntimeExports.jsx("span", { className: `text-lg font-bold ${status === "completed" ? "text-green-600 line-through decoration-green-500/50" : status === "missed" ? "text-red-500 line-through decoration-red-500/50" : "text-foreground"}`, children: h2.title }),
+                    h2.description ? /* @__PURE__ */ jsxRuntimeExports.jsxs(Tooltip, { children: [
+                      /* @__PURE__ */ jsxRuntimeExports.jsx(TooltipTrigger, { asChild: true, children: /* @__PURE__ */ jsxRuntimeExports.jsx("span", { className: `text-lg font-bold cursor-help ${status === "completed" ? "text-green-600 line-through decoration-green-500/50" : status === "missed" ? "text-red-500 line-through decoration-red-500/50" : "text-foreground"}`, children: h2.title }) }),
+                      /* @__PURE__ */ jsxRuntimeExports.jsx(TooltipContent, { side: "bottom", className: "max-w-xs text-center font-medium", children: h2.description })
+                    ] }) : /* @__PURE__ */ jsxRuntimeExports.jsx("span", { className: `text-lg font-bold ${status === "completed" ? "text-green-600 line-through decoration-green-500/50" : status === "missed" ? "text-red-500 line-through decoration-red-500/50" : "text-foreground"}`, children: h2.title }),
                     /* @__PURE__ */ jsxRuntimeExports.jsxs("div", { className: "flex items-center gap-3 text-xs text-muted-foreground mt-1 font-medium", children: [
                       h2.deadlineTime && /* @__PURE__ */ jsxRuntimeExports.jsxs("span", { className: "flex items-center gap-1", children: [
                         /* @__PURE__ */ jsxRuntimeExports.jsx(Clock, { size: 12 }),
@@ -92953,7 +93278,10 @@ function Dashboard() {
                         " / ",
                         h2.targetDuration ? formatTime(h2.targetDuration) : "0:00"
                       ] }),
-                      /* @__PURE__ */ jsxRuntimeExports.jsx("span", { className: `uppercase tracking-widest text-[10px] px-1.5 py-0.5 rounded-sm ${status === "completed" ? "bg-green-500/20 text-green-600" : status === "missed" ? "bg-red-500/20 text-red-500" : status === "paused" ? "bg-accent text-foreground" : "bg-accent/50 text-muted-foreground"}`, children: status })
+                      status === "pending" ? /* @__PURE__ */ jsxRuntimeExports.jsxs("span", { className: "uppercase tracking-widest text-[10px] px-1.5 py-0.5 rounded-sm bg-orange-500/20 text-orange-600 font-bold flex items-center gap-1", children: [
+                        /* @__PURE__ */ jsxRuntimeExports.jsx(Clock, { size: 10 }),
+                        formatCountdown(getEffectiveDeadline(h2, elapsed), currentTime)
+                      ] }) : /* @__PURE__ */ jsxRuntimeExports.jsx("span", { className: `uppercase tracking-widest text-[10px] px-1.5 py-0.5 rounded-sm ${status === "completed" ? "bg-green-500/20 text-green-600" : status === "missed" ? "bg-red-500/20 text-red-500" : status === "paused" ? "bg-accent text-foreground" : "bg-accent/50 text-muted-foreground"}`, children: status })
                     ] })
                   ] }),
                   /* @__PURE__ */ jsxRuntimeExports.jsxs("div", { className: "flex items-center gap-2", children: [
@@ -92964,7 +93292,7 @@ function Dashboard() {
                       }, className: "w-8 h-8 rounded-lg flex items-center justify-center bg-accent text-foreground hover:bg-blue-500/20 hover:text-blue-500 transition-colors", children: /* @__PURE__ */ jsxRuntimeExports.jsx(Play, { size: 16 }) }),
                       /* @__PURE__ */ jsxRuntimeExports.jsx("button", { onClick: () => setTimerElapsed((prev) => ({ ...prev, [h2._id]: 0 })), className: "w-8 h-8 rounded-lg flex items-center justify-center text-muted-foreground hover:bg-accent hover:text-foreground transition-colors", children: /* @__PURE__ */ jsxRuntimeExports.jsx(RotateCcw, { size: 16 }) })
                     ] }),
-                    /* @__PURE__ */ jsxRuntimeExports.jsx(
+                    h2.category !== "Bad Habit" && /* @__PURE__ */ jsxRuntimeExports.jsx(
                       "button",
                       {
                         onClick: () => handleToggle(h2._id, "completed"),
@@ -94488,6 +94816,10 @@ function AllHabits() {
   const [expandedNotesId, setExpandedNotesId] = reactExports.useState(null);
   const [formOpen, setFormOpen] = reactExports.useState(false);
   const [activeHabit, setActiveHabit] = reactExports.useState(null);
+  const [showGlobalMenu, setShowGlobalMenu] = reactExports.useState(false);
+  const [importConflicts, setImportConflicts] = reactExports.useState([]);
+  const [currentConflictIndex, setCurrentConflictIndex] = reactExports.useState(0);
+  const [pendingImports, setPendingImports] = reactExports.useState({ toInsert: [], toReplace: [], importedRecords: {} });
   const loadData = async () => {
     try {
       const data = await window.api.db.find("habits", {});
@@ -94499,6 +94831,164 @@ function AllHabits() {
   reactExports.useEffect(() => {
     loadData();
   }, []);
+  const handleExportAll = async () => {
+    try {
+      const allHabits = await window.api.db.find("habits", {});
+      const habitLogs = await window.api.db.find("habitLogs", {});
+      const habitTimerSessions = await window.api.db.find("habitTimerSessions", {});
+      const habitBreaks = await window.api.db.find("habitBreaks", {});
+      const habitActivityLogs = await window.api.db.find("habitActivityLogs", {});
+      const data = {
+        habits: allHabits,
+        records: {
+          habitLogs,
+          habitTimerSessions,
+          habitBreaks,
+          habitActivityLogs
+        }
+      };
+      const blob = new Blob([JSON.stringify(data, null, 2)], { type: "application/json" });
+      const url = URL.createObjectURL(blob);
+      const a2 = document.createElement("a");
+      a2.href = url;
+      a2.download = `kiseki_habits_backup.json`;
+      a2.click();
+      URL.revokeObjectURL(url);
+      NotificationEngine.notify("success", "Export Complete", "All habits and history have been exported successfully.", "Habits");
+    } catch (err) {
+      console.error(err);
+      NotificationEngine.notify("error", "Export Failed", "An error occurred while exporting habits.", "Habits");
+    }
+  };
+  const processImportFile = async (e3) => {
+    const file = e3.target.files?.[0];
+    if (!file) return;
+    const reader = new FileReader();
+    reader.onload = async (event) => {
+      try {
+        const text2 = event.target?.result;
+        const data = JSON.parse(text2);
+        if (!data.habits || !Array.isArray(data.habits)) {
+          NotificationEngine.notify("error", "Invalid File", "The JSON file does not contain valid habits data.", "Habits");
+          return;
+        }
+        const importedHabits = data.habits;
+        const importedRecords = data.records || {};
+        const toInsert = [];
+        const toReplace = [];
+        const conflicts = [];
+        for (const imported of importedHabits) {
+          const existing = habits.find((h2) => h2._id === imported._id || h2.title.toLowerCase() === imported.title.toLowerCase());
+          if (!existing) {
+            toInsert.push(imported);
+          } else {
+            const importedTime = imported.updatedAt || imported.createdAt || 0;
+            const existingTime = existing.updatedAt || existing.createdAt || 0;
+            if (importedTime > existingTime) {
+              toReplace.push({ ...imported, _id: existing._id, _originalImportedId: imported._id });
+            } else if (importedTime < existingTime) {
+              conflicts.push({ imported: { ...imported, _originalImportedId: imported._id }, existing });
+            } else if (importedTime === 0 && existingTime === 0) {
+              conflicts.push({ imported: { ...imported, _originalImportedId: imported._id }, existing });
+            }
+          }
+        }
+        if (conflicts.length > 0) {
+          setPendingImports({ toInsert, toReplace, importedRecords });
+          setImportConflicts(conflicts);
+          setCurrentConflictIndex(0);
+        } else {
+          await executeImports(toInsert, toReplace, importedRecords);
+        }
+      } catch (err) {
+        console.error(err);
+        NotificationEngine.notify("error", "Import Failed", "Failed to parse the file.", "Habits");
+      }
+    };
+    reader.readAsText(file);
+    e3.target.value = "";
+  };
+  const processConflict = async (action) => {
+    const { toInsert, toReplace, importedRecords } = pendingImports;
+    const remainingConflicts = importConflicts.slice(currentConflictIndex);
+    if (action === "replace_all") {
+      remainingConflicts.forEach((c2) => toReplace.push({ ...c2.imported, _id: c2.existing._id }));
+      setImportConflicts([]);
+    } else if (action === "skip_all") {
+      setImportConflicts([]);
+    } else if (action === "replace") {
+      const current = importConflicts[currentConflictIndex];
+      toReplace.push({ ...current.imported, _id: current.existing._id });
+      if (currentConflictIndex + 1 < importConflicts.length) {
+        setCurrentConflictIndex(currentConflictIndex + 1);
+        setPendingImports({ toInsert, toReplace, importedRecords });
+        return;
+      } else {
+        setImportConflicts([]);
+      }
+    } else if (action === "skip") {
+      if (currentConflictIndex + 1 < importConflicts.length) {
+        setCurrentConflictIndex(currentConflictIndex + 1);
+        return;
+      } else {
+        setImportConflicts([]);
+      }
+    }
+    await executeImports(toInsert, toReplace, importedRecords);
+  };
+  const executeImports = async (toInsert, toReplace, importedRecords) => {
+    try {
+      let importedCount = 0;
+      let updatedCount = 0;
+      const idMap = /* @__PURE__ */ new Map();
+      for (const habit of toInsert) {
+        const oldId = habit._id;
+        const { _id, ...habitData } = habit;
+        const newHabit = await window.api.db.insert("habits", habitData);
+        if (oldId && newHabit._id) idMap.set(oldId, newHabit._id);
+        importedCount++;
+      }
+      for (const habit of toReplace) {
+        const { _id, _originalImportedId, ...habitData } = habit;
+        if (_originalImportedId && _originalImportedId !== _id) {
+          idMap.set(_originalImportedId, _id);
+        }
+        await window.api.db.update("habits", { _id }, { $set: habitData }, {});
+        updatedCount++;
+      }
+      const processSubRecords = async (collectionName) => {
+        const recordsArr = importedRecords[collectionName];
+        if (!recordsArr || !Array.isArray(recordsArr)) return;
+        const existingRecords = await window.api.db.find(collectionName, {});
+        for (const record of recordsArr) {
+          if (record.habitId && idMap.has(record.habitId)) {
+            record.habitId = idMap.get(record.habitId);
+          }
+          const existing = existingRecords.find((r2) => r2._id === record._id);
+          if (!existing) {
+            await window.api.db.insert(collectionName, record);
+          } else {
+            const impTime = record.updatedAt || record.createdAt || record.timestamp || record.completionTime || record.startTime || 0;
+            const exTime = existing.updatedAt || existing.createdAt || existing.timestamp || existing.completionTime || existing.startTime || 0;
+            const belongsToReplacedHabit = toReplace.some((h2) => h2._id === record.habitId || h2._originalImportedId === record.habitId);
+            if (impTime > exTime || belongsToReplacedHabit) {
+              const { _id, ...recordData } = record;
+              await window.api.db.update(collectionName, { _id }, { $set: recordData }, {});
+            }
+          }
+        }
+      };
+      await processSubRecords("habitLogs");
+      await processSubRecords("habitTimerSessions");
+      await processSubRecords("habitBreaks");
+      await processSubRecords("habitActivityLogs");
+      NotificationEngine.notify("success", "Import Complete", `Imported ${importedCount} and updated ${updatedCount} habits.`, "Habits");
+      loadData();
+    } catch (err) {
+      console.error(err);
+      NotificationEngine.notify("error", "Import Failed", "Failed to process imported habits.", "Habits");
+    }
+  };
   const filteredHabits = habits.filter((h2) => {
     if (filters.scheduleType !== "all" && h2.scheduleType !== filters.scheduleType) return false;
     if (filters.isFavorite && !h2.isFavorite) return false;
@@ -94523,7 +95013,7 @@ function AllHabits() {
           await window.api.db.remove("habits", { _id: id2 }, {});
           NotificationEngine.notify("info", "Habit Deleted", "The habit was permanently removed.", "Habits");
         } else {
-          const updateData = action === "favorite" ? { isFavorite: true } : action === "archive" ? { archived: true } : { archived: false };
+          const updateData = action === "favorite" ? { isFavorite: true, updatedAt: Date.now() } : action === "archive" ? { archived: true, updatedAt: Date.now() } : { archived: false, updatedAt: Date.now() };
           await window.api.db.update("habits", { _id: id2 }, { $set: updateData }, {});
         }
       }
@@ -94536,7 +95026,7 @@ function AllHabits() {
   };
   const toggleFavorite = async (id2, current) => {
     try {
-      await window.api.db.update("habits", { _id: id2 }, { $set: { isFavorite: !current } }, {});
+      await window.api.db.update("habits", { _id: id2 }, { $set: { isFavorite: !current, updatedAt: Date.now() } }, {});
       loadData();
     } catch (err) {
       console.error(err);
@@ -94544,7 +95034,7 @@ function AllHabits() {
   };
   const toggleArchive = async (id2, current) => {
     try {
-      await window.api.db.update("habits", { _id: id2 }, { $set: { archived: !current } }, {});
+      await window.api.db.update("habits", { _id: id2 }, { $set: { archived: !current, updatedAt: Date.now() } }, {});
       loadData();
     } catch (err) {
       console.error(err);
@@ -94641,7 +95131,8 @@ function AllHabits() {
               "Select"
             ]
           }
-        )
+        ),
+        /* @__PURE__ */ jsxRuntimeExports.jsx("button", { onClick: () => setShowGlobalMenu(true), className: "p-2 bg-background border border-border rounded-xl hover:bg-accent", children: /* @__PURE__ */ jsxRuntimeExports.jsx(EllipsisVertical, { size: 16 }) })
       ] })
     ] }),
     isSelectionMode && /* @__PURE__ */ jsxRuntimeExports.jsxs("div", { className: "px-6 py-3 bg-accent/50 border-b border-border flex items-center justify-between z-20 shrink-0", children: [
@@ -94717,7 +95208,10 @@ function AllHabits() {
               /* @__PURE__ */ jsxRuntimeExports.jsxs("div", { className: "flex-1 min-w-0 pr-32", children: [
                 /* @__PURE__ */ jsxRuntimeExports.jsxs("div", { className: "flex items-center gap-3 mb-2 flex-wrap", children: [
                   /* @__PURE__ */ jsxRuntimeExports.jsx("span", { className: "text-2xl", children: record.icon === "Sparkles" ? "✨" : record.icon }),
-                  /* @__PURE__ */ jsxRuntimeExports.jsx("h3", { className: "text-lg font-bold truncate", children: record.title }),
+                  record.description ? /* @__PURE__ */ jsxRuntimeExports.jsxs(Tooltip, { children: [
+                    /* @__PURE__ */ jsxRuntimeExports.jsx(TooltipTrigger, { asChild: true, children: /* @__PURE__ */ jsxRuntimeExports.jsx("h3", { className: "text-lg font-bold truncate cursor-help", children: record.title }) }),
+                    /* @__PURE__ */ jsxRuntimeExports.jsx(TooltipContent, { side: "bottom", className: "max-w-xs text-center font-medium", children: record.description })
+                  ] }) : /* @__PURE__ */ jsxRuntimeExports.jsx("h3", { className: "text-lg font-bold truncate", children: record.title }),
                   record.isFavorite && /* @__PURE__ */ jsxRuntimeExports.jsx(Star, { size: 14, className: "text-yellow-500 fill-yellow-500" }),
                   record.archived && /* @__PURE__ */ jsxRuntimeExports.jsx(Archive, { size: 14, className: "text-gray-500" }),
                   /* @__PURE__ */ jsxRuntimeExports.jsx("span", { className: "text-xs text-muted-foreground font-medium px-2 py-0.5 bg-accent rounded-full", children: record.category }),
@@ -94740,6 +95234,83 @@ function AllHabits() {
         ]
       }
     ),
+    showGlobalMenu && /* @__PURE__ */ jsxRuntimeExports.jsx("div", { className: "fixed inset-0 z-50 flex items-center justify-center p-4 bg-background/80 backdrop-blur-sm", onClick: () => setShowGlobalMenu(false), children: /* @__PURE__ */ jsxRuntimeExports.jsxs("div", { className: "bg-card border border-border rounded-2xl shadow-2xl w-full max-w-sm overflow-hidden animate-in zoom-in-95 duration-200", onClick: (e3) => e3.stopPropagation(), children: [
+      /* @__PURE__ */ jsxRuntimeExports.jsx("div", { className: "p-4 border-b border-border flex justify-between items-center bg-accent/30", children: /* @__PURE__ */ jsxRuntimeExports.jsx("h3", { className: "font-bold", children: "Habits Options" }) }),
+      /* @__PURE__ */ jsxRuntimeExports.jsxs("div", { className: "p-2", children: [
+        /* @__PURE__ */ jsxRuntimeExports.jsxs("button", { onClick: () => {
+          document.getElementById("import-habits-input")?.click();
+          setShowGlobalMenu(false);
+        }, className: "w-full flex items-center gap-3 p-3 hover:bg-accent rounded-xl transition-colors text-left font-medium", children: [
+          /* @__PURE__ */ jsxRuntimeExports.jsx(Upload, { size: 18, className: "text-primary" }),
+          " Import Habits"
+        ] }),
+        /* @__PURE__ */ jsxRuntimeExports.jsxs("button", { onClick: () => {
+          handleExportAll();
+          setShowGlobalMenu(false);
+        }, className: "w-full flex items-center gap-3 p-3 hover:bg-accent rounded-xl transition-colors text-left font-medium", children: [
+          /* @__PURE__ */ jsxRuntimeExports.jsx(Download, { size: 18, className: "text-primary" }),
+          " Export All Habits"
+        ] })
+      ] }),
+      /* @__PURE__ */ jsxRuntimeExports.jsx("div", { className: "p-4 bg-accent/30 border-t border-border", children: /* @__PURE__ */ jsxRuntimeExports.jsx("button", { onClick: () => setShowGlobalMenu(false), className: "w-full py-2 bg-background border border-border hover:bg-accent rounded-xl font-bold transition-colors", children: "Close" }) })
+    ] }) }),
+    /* @__PURE__ */ jsxRuntimeExports.jsx(
+      "input",
+      {
+        type: "file",
+        id: "import-habits-input",
+        accept: ".json",
+        className: "hidden",
+        onChange: processImportFile
+      }
+    ),
+    importConflicts.length > 0 && currentConflictIndex < importConflicts.length && /* @__PURE__ */ jsxRuntimeExports.jsx("div", { className: "fixed inset-0 bg-background/80 backdrop-blur-sm z-50 flex items-center justify-center p-4", children: /* @__PURE__ */ jsxRuntimeExports.jsxs("div", { className: "bg-card border border-border w-full max-w-lg rounded-2xl shadow-2xl overflow-hidden animate-in zoom-in-95 duration-200", children: [
+      /* @__PURE__ */ jsxRuntimeExports.jsxs("div", { className: "p-6 border-b border-border bg-amber-500/10", children: [
+        /* @__PURE__ */ jsxRuntimeExports.jsxs("h2", { className: "text-xl font-bold flex items-center gap-2 text-amber-500", children: [
+          "Conflict Detected (",
+          currentConflictIndex + 1,
+          " of ",
+          importConflicts.length,
+          ")"
+        ] }),
+        /* @__PURE__ */ jsxRuntimeExports.jsxs("p", { className: "text-sm text-muted-foreground mt-2", children: [
+          "The imported habit ",
+          /* @__PURE__ */ jsxRuntimeExports.jsxs("strong", { children: [
+            '"',
+            importConflicts[currentConflictIndex].imported.title,
+            '"'
+          ] }),
+          " is older than your current version in the app."
+        ] }),
+        /* @__PURE__ */ jsxRuntimeExports.jsx("p", { className: "text-xs text-muted-foreground mt-2 font-medium", children: "Note: Skipping will keep your current habit and discard imported logs. Replacing will overwrite your habit and update all of its daily logs, timers, and breaks." })
+      ] }),
+      /* @__PURE__ */ jsxRuntimeExports.jsx("div", { className: "p-6 space-y-4", children: /* @__PURE__ */ jsxRuntimeExports.jsxs("div", { className: "grid grid-cols-2 gap-4", children: [
+        /* @__PURE__ */ jsxRuntimeExports.jsxs("div", { className: "p-4 bg-accent/50 rounded-xl border border-border", children: [
+          /* @__PURE__ */ jsxRuntimeExports.jsx("h3", { className: "text-sm font-bold mb-1", children: "App Version (Keep)" }),
+          /* @__PURE__ */ jsxRuntimeExports.jsxs("p", { className: "text-xs text-muted-foreground", children: [
+            "Updated: ",
+            new Date(importConflicts[currentConflictIndex].existing.updatedAt || importConflicts[currentConflictIndex].existing.createdAt || 0).toLocaleString()
+          ] })
+        ] }),
+        /* @__PURE__ */ jsxRuntimeExports.jsxs("div", { className: "p-4 bg-background rounded-xl border border-border", children: [
+          /* @__PURE__ */ jsxRuntimeExports.jsx("h3", { className: "text-sm font-bold mb-1", children: "Import Version" }),
+          /* @__PURE__ */ jsxRuntimeExports.jsxs("p", { className: "text-xs text-muted-foreground", children: [
+            "Updated: ",
+            new Date(importConflicts[currentConflictIndex].imported.updatedAt || importConflicts[currentConflictIndex].imported.createdAt || 0).toLocaleString()
+          ] })
+        ] })
+      ] }) }),
+      /* @__PURE__ */ jsxRuntimeExports.jsxs("div", { className: "p-6 border-t border-border bg-accent/30 flex flex-col gap-3", children: [
+        /* @__PURE__ */ jsxRuntimeExports.jsxs("div", { className: "grid grid-cols-2 gap-3", children: [
+          /* @__PURE__ */ jsxRuntimeExports.jsx("button", { onClick: () => processConflict("replace"), className: "w-full px-4 py-3 bg-red-500 hover:bg-red-600 text-white font-bold rounded-xl transition-colors shadow-sm shadow-red-500/20", children: "Replace" }),
+          /* @__PURE__ */ jsxRuntimeExports.jsx("button", { onClick: () => processConflict("skip"), className: "w-full px-4 py-3 bg-background border border-border hover:bg-accent font-bold rounded-xl transition-colors", children: "Skip" })
+        ] }),
+        importConflicts.length > 1 && /* @__PURE__ */ jsxRuntimeExports.jsxs("div", { className: "grid grid-cols-2 gap-3 mt-2", children: [
+          /* @__PURE__ */ jsxRuntimeExports.jsx("button", { onClick: () => processConflict("replace_all"), className: "w-full px-4 py-2 bg-red-500/10 hover:bg-red-500/20 text-red-500 font-bold rounded-xl transition-colors", children: "Replace All" }),
+          /* @__PURE__ */ jsxRuntimeExports.jsx("button", { onClick: () => processConflict("skip_all"), className: "w-full px-4 py-2 bg-background border border-border hover:bg-accent font-bold rounded-xl transition-colors text-muted-foreground", children: "Skip All" })
+        ] })
+      ] })
+    ] }) }),
     /* @__PURE__ */ jsxRuntimeExports.jsx(
       HabitFormModal,
       {
@@ -94820,6 +95391,9 @@ function Relationships() {
   const [showSuccessOverlay, setShowSuccessOverlay] = reactExports.useState(false);
   const [showGlobalMenu, setShowGlobalMenu] = reactExports.useState(false);
   const [form, setForm] = reactExports.useState({});
+  const [importConflicts, setImportConflicts] = reactExports.useState([]);
+  const [currentConflictIndex, setCurrentConflictIndex] = reactExports.useState(0);
+  const [pendingImports, setPendingImports] = reactExports.useState({ toInsert: [], toReplace: [], importedRecords: [] });
   reactExports.useEffect(() => {
     fetchPeople();
   }, []);
@@ -94849,6 +95423,114 @@ function Relationships() {
       console.error(err);
     }
   };
+  const executeImports = async (toInsert, toReplace, importedRecords) => {
+    try {
+      for (const person of toInsert) {
+        if (typeof person.notes === "string") {
+          person.notes = [{ _id: Date.now().toString(), content: person.notes, createdAt: Date.now(), isPinned: false }];
+        } else if (!person.notes) {
+          person.notes = [];
+        }
+        await window.api.db.insert("relationships", person);
+      }
+      for (const person of toReplace) {
+        if (typeof person.notes === "string") {
+          person.notes = [{ _id: Date.now().toString(), content: person.notes, createdAt: Date.now(), isPinned: false }];
+        }
+        const { _id, ...personData } = person;
+        await window.api.db.update("relationships", { _id }, { $set: personData }, {});
+      }
+      if (importedRecords && Array.isArray(importedRecords)) {
+        const existingRecords = await window.api.db.find("records", {});
+        for (const record of importedRecords) {
+          const existing = existingRecords.find((r2) => r2._id === record._id);
+          if (!existing) {
+            await window.api.db.insert("records", record);
+          } else {
+            const impTime = record.updatedAt || record.createdAt || 0;
+            const exTime = existing.updatedAt || existing.createdAt || 0;
+            const belongsToReplacedPerson = record.people && Array.isArray(record.people) && record.people.some((pid) => toReplace.some((p2) => p2._id === pid));
+            if (impTime > exTime || belongsToReplacedPerson) {
+              const { _id, ...recordData } = record;
+              await window.api.db.update("records", { _id }, { $set: recordData }, {});
+            }
+          }
+        }
+      }
+      fetchPeople();
+      NotificationEngine.notify("success", "Import Complete", "Relationships and records imported successfully.", "Relationships");
+    } catch (err) {
+      console.error("Error executing imports", err);
+      NotificationEngine.notify("error", "Import Error", "Failed to import relationships.", "Relationships");
+    }
+  };
+  const processConflict = async (action) => {
+    let { toInsert, toReplace, importedRecords } = pendingImports;
+    const remainingConflicts = importConflicts.slice(currentConflictIndex);
+    if (action === "replace_all") {
+      remainingConflicts.forEach((c2) => toReplace.push({ ...c2.imported, _id: c2.existing._id }));
+      setImportConflicts([]);
+    } else if (action === "skip_all") {
+      setImportConflicts([]);
+    } else if (action === "replace") {
+      const current = importConflicts[currentConflictIndex];
+      toReplace.push({ ...current.imported, _id: current.existing._id });
+      if (currentConflictIndex + 1 < importConflicts.length) {
+        setCurrentConflictIndex(currentConflictIndex + 1);
+        setPendingImports({ toInsert, toReplace, importedRecords });
+        return;
+      } else {
+        setImportConflicts([]);
+      }
+    } else if (action === "skip") {
+      if (currentConflictIndex + 1 < importConflicts.length) {
+        setCurrentConflictIndex(currentConflictIndex + 1);
+        return;
+      } else {
+        setImportConflicts([]);
+      }
+    }
+    await executeImports(toInsert, toReplace, importedRecords);
+  };
+  const processImportFile = async (importedPeople, importedRawRecords) => {
+    const toInsert = [];
+    const toReplace = [];
+    const conflicts = [];
+    const idMap = /* @__PURE__ */ new Map();
+    for (const importedPerson of importedPeople) {
+      let existingPerson = people.find((p2) => p2._id === importedPerson._id);
+      if (!existingPerson) existingPerson = people.find((p2) => p2.name === importedPerson.name);
+      if (!existingPerson) {
+        toInsert.push(importedPerson);
+      } else {
+        if (importedPerson._id && importedPerson._id !== existingPerson._id) {
+          idMap.set(importedPerson._id, existingPerson._id);
+        }
+        const importedTime = importedPerson.updatedAt || importedPerson.createdAt || 0;
+        const existingTime = existingPerson.updatedAt || existingPerson.createdAt || 0;
+        if (importedTime > existingTime) {
+          toReplace.push({ ...importedPerson, _id: existingPerson._id });
+        } else if (importedTime < existingTime) {
+          conflicts.push({ imported: importedPerson, existing: existingPerson });
+        } else if (importedTime === 0 && existingTime === 0) {
+          conflicts.push({ imported: importedPerson, existing: existingPerson });
+        }
+      }
+    }
+    const importedRecords = Array.isArray(importedRawRecords) ? importedRawRecords.map((r2) => {
+      if (r2.people && Array.isArray(r2.people)) {
+        r2.people = r2.people.map((pid) => idMap.get(pid) || pid);
+      }
+      return r2;
+    }) : [];
+    if (conflicts.length > 0) {
+      setPendingImports({ toInsert, toReplace, importedRecords });
+      setImportConflicts(conflicts);
+      setCurrentConflictIndex(0);
+    } else {
+      await executeImports(toInsert, toReplace, importedRecords);
+    }
+  };
   const handleImportAll = () => {
     const input = document.createElement("input");
     input.type = "file";
@@ -94861,37 +95543,18 @@ function Relationships() {
         try {
           const data = JSON.parse(e22.target?.result);
           if (data.relationships && Array.isArray(data.relationships)) {
-            const idMap = /* @__PURE__ */ new Map();
-            for (const person of data.relationships) {
-              const oldId = person._id;
-              const copy2 = { ...person, _id: void 0, createdAt: Date.now(), updatedAt: Date.now() };
-              if (typeof copy2.notes === "string") {
-                copy2.notes = [{ _id: Date.now().toString(), content: copy2.notes, createdAt: Date.now(), isPinned: false }];
-              } else if (!copy2.notes) {
-                copy2.notes = [];
-              }
-              const newPerson = await window.api.db.insert("relationships", copy2);
-              if (oldId) idMap.set(oldId, newPerson._id);
-            }
-            if (data.records && Array.isArray(data.records)) {
-              for (const record of data.records) {
-                const newPeople = (record.people || []).map((pId) => idMap.get(pId) || pId);
-                const copyRecord = { ...record, _id: void 0, people: newPeople, createdAt: Date.now(), updatedAt: Date.now() };
-                await window.api.db.insert("records", copyRecord);
-              }
-            }
-            fetchPeople();
-            alert("Import successful.");
+            await processImportFile(data.relationships, data.records || []);
           } else {
-            alert("Invalid export file format.");
+            NotificationEngine.notify("error", "Import Failed", "Invalid export file format.", "Relationships");
           }
         } catch (err) {
-          alert("Failed to parse file.");
+          NotificationEngine.notify("error", "Import Failed", "Failed to parse file.", "Relationships");
         }
       };
       reader.readAsText(file);
     };
     input.click();
+    setShowGlobalMenu(false);
   };
   const handleImportPerson = () => {
     const input = document.createElement("input");
@@ -94905,33 +95568,18 @@ function Relationships() {
         try {
           const data = JSON.parse(e22.target?.result);
           if (data.person) {
-            const oldId = data.person._id;
-            const copy2 = { ...data.person, _id: void 0, createdAt: Date.now(), updatedAt: Date.now() };
-            if (typeof copy2.notes === "string") {
-              copy2.notes = [{ _id: Date.now().toString(), content: copy2.notes, createdAt: Date.now(), isPinned: false }];
-            } else if (!copy2.notes) {
-              copy2.notes = [];
-            }
-            const newPerson = await window.api.db.insert("relationships", copy2);
-            if (data.records && Array.isArray(data.records)) {
-              for (const record of data.records) {
-                const newPeople = (record.people || []).map((pId) => pId === oldId ? newPerson._id : pId);
-                const copyRecord = { ...record, _id: void 0, people: newPeople, createdAt: Date.now(), updatedAt: Date.now() };
-                await window.api.db.insert("records", copyRecord);
-              }
-            }
-            fetchPeople();
-            alert("Imported person and their records.");
+            await processImportFile([data.person], data.records || []);
           } else {
-            alert("Invalid person export file.");
+            NotificationEngine.notify("error", "Import Failed", "Invalid profile export file.", "Relationships");
           }
         } catch (err) {
-          alert("Failed to parse file.");
+          NotificationEngine.notify("error", "Import Failed", "Failed to parse file.", "Relationships");
         }
       };
       reader.readAsText(file);
     };
     input.click();
+    setShowGlobalMenu(false);
   };
   const handleAttachImage = async () => {
     try {
@@ -95132,32 +95780,7 @@ function Relationships() {
           /* @__PURE__ */ jsxRuntimeExports.jsx(Plus, { size: 20 }),
           " Add Person"
         ] }),
-        /* @__PURE__ */ jsxRuntimeExports.jsxs("div", { className: "relative", children: [
-          /* @__PURE__ */ jsxRuntimeExports.jsx("button", { onClick: () => setShowGlobalMenu(!showGlobalMenu), className: "p-2 bg-card border border-border rounded-lg hover:bg-accent", children: /* @__PURE__ */ jsxRuntimeExports.jsx(EllipsisVertical, { size: 20 }) }),
-          showGlobalMenu && /* @__PURE__ */ jsxRuntimeExports.jsxs("div", { className: "absolute right-0 top-12 w-48 bg-card border border-border rounded-lg shadow-lg py-1 z-50", children: [
-            /* @__PURE__ */ jsxRuntimeExports.jsxs("button", { onClick: () => {
-              handleImportPerson();
-              setShowGlobalMenu(false);
-            }, className: "w-full text-left px-4 py-2 text-sm hover:bg-accent flex items-center gap-2", children: [
-              /* @__PURE__ */ jsxRuntimeExports.jsx(Upload, { size: 16 }),
-              " Import Person"
-            ] }),
-            /* @__PURE__ */ jsxRuntimeExports.jsxs("button", { onClick: () => {
-              handleImportAll();
-              setShowGlobalMenu(false);
-            }, className: "w-full text-left px-4 py-2 text-sm hover:bg-accent flex items-center gap-2", children: [
-              /* @__PURE__ */ jsxRuntimeExports.jsx(Upload, { size: 16 }),
-              " Import All"
-            ] }),
-            /* @__PURE__ */ jsxRuntimeExports.jsxs("button", { onClick: () => {
-              handleExportAll();
-              setShowGlobalMenu(false);
-            }, className: "w-full text-left px-4 py-2 text-sm hover:bg-accent flex items-center gap-2", children: [
-              /* @__PURE__ */ jsxRuntimeExports.jsx(Download, { size: 16 }),
-              " Export All"
-            ] })
-          ] })
-        ] })
+        /* @__PURE__ */ jsxRuntimeExports.jsx("button", { onClick: () => setShowGlobalMenu(true), className: "p-2 bg-card border border-border rounded-lg hover:bg-accent", children: /* @__PURE__ */ jsxRuntimeExports.jsx(EllipsisVertical, { size: 20 }) })
       ] })
     ] }),
     /* @__PURE__ */ jsxRuntimeExports.jsx(
@@ -95348,6 +95971,80 @@ function Relationships() {
       /* @__PURE__ */ jsxRuntimeExports.jsxs("div", { className: "px-6 py-4 border-t border-border flex justify-end gap-3 bg-accent/30", children: [
         /* @__PURE__ */ jsxRuntimeExports.jsx("button", { type: "button", onClick: () => setShowAddModal(false), className: "px-4 py-2 rounded-md font-medium text-muted-foreground hover:bg-accent", children: "Cancel" }),
         /* @__PURE__ */ jsxRuntimeExports.jsx("button", { type: "submit", form: "add-person-form", className: "px-4 py-2 bg-primary text-primary-foreground rounded-md font-medium hover:bg-primary/90 shadow-sm", children: "Save Person" })
+      ] })
+    ] }) }),
+    showGlobalMenu && /* @__PURE__ */ jsxRuntimeExports.jsx("div", { className: "fixed inset-0 bg-background/80 backdrop-blur-sm z-50 flex items-center justify-center p-4", children: /* @__PURE__ */ jsxRuntimeExports.jsxs("div", { className: "bg-card border border-border w-full max-w-sm rounded-2xl shadow-2xl p-6 animate-in zoom-in-95 duration-200", children: [
+      /* @__PURE__ */ jsxRuntimeExports.jsx("h2", { className: "text-xl font-bold mb-4 text-center", children: "Relationships Menu" }),
+      /* @__PURE__ */ jsxRuntimeExports.jsxs("div", { className: "space-y-3", children: [
+        /* @__PURE__ */ jsxRuntimeExports.jsxs("button", { onClick: () => {
+          handleImportPerson();
+          setShowGlobalMenu(false);
+        }, className: "w-full px-6 py-4 bg-card border border-border rounded-xl font-medium flex items-center justify-center gap-3 hover:bg-accent transition-colors", children: [
+          /* @__PURE__ */ jsxRuntimeExports.jsx(Upload, { size: 20 }),
+          " Import Person"
+        ] }),
+        /* @__PURE__ */ jsxRuntimeExports.jsxs("button", { onClick: () => {
+          handleImportAll();
+          setShowGlobalMenu(false);
+        }, className: "w-full px-6 py-4 bg-card border border-border rounded-xl font-medium flex items-center justify-center gap-3 hover:bg-accent transition-colors", children: [
+          /* @__PURE__ */ jsxRuntimeExports.jsx(Upload, { size: 20 }),
+          " Import All"
+        ] }),
+        /* @__PURE__ */ jsxRuntimeExports.jsxs("button", { onClick: () => {
+          handleExportAll();
+          setShowGlobalMenu(false);
+        }, className: "w-full px-6 py-4 bg-card border border-border rounded-xl font-medium flex items-center justify-center gap-3 hover:bg-accent transition-colors", children: [
+          /* @__PURE__ */ jsxRuntimeExports.jsx(Download, { size: 20 }),
+          " Export All"
+        ] })
+      ] }),
+      /* @__PURE__ */ jsxRuntimeExports.jsx("button", { onClick: () => setShowGlobalMenu(false), className: "w-full mt-4 px-4 py-2 text-muted-foreground hover:text-foreground transition-colors", children: "Cancel" })
+    ] }) }),
+    importConflicts.length > 0 && currentConflictIndex < importConflicts.length && /* @__PURE__ */ jsxRuntimeExports.jsx("div", { className: "fixed inset-0 bg-background/80 backdrop-blur-sm z-50 flex items-center justify-center p-4", children: /* @__PURE__ */ jsxRuntimeExports.jsxs("div", { className: "bg-card border border-border w-full max-w-lg rounded-2xl shadow-2xl overflow-hidden animate-in zoom-in-95 duration-200", children: [
+      /* @__PURE__ */ jsxRuntimeExports.jsxs("div", { className: "p-6 border-b border-border bg-amber-500/10", children: [
+        /* @__PURE__ */ jsxRuntimeExports.jsxs("h2", { className: "text-xl font-bold flex items-center gap-2 text-amber-500", children: [
+          "Conflict Detected (",
+          currentConflictIndex + 1,
+          " of ",
+          importConflicts.length,
+          ")"
+        ] }),
+        /* @__PURE__ */ jsxRuntimeExports.jsxs("p", { className: "text-sm text-muted-foreground mt-2", children: [
+          "The imported profile for ",
+          /* @__PURE__ */ jsxRuntimeExports.jsxs("strong", { children: [
+            '"',
+            importConflicts[currentConflictIndex].imported.name,
+            '"'
+          ] }),
+          " is older than your current version in the app."
+        ] }),
+        /* @__PURE__ */ jsxRuntimeExports.jsx("p", { className: "text-xs text-muted-foreground mt-2 font-medium", children: "Note: Skipping will keep your current profile and discard imported memory records for this person. Replacing will overwrite your profile and intelligently merge memory records." })
+      ] }),
+      /* @__PURE__ */ jsxRuntimeExports.jsx("div", { className: "p-6 space-y-4", children: /* @__PURE__ */ jsxRuntimeExports.jsxs("div", { className: "grid grid-cols-2 gap-4", children: [
+        /* @__PURE__ */ jsxRuntimeExports.jsxs("div", { className: "p-4 bg-accent/50 rounded-xl border border-border", children: [
+          /* @__PURE__ */ jsxRuntimeExports.jsx("h3", { className: "text-sm font-bold mb-1", children: "App Version (Keep)" }),
+          /* @__PURE__ */ jsxRuntimeExports.jsxs("p", { className: "text-xs text-muted-foreground", children: [
+            "Updated: ",
+            new Date(importConflicts[currentConflictIndex].existing.updatedAt || importConflicts[currentConflictIndex].existing.createdAt || 0).toLocaleString()
+          ] })
+        ] }),
+        /* @__PURE__ */ jsxRuntimeExports.jsxs("div", { className: "p-4 bg-background rounded-xl border border-border", children: [
+          /* @__PURE__ */ jsxRuntimeExports.jsx("h3", { className: "text-sm font-bold mb-1", children: "Import Version" }),
+          /* @__PURE__ */ jsxRuntimeExports.jsxs("p", { className: "text-xs text-muted-foreground", children: [
+            "Updated: ",
+            new Date(importConflicts[currentConflictIndex].imported.updatedAt || importConflicts[currentConflictIndex].imported.createdAt || 0).toLocaleString()
+          ] })
+        ] })
+      ] }) }),
+      /* @__PURE__ */ jsxRuntimeExports.jsxs("div", { className: "p-6 border-t border-border bg-accent/30 flex flex-col gap-3", children: [
+        /* @__PURE__ */ jsxRuntimeExports.jsxs("div", { className: "grid grid-cols-2 gap-3", children: [
+          /* @__PURE__ */ jsxRuntimeExports.jsx("button", { onClick: () => processConflict("replace"), className: "w-full px-4 py-2 bg-amber-500 hover:bg-amber-600 text-white font-bold rounded-xl transition-colors", children: "Replace" }),
+          /* @__PURE__ */ jsxRuntimeExports.jsx("button", { onClick: () => processConflict("skip"), className: "w-full px-4 py-2 bg-background border border-border hover:bg-accent font-bold rounded-xl transition-colors", children: "Skip" })
+        ] }),
+        importConflicts.length > 1 && /* @__PURE__ */ jsxRuntimeExports.jsxs("div", { className: "grid grid-cols-2 gap-3", children: [
+          /* @__PURE__ */ jsxRuntimeExports.jsx("button", { onClick: () => processConflict("replace_all"), className: "w-full px-4 py-2 bg-red-500 hover:bg-red-600 text-white font-bold rounded-xl transition-colors", children: "Replace All" }),
+          /* @__PURE__ */ jsxRuntimeExports.jsx("button", { onClick: () => processConflict("skip_all"), className: "w-full px-4 py-2 bg-background border border-border hover:bg-accent font-bold rounded-xl transition-colors", children: "Skip All" })
+        ] })
       ] })
     ] }) })
   ] });
@@ -108201,13 +108898,15 @@ function EventFormModal({ isOpen, onClose, personId, initialData, onSave }) {
     ] }) })
   ] }) });
 }
-function EventPreviewModal({ isOpen, onClose, event, relationships, onEdit, onDelete, onDuplicate }) {
+function EventPreviewModal({ isOpen, onClose, event, relationships, onEdit, onDelete }) {
   if (!isOpen || !event) return null;
   const dateObj = new Date(event.date);
   const displayDate = dateObj.toLocaleDateString([], { month: "long", day: "numeric", year: "numeric" });
   const displayTime = dateObj.toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" });
   const photos = event.attachments?.filter((a2) => a2.match(/\.(jpeg|jpg|gif|png|webp)$/i)) || [];
-  const files = event.attachments?.filter((a2) => !a2.match(/\.(jpeg|jpg|gif|png|webp)$/i)) || [];
+  const videos = event.attachments?.filter((a2) => a2.match(/\.(mp4|webm|ogg|mov)$/i)) || [];
+  const audio = event.attachments?.filter((a2) => a2.match(/\.(mp3|wav|ogg|m4a)$/i)) || [];
+  const files = event.attachments?.filter((a2) => !a2.match(/\.(jpeg|jpg|gif|png|webp|mp4|webm|ogg|mov|mp3|wav|m4a)$/i)) || [];
   const handleExport = () => {
     const data = { ...event };
     const blob = new Blob([JSON.stringify(data, null, 2)], { type: "application/json" });
@@ -108218,7 +108917,7 @@ function EventPreviewModal({ isOpen, onClose, event, relationships, onEdit, onDe
     a2.click();
     URL.revokeObjectURL(url);
   };
-  return /* @__PURE__ */ jsxRuntimeExports.jsx("div", { className: "fixed inset-0 bg-background/90 backdrop-blur-sm z-50 flex items-center justify-center p-4", children: /* @__PURE__ */ jsxRuntimeExports.jsxs("div", { className: "bg-card border border-border w-full max-w-4xl h-[90vh] rounded-3xl shadow-2xl flex flex-col overflow-hidden animate-in zoom-in-95 duration-200", children: [
+  return /* @__PURE__ */ jsxRuntimeExports.jsx("div", { className: "fixed inset-0 bg-background/90 backdrop-blur-sm z-50 flex items-center justify-center p-4", children: /* @__PURE__ */ jsxRuntimeExports.jsxs("div", { className: "bg-card border border-border w-full max-w-6xl h-[90vh] rounded-3xl shadow-2xl flex flex-col overflow-hidden animate-in zoom-in-95 duration-200", children: [
     /* @__PURE__ */ jsxRuntimeExports.jsxs("div", { className: "px-8 py-6 border-b border-border flex justify-between items-start bg-card z-10 shrink-0", children: [
       /* @__PURE__ */ jsxRuntimeExports.jsxs("div", { children: [
         /* @__PURE__ */ jsxRuntimeExports.jsx("h2", { className: "text-3xl font-black mb-2", children: event.title }),
@@ -108262,7 +108961,50 @@ function EventPreviewModal({ isOpen, onClose, event, relationships, onEdit, onDe
             photos.length,
             ")"
           ] }),
-          /* @__PURE__ */ jsxRuntimeExports.jsx("div", { className: "grid grid-cols-2 md:grid-cols-3 gap-4", children: photos.map((url, i2) => /* @__PURE__ */ jsxRuntimeExports.jsx("a", { href: url, target: "_blank", rel: "noreferrer", className: "aspect-video rounded-xl overflow-hidden border border-border hover:border-primary transition-colors block", children: /* @__PURE__ */ jsxRuntimeExports.jsx("img", { src: url, alt: `Photo ${i2 + 1}`, className: "w-full h-full object-cover hover:scale-110 transition-transform duration-500" }) }, i2)) })
+          /* @__PURE__ */ jsxRuntimeExports.jsx("div", { className: "grid grid-cols-2 md:grid-cols-3 gap-4", children: photos.map((url, i2) => /* @__PURE__ */ jsxRuntimeExports.jsx("a", { href: normalizeUrl(url), target: "_blank", rel: "noreferrer", className: "aspect-video rounded-xl overflow-hidden border border-border hover:border-primary transition-colors block", children: /* @__PURE__ */ jsxRuntimeExports.jsx("img", { src: normalizeUrl(url), alt: `Photo ${i2 + 1}`, className: "w-full h-full object-cover hover:scale-110 transition-transform duration-500" }) }, i2)) })
+        ] }),
+        videos.length > 0 && /* @__PURE__ */ jsxRuntimeExports.jsxs("div", { children: [
+          /* @__PURE__ */ jsxRuntimeExports.jsxs("h3", { className: "text-sm font-bold text-muted-foreground uppercase mb-4 flex items-center gap-2", children: [
+            /* @__PURE__ */ jsxRuntimeExports.jsx(Film, { size: 16 }),
+            " Videos (",
+            videos.length,
+            ")"
+          ] }),
+          /* @__PURE__ */ jsxRuntimeExports.jsx("div", { className: "grid grid-cols-1 md:grid-cols-2 gap-4", children: videos.map((url, i2) => /* @__PURE__ */ jsxRuntimeExports.jsxs("div", { className: "group relative bg-gradient-to-br from-slate-900/50 to-slate-800/50 border border-border rounded-2xl overflow-hidden hover:border-primary/50 transition-all duration-300 shadow-lg hover:shadow-xl", children: [
+            /* @__PURE__ */ jsxRuntimeExports.jsx("div", { className: "relative aspect-video bg-black", children: /* @__PURE__ */ jsxRuntimeExports.jsx(
+              "video",
+              {
+                src: getSafeMediaUrl(url),
+                controls: true,
+                className: "w-full h-full object-contain",
+                preload: "metadata"
+              }
+            ) }),
+            /* @__PURE__ */ jsxRuntimeExports.jsx("div", { className: "absolute bottom-0 left-0 right-0 bg-gradient-to-t from-black/80 to-transparent p-3 opacity-0 group-hover:opacity-100 transition-opacity duration-300", children: /* @__PURE__ */ jsxRuntimeExports.jsx("p", { className: "text-white text-xs font-medium truncate", title: url.split(/[\\/]/).pop(), children: url.split(/[\\/]/).pop() }) })
+          ] }, i2)) })
+        ] }),
+        audio.length > 0 && /* @__PURE__ */ jsxRuntimeExports.jsxs("div", { children: [
+          /* @__PURE__ */ jsxRuntimeExports.jsxs("h3", { className: "text-sm font-bold text-muted-foreground uppercase mb-4 flex items-center gap-2", children: [
+            /* @__PURE__ */ jsxRuntimeExports.jsx(Music, { size: 16 }),
+            " Audio (",
+            audio.length,
+            ")"
+          ] }),
+          /* @__PURE__ */ jsxRuntimeExports.jsx("div", { className: "grid grid-cols-1 md:grid-cols-2 gap-4", children: audio.map((url, i2) => /* @__PURE__ */ jsxRuntimeExports.jsx("div", { className: "group relative bg-gradient-to-br from-cyan-900/30 to-blue-900/30 border border-border rounded-2xl overflow-hidden hover:border-cyan-500/50 transition-all duration-300 shadow-lg hover:shadow-xl", children: /* @__PURE__ */ jsxRuntimeExports.jsxs("div", { className: "p-5", children: [
+            /* @__PURE__ */ jsxRuntimeExports.jsxs("div", { className: "flex items-center gap-4 mb-3", children: [
+              /* @__PURE__ */ jsxRuntimeExports.jsx("div", { className: "w-14 h-14 rounded-xl bg-gradient-to-br from-cyan-500/20 to-blue-500/20 text-cyan-400 flex items-center justify-center shrink-0 border border-cyan-500/30 group-hover:scale-110 transition-transform duration-300", children: /* @__PURE__ */ jsxRuntimeExports.jsx(Music, { size: 28 }) }),
+              /* @__PURE__ */ jsxRuntimeExports.jsx("div", { className: "flex-1 min-w-0", children: /* @__PURE__ */ jsxRuntimeExports.jsx("p", { className: "text-sm font-bold text-foreground truncate", title: url.split(/[\\/]/).pop(), children: url.split(/[\\/]/).pop() }) })
+            ] }),
+            /* @__PURE__ */ jsxRuntimeExports.jsx(
+              "audio",
+              {
+                src: getSafeMediaUrl(url),
+                controls: true,
+                className: "w-full h-10 [&::-webkit-media-controls-panel]:bg-accent/50 [&::-webkit-media-controls-current-time-display]:text-xs [&::-webkit-media-controls-time-remaining-display]:text-xs",
+                preload: "metadata"
+              }
+            )
+          ] }) }, i2)) })
         ] })
       ] }),
       /* @__PURE__ */ jsxRuntimeExports.jsxs("div", { className: "w-full md:w-64 shrink-0 space-y-8", children: [
@@ -108309,10 +109051,6 @@ function EventPreviewModal({ isOpen, onClose, event, relationships, onEdit, onDe
             /* @__PURE__ */ jsxRuntimeExports.jsx(Pen, { size: 16 }),
             " Edit Event"
           ] }),
-          /* @__PURE__ */ jsxRuntimeExports.jsxs("button", { onClick: onDuplicate, className: "w-full flex items-center justify-center gap-2 py-2.5 bg-accent text-foreground font-bold rounded-xl hover:bg-accent/80 transition-colors", children: [
-            /* @__PURE__ */ jsxRuntimeExports.jsx(Copy, { size: 16 }),
-            " Duplicate"
-          ] }),
           /* @__PURE__ */ jsxRuntimeExports.jsxs("button", { onClick: handleExport, className: "w-full flex items-center justify-center gap-2 py-2.5 bg-accent text-foreground font-bold rounded-xl hover:bg-accent/80 transition-colors", children: [
             /* @__PURE__ */ jsxRuntimeExports.jsx(Download, { size: 16 }),
             " Export JSON"
@@ -108351,19 +109089,22 @@ function RelationshipEventsTab({ person, records, relationships, loadData }) {
     return filtered.sort((a2, b2) => new Date(b2.date).getTime() - new Date(a2.date).getTime());
   }, [allEvents, searchQuery, filterMode]);
   const stats = reactExports.useMemo(() => {
-    const totalEvents = allEvents.length;
-    const photos = allEvents.reduce((acc, e3) => acc + (e3.attachments?.filter((a2) => a2.match(/\.(jpg|jpeg|png|gif|webp)$/i))?.length || 0), 0);
+    const activeEvents = allEvents.filter((e3) => !e3.isArchived);
+    const totalEvents = activeEvents.length;
+    const photos = activeEvents.reduce((acc, e3) => acc + (e3.attachments?.filter((a2) => a2.match(/\.(jpg|jpeg|png|gif|webp)$/i))?.length || 0), 0);
+    const videos = activeEvents.reduce((acc, e3) => acc + (e3.attachments?.filter((a2) => a2.match(/\.(mp4|webm|ogg|mov)$/i))?.length || 0), 0);
+    const audio = activeEvents.reduce((acc, e3) => acc + (e3.attachments?.filter((a2) => a2.match(/\.(mp3|wav|ogg|m4a)$/i))?.length || 0), 0);
     const catCounts = {};
-    allEvents.forEach((e3) => {
+    activeEvents.forEach((e3) => {
       if (e3.category) catCounts[e3.category] = (catCounts[e3.category] || 0) + 1;
     });
     const favCat = Object.entries(catCounts).sort((a2, b2) => b2[1] - a2[1])[0]?.[0] || "None";
     const moodCounts = {};
-    allEvents.forEach((e3) => {
+    activeEvents.forEach((e3) => {
       if (e3.mood) moodCounts[e3.mood] = (moodCounts[e3.mood] || 0) + 1;
     });
     const favMood = Object.entries(moodCounts).sort((a2, b2) => b2[1] - a2[1])[0]?.[0] || "N/A";
-    const sortedDates = allEvents.map((e3) => new Date(e3.date).getTime()).sort((a2, b2) => b2 - a2);
+    const sortedDates = activeEvents.map((e3) => new Date(e3.date).getTime()).sort((a2, b2) => b2 - a2);
     let lastMeetingStr = "Never";
     if (sortedDates.length > 0) {
       const diffDays = Math.floor((Date.now() - sortedDates[0]) / (1e3 * 60 * 60 * 24));
@@ -108371,7 +109112,7 @@ function RelationshipEventsTab({ person, records, relationships, loadData }) {
       else if (diffDays === 1) lastMeetingStr = "Yesterday";
       else lastMeetingStr = `${diffDays} Days Ago`;
     }
-    return { totalEvents, photos, favCat, favMood, lastMeetingStr };
+    return { totalEvents, photos, videos, audio, favCat, favMood, lastMeetingStr };
   }, [allEvents]);
   const handleArchiveToggle = async (e3, event) => {
     e3.stopPropagation();
@@ -108444,14 +109185,22 @@ function RelationshipEventsTab({ person, records, relationships, loadData }) {
     }
   };
   return /* @__PURE__ */ jsxRuntimeExports.jsxs("div", { className: "space-y-8 animate-in fade-in duration-500 pb-12", children: [
-    /* @__PURE__ */ jsxRuntimeExports.jsxs("div", { className: "grid grid-cols-2 md:grid-cols-5 gap-4", children: [
+    /* @__PURE__ */ jsxRuntimeExports.jsxs("div", { className: "grid grid-cols-2 md:grid-cols-7 gap-4", children: [
       /* @__PURE__ */ jsxRuntimeExports.jsxs("div", { className: "bg-card border border-border p-4 rounded-xl flex flex-col items-center justify-center text-center", children: [
         /* @__PURE__ */ jsxRuntimeExports.jsx("div", { className: "text-2xl font-black", children: stats.totalEvents }),
         /* @__PURE__ */ jsxRuntimeExports.jsx("div", { className: "text-[10px] font-bold text-muted-foreground uppercase tracking-widest mt-1", children: "Total Events" })
       ] }),
       /* @__PURE__ */ jsxRuntimeExports.jsxs("div", { className: "bg-card border border-border p-4 rounded-xl flex flex-col items-center justify-center text-center", children: [
         /* @__PURE__ */ jsxRuntimeExports.jsx("div", { className: "text-2xl font-black", children: stats.photos }),
-        /* @__PURE__ */ jsxRuntimeExports.jsx("div", { className: "text-[10px] font-bold text-muted-foreground uppercase tracking-widest mt-1", children: "Photos Shared" })
+        /* @__PURE__ */ jsxRuntimeExports.jsx("div", { className: "text-[10px] font-bold text-muted-foreground uppercase tracking-widest mt-1", children: "Photos" })
+      ] }),
+      /* @__PURE__ */ jsxRuntimeExports.jsxs("div", { className: "bg-card border border-border p-4 rounded-xl flex flex-col items-center justify-center text-center", children: [
+        /* @__PURE__ */ jsxRuntimeExports.jsx("div", { className: "text-2xl font-black", children: stats.videos }),
+        /* @__PURE__ */ jsxRuntimeExports.jsx("div", { className: "text-[10px] font-bold text-muted-foreground uppercase tracking-widest mt-1", children: "Videos" })
+      ] }),
+      /* @__PURE__ */ jsxRuntimeExports.jsxs("div", { className: "bg-card border border-border p-4 rounded-xl flex flex-col items-center justify-center text-center", children: [
+        /* @__PURE__ */ jsxRuntimeExports.jsx("div", { className: "text-2xl font-black", children: stats.audio }),
+        /* @__PURE__ */ jsxRuntimeExports.jsx("div", { className: "text-[10px] font-bold text-muted-foreground uppercase tracking-widest mt-1", children: "Audio" })
       ] }),
       /* @__PURE__ */ jsxRuntimeExports.jsxs("div", { className: "bg-card border border-border p-4 rounded-xl flex flex-col items-center justify-center text-center", children: [
         /* @__PURE__ */ jsxRuntimeExports.jsx("div", { className: "text-2xl font-black truncate w-full", children: stats.favMood.split(" ")[0] || "N/A" }),
@@ -108502,7 +109251,7 @@ function RelationshipEventsTab({ person, records, relationships, loadData }) {
         const dateObj = new Date(event.date);
         const isLeft = index2 % 2 === 0;
         const photosCount = event.attachments?.filter((a2) => a2.match(/\.(jpg|jpeg|png|gif|webp)$/i))?.length || 0;
-        return /* @__PURE__ */ jsxRuntimeExports.jsxs("div", { className: `relative flex flex-col md:flex-row items-center md:justify-between w-full group cursor-pointer`, onClick: () => setPreviewEvent(event), children: [
+        return /* @__PURE__ */ jsxRuntimeExports.jsxs("div", { id: `event-card-${event._id}`, className: `relative flex flex-col md:flex-row items-center md:justify-between w-full group cursor-pointer`, onClick: () => setPreviewEvent(event), children: [
           /* @__PURE__ */ jsxRuntimeExports.jsx("div", { className: "absolute left-[35px] md:left-1/2 md:-translate-x-1/2 w-3 h-3 rounded-full bg-primary ring-4 ring-background z-10 transition-transform group-hover:scale-150" }),
           /* @__PURE__ */ jsxRuntimeExports.jsx("div", { className: `hidden md:block w-5/12 ${isLeft ? "text-right pr-12" : "order-2 text-left pl-12"}`, children: isLeft ? /* @__PURE__ */ jsxRuntimeExports.jsxs("div", { children: [
             /* @__PURE__ */ jsxRuntimeExports.jsx("div", { className: "text-2xl font-black text-foreground", children: dateObj.toLocaleDateString([], { month: "long", day: "numeric" }) }),
@@ -108539,48 +109288,31 @@ function RelationshipEventsTab({ person, records, relationships, loadData }) {
         event: previewEvent,
         relationships,
         onEdit: () => handleEdit(),
-        onDelete: () => handleDelete2(),
-        onDuplicate: () => handleDuplicate()
+        onDelete: () => handleDelete2()
       }
     )
   ] });
 }
 function EventCardContent({ event, photosCount, onFavorite, onArchive, onDelete, onEdit, onDuplicate }) {
-  const [showMenu, setShowMenu] = reactExports.useState(false);
   return /* @__PURE__ */ jsxRuntimeExports.jsxs("div", { className: "bg-card border border-border p-5 rounded-2xl shadow-sm group-hover:border-primary/50 group-hover:shadow-lg transition-all relative text-left", children: [
-    /* @__PURE__ */ jsxRuntimeExports.jsxs("div", { className: "absolute right-4 top-4 flex gap-1", children: [
-      /* @__PURE__ */ jsxRuntimeExports.jsx("button", { onClick: onFavorite, className: "p-1.5 hover:bg-accent rounded-md transition-colors text-yellow-500", children: /* @__PURE__ */ jsxRuntimeExports.jsx(Star, { size: 16, className: event.isFavorite ? "fill-yellow-500" : "" }) }),
-      /* @__PURE__ */ jsxRuntimeExports.jsxs("div", { className: "relative", children: [
-        /* @__PURE__ */ jsxRuntimeExports.jsx("button", { onClick: (e3) => {
-          e3.stopPropagation();
-          setShowMenu(!showMenu);
-        }, className: "p-1.5 hover:bg-accent rounded-md transition-colors text-muted-foreground", children: /* @__PURE__ */ jsxRuntimeExports.jsx(EllipsisVertical, { size: 16 }) }),
-        showMenu && /* @__PURE__ */ jsxRuntimeExports.jsxs("div", { className: "absolute right-0 top-8 w-48 bg-background border border-border rounded-xl shadow-2xl py-1 z-50 text-sm font-medium", children: [
-          /* @__PURE__ */ jsxRuntimeExports.jsxs("button", { onClick: (e3) => {
-            setShowMenu(false);
-            onEdit(e3);
-          }, className: "w-full text-left px-4 py-2 hover:bg-accent flex items-center gap-2", children: [
-            /* @__PURE__ */ jsxRuntimeExports.jsx(Pen, { size: 14 }),
-            " Edit Event"
-          ] }),
-          /* @__PURE__ */ jsxRuntimeExports.jsx("button", { onClick: (e3) => {
-            setShowMenu(false);
-            onDuplicate(e3);
-          }, className: "w-full text-left px-4 py-2 hover:bg-accent flex items-center gap-2", children: "Duplicate Event" }),
-          /* @__PURE__ */ jsxRuntimeExports.jsx("button", { onClick: (e3) => {
-            setShowMenu(false);
-            onArchive(e3);
-          }, className: "w-full text-left px-4 py-2 hover:bg-accent flex items-center gap-2 text-yellow-500", children: event.isArchived ? "Restore Event" : "Archive Event" }),
-          /* @__PURE__ */ jsxRuntimeExports.jsx("div", { className: "my-1 border-t border-border" }),
-          /* @__PURE__ */ jsxRuntimeExports.jsxs("button", { onClick: (e3) => {
-            setShowMenu(false);
-            onDelete(e3);
-          }, className: "w-full text-left px-4 py-2 hover:bg-red-500 hover:text-white transition-colors flex items-center gap-2 text-red-500", children: [
-            /* @__PURE__ */ jsxRuntimeExports.jsx(Trash2, { size: 14 }),
-            " Delete Event"
-          ] })
-        ] })
-      ] })
+    /* @__PURE__ */ jsxRuntimeExports.jsxs("div", { className: "absolute right-4 top-4 flex gap-1 opacity-0 group-hover:opacity-100 transition-opacity duration-200", children: [
+      /* @__PURE__ */ jsxRuntimeExports.jsx("button", { onClick: onFavorite, className: "p-1.5 bg-black/40 hover:bg-black/60 rounded-full backdrop-blur-md transition-colors text-yellow-400", title: "Favorite", children: /* @__PURE__ */ jsxRuntimeExports.jsx(Star, { size: 14, className: event.isFavorite ? "fill-yellow-400" : "" }) }),
+      /* @__PURE__ */ jsxRuntimeExports.jsx("button", { onClick: (e3) => {
+        e3.stopPropagation();
+        onEdit(e3);
+      }, className: "p-1.5 bg-black/40 hover:bg-black/60 rounded-full backdrop-blur-md transition-colors text-white", title: "Edit", children: /* @__PURE__ */ jsxRuntimeExports.jsx(Pen, { size: 14 }) }),
+      /* @__PURE__ */ jsxRuntimeExports.jsx("button", { onClick: (e3) => {
+        e3.stopPropagation();
+        onDuplicate(e3);
+      }, className: "p-1.5 bg-black/40 hover:bg-black/60 rounded-full backdrop-blur-md transition-colors text-white", title: "Duplicate", children: /* @__PURE__ */ jsxRuntimeExports.jsx(Copy, { size: 14 }) }),
+      /* @__PURE__ */ jsxRuntimeExports.jsx("button", { onClick: (e3) => {
+        e3.stopPropagation();
+        onArchive(e3);
+      }, className: "p-1.5 bg-black/40 hover:bg-black/60 rounded-full backdrop-blur-md transition-colors text-yellow-500", title: event.isArchived ? "Restore" : "Archive", children: /* @__PURE__ */ jsxRuntimeExports.jsx(Archive, { size: 14 }) }),
+      /* @__PURE__ */ jsxRuntimeExports.jsx("button", { onClick: (e3) => {
+        e3.stopPropagation();
+        onDelete(e3);
+      }, className: "p-1.5 bg-black/40 hover:bg-red-600 rounded-full backdrop-blur-md transition-colors text-red-500 hover:text-white", title: "Delete", children: /* @__PURE__ */ jsxRuntimeExports.jsx(Trash2, { size: 14 }) })
     ] }),
     /* @__PURE__ */ jsxRuntimeExports.jsx("h3", { className: "text-xl font-black mb-2 pr-16 leading-tight", children: event.title }),
     /* @__PURE__ */ jsxRuntimeExports.jsxs("div", { className: "flex items-center gap-2 text-sm text-muted-foreground font-medium mb-4", children: [
@@ -108595,11 +109327,7 @@ function EventCardContent({ event, photosCount, onFavorite, onArchive, onDelete,
     /* @__PURE__ */ jsxRuntimeExports.jsxs("div", { className: "flex items-center justify-between text-xs font-bold uppercase tracking-widest text-muted-foreground border-t border-border pt-3", children: [
       /* @__PURE__ */ jsxRuntimeExports.jsx("div", { className: "flex gap-1 text-yellow-500", children: [1, 2, 3, 4, 5].map((s3) => /* @__PURE__ */ jsxRuntimeExports.jsx(Star, { size: 12, className: s3 <= (event.importance || 0) ? "fill-yellow-500" : "text-muted-foreground/30" }, s3)) }),
       /* @__PURE__ */ jsxRuntimeExports.jsx("span", { children: "View Preview →" })
-    ] }),
-    showMenu && /* @__PURE__ */ jsxRuntimeExports.jsx("div", { className: "fixed inset-0 z-40", onClick: (e3) => {
-      e3.stopPropagation();
-      setShowMenu(false);
-    } })
+    ] })
   ] });
 }
 const MOODS$1 = [
@@ -108640,9 +109368,12 @@ function MemoryFormModal({ isOpen, onClose, personId, initialData, onSave }) {
   const [attachments, setAttachments] = reactExports.useState([]);
   const [relationships, setRelationships] = reactExports.useState([]);
   const [selectedPeople, setSelectedPeople] = reactExports.useState([personId]);
+  const [allAlbums, setAllAlbums] = reactExports.useState(ALBUMS.filter((a2) => a2 !== "Custom"));
+  const submitBtnRef = reactExports.useRef(null);
   reactExports.useEffect(() => {
     if (isOpen) {
       loadRelationships();
+      loadAlbums();
       if (initialData) {
         setTitle(initialData.title || "");
         setDate(initialData.date ? new Date(initialData.date).toISOString().slice(0, 10) : (/* @__PURE__ */ new Date()).toISOString().slice(0, 10));
@@ -108668,10 +109399,32 @@ function MemoryFormModal({ isOpen, onClose, personId, initialData, onSave }) {
       }
     }
   }, [isOpen, initialData, personId]);
+  reactExports.useEffect(() => {
+    const handleKeyDown2 = (e3) => {
+      if ((e3.ctrlKey || e3.metaKey) && e3.key === "s") {
+        e3.preventDefault();
+        submitBtnRef.current?.click();
+      }
+    };
+    if (isOpen) {
+      window.addEventListener("keydown", handleKeyDown2);
+    }
+    return () => window.removeEventListener("keydown", handleKeyDown2);
+  }, [isOpen]);
   const loadRelationships = async () => {
     try {
       const rels = await window.api.db.find("relationships", {});
       setRelationships(rels);
+    } catch (e3) {
+      console.error(e3);
+    }
+  };
+  const loadAlbums = async () => {
+    try {
+      const records = await window.api.db.find("records", { type: "Memory" });
+      const customCategories = records.map((r2) => r2.category).filter((c2) => c2 && !ALBUMS.includes(c2));
+      const uniqueCustomCategories = Array.from(new Set(customCategories));
+      setAllAlbums([...ALBUMS.filter((a2) => a2 !== "Custom"), ...uniqueCustomCategories]);
     } catch (e3) {
       console.error(e3);
     }
@@ -108696,11 +109449,12 @@ function MemoryFormModal({ isOpen, onClose, personId, initialData, onSave }) {
   const handleSubmit = async (e3) => {
     e3.preventDefault();
     if (!title.trim()) return;
+    const finalAlbum = album.trim() || "General";
     const memoryRecord = {
       title,
       type: "Memory",
       // Memory Type
-      category: album,
+      category: finalAlbum,
       // Store Album in category
       date: new Date(date2).getTime(),
       mood,
@@ -108753,7 +109507,17 @@ function MemoryFormModal({ isOpen, onClose, personId, initialData, onSave }) {
                 /* @__PURE__ */ jsxRuntimeExports.jsx(Folder, { size: 14, className: "inline mr-1 -mt-0.5" }),
                 " Album"
               ] }),
-              /* @__PURE__ */ jsxRuntimeExports.jsx("select", { value: album, onChange: (e3) => setAlbum(e3.target.value), className: "w-full bg-background border border-border p-3 rounded-xl focus:ring-2 focus:ring-primary/50 outline-none", children: ALBUMS.map((a2) => /* @__PURE__ */ jsxRuntimeExports.jsx("option", { value: a2, children: a2 }, a2)) })
+              /* @__PURE__ */ jsxRuntimeExports.jsx(
+                "input",
+                {
+                  list: "albums-list",
+                  value: album,
+                  onChange: (e3) => setAlbum(e3.target.value),
+                  placeholder: "Select or type an album...",
+                  className: "w-full bg-background border border-border p-3 rounded-xl focus:ring-2 focus:ring-primary/50 outline-none"
+                }
+              ),
+              /* @__PURE__ */ jsxRuntimeExports.jsx("datalist", { id: "albums-list", children: allAlbums.map((a2) => /* @__PURE__ */ jsxRuntimeExports.jsx("option", { value: a2 }, a2)) })
             ] })
           ] }),
           /* @__PURE__ */ jsxRuntimeExports.jsxs("div", { children: [
@@ -108841,7 +109605,7 @@ function MemoryFormModal({ isOpen, onClose, personId, initialData, onSave }) {
       ] }),
       /* @__PURE__ */ jsxRuntimeExports.jsxs("div", { className: "pt-4 border-t border-border flex justify-end gap-3 shrink-0", children: [
         /* @__PURE__ */ jsxRuntimeExports.jsx("button", { type: "button", onClick: onClose, className: "px-6 py-2.5 rounded-xl font-bold hover:bg-accent transition-colors", children: "Cancel" }),
-        /* @__PURE__ */ jsxRuntimeExports.jsx("button", { type: "submit", className: "px-6 py-2.5 rounded-xl font-bold bg-primary text-primary-foreground hover:scale-105 transition-transform shadow-lg shadow-primary/20", children: initialData ? "Save Changes" : "Create Memory" })
+        /* @__PURE__ */ jsxRuntimeExports.jsx("button", { type: "submit", ref: submitBtnRef, className: "px-6 py-2.5 rounded-xl font-bold bg-primary text-primary-foreground hover:scale-105 transition-transform shadow-lg shadow-primary/20", children: initialData ? "Save Changes" : "Create Memory" })
       ] })
     ] }) })
   ] }) });
@@ -108876,29 +109640,32 @@ function RelationshipMemoriesTab({ person, records, relationships, loadData }) {
     return filtered.sort((a2, b2) => new Date(b2.date).getTime() - new Date(a2.date).getTime());
   }, [allMemories, searchQuery, filterMode, selectedAlbum, selectedPlace]);
   const stats = reactExports.useMemo(() => {
-    const totalMemories = allMemories.length;
-    const photos = allMemories.reduce((acc, e3) => acc + (e3.attachments?.filter((a2) => a2.match(/\.(jpg|jpeg|png|gif|webp)$/i))?.length || 0), 0);
-    const videos = allMemories.reduce((acc, e3) => acc + (e3.attachments?.filter((a2) => a2.match(/\.(mp4|webm|ogg|mov)$/i))?.length || 0), 0);
-    const favMemories = allMemories.filter((m2) => m2.isFavorite).length;
-    const albums = new Set(allMemories.map((m2) => m2.category || "General")).size;
+    const activeMemories = allMemories.filter((m2) => !m2.isArchived);
+    const totalMemories = activeMemories.length;
+    const photos = activeMemories.reduce((acc, e3) => acc + (e3.attachments?.filter((a2) => a2.match(/\.(jpg|jpeg|png|gif|webp)$/i))?.length || 0), 0);
+    const videos = activeMemories.reduce((acc, e3) => acc + (e3.attachments?.filter((a2) => a2.match(/\.(mp4|webm|ogg|mov)$/i))?.length || 0), 0);
+    const audio = activeMemories.reduce((acc, e3) => acc + (e3.attachments?.filter((a2) => a2.match(/\.(mp3|wav|ogg|m4a)$/i))?.length || 0), 0);
+    const favMemories = activeMemories.filter((m2) => m2.isFavorite).length;
+    const albums = new Set(activeMemories.map((m2) => m2.category || "General")).size;
     const moodCounts = {};
-    allMemories.forEach((e3) => {
+    activeMemories.forEach((e3) => {
       if (e3.mood) moodCounts[e3.mood] = (moodCounts[e3.mood] || 0) + 1;
     });
     const favMood = Object.entries(moodCounts).sort((a2, b2) => b2[1] - a2[1])[0]?.[0] || "N/A";
     const yearCounts = {};
-    allMemories.forEach((e3) => {
+    activeMemories.forEach((e3) => {
       if (e3.date) {
         const y2 = new Date(e3.date).getFullYear().toString();
         yearCounts[y2] = (yearCounts[y2] || 0) + 1;
       }
     });
     const mostActiveYear = Object.entries(yearCounts).sort((a2, b2) => b2[1] - a2[1])[0]?.[0] || "N/A";
-    return { totalMemories, photos, videos, favMemories, albums, favMood, mostActiveYear };
+    return { totalMemories, photos, videos, audio, favMemories, albums, favMood, mostActiveYear };
   }, [allMemories]);
   const albumAggregates = reactExports.useMemo(() => {
     const agg = {};
-    allMemories.forEach((m2) => {
+    const activeMemories = allMemories.filter((m2) => !m2.isArchived);
+    activeMemories.forEach((m2) => {
       const a2 = m2.category || "General";
       if (!agg[a2]) agg[a2] = { memories: 0, photos: 0, videos: 0, cover: null };
       agg[a2].memories += 1;
@@ -108914,7 +109681,8 @@ function RelationshipMemoriesTab({ person, records, relationships, loadData }) {
   }, [allMemories]);
   const placeAggregates = reactExports.useMemo(() => {
     const agg = {};
-    allMemories.forEach((m2) => {
+    const activeMemories = allMemories.filter((m2) => !m2.isArchived);
+    activeMemories.forEach((m2) => {
       if (m2.location) {
         const p2 = m2.location;
         if (!agg[p2]) agg[p2] = { memories: 0 };
@@ -108974,6 +109742,14 @@ function RelationshipMemoriesTab({ person, records, relationships, loadData }) {
     setEditingMemory(target);
     setShowMemoryForm(true);
     if (previewMemory) setPreviewMemory(null);
+    if (target && target._id) {
+      const el2 = document.getElementById(`memory-card-${target._id}`);
+      if (el2) {
+        el2.scrollIntoView({ behavior: "smooth", block: "center" });
+        el2.classList.add("ring-4", "ring-primary", "shadow-2xl", "shadow-primary/40", "animate-[pulse_2s_ease-in-out_3]", "z-50");
+        setTimeout(() => el2.classList.remove("ring-4", "ring-primary", "shadow-2xl", "shadow-primary/40", "animate-[pulse_2s_ease-in-out_3]", "z-50"), 4e3);
+      }
+    }
   };
   const generateAIInsight = async () => {
     setIsGenerating(true);
@@ -108994,7 +109770,7 @@ function RelationshipMemoriesTab({ person, records, relationships, loadData }) {
     }
   };
   return /* @__PURE__ */ jsxRuntimeExports.jsxs("div", { className: "space-y-8 animate-in fade-in duration-500 pb-12", children: [
-    /* @__PURE__ */ jsxRuntimeExports.jsxs("div", { className: "grid grid-cols-2 md:grid-cols-6 gap-4", children: [
+    /* @__PURE__ */ jsxRuntimeExports.jsxs("div", { className: "grid grid-cols-2 md:grid-cols-7 gap-4", children: [
       /* @__PURE__ */ jsxRuntimeExports.jsxs("div", { className: "bg-card border border-border p-4 rounded-2xl shadow-sm text-center", children: [
         /* @__PURE__ */ jsxRuntimeExports.jsx("div", { className: "text-2xl font-black", children: stats.totalMemories }),
         /* @__PURE__ */ jsxRuntimeExports.jsx("div", { className: "text-[10px] font-bold text-muted-foreground uppercase tracking-widest mt-1", children: "Memories" })
@@ -109006,6 +109782,10 @@ function RelationshipMemoriesTab({ person, records, relationships, loadData }) {
       /* @__PURE__ */ jsxRuntimeExports.jsxs("div", { className: "bg-card border border-border p-4 rounded-2xl shadow-sm text-center", children: [
         /* @__PURE__ */ jsxRuntimeExports.jsx("div", { className: "text-2xl font-black", children: stats.videos }),
         /* @__PURE__ */ jsxRuntimeExports.jsx("div", { className: "text-[10px] font-bold text-muted-foreground uppercase tracking-widest mt-1", children: "Videos" })
+      ] }),
+      /* @__PURE__ */ jsxRuntimeExports.jsxs("div", { className: "bg-card border border-border p-4 rounded-2xl shadow-sm text-center", children: [
+        /* @__PURE__ */ jsxRuntimeExports.jsx("div", { className: "text-2xl font-black", children: stats.audio }),
+        /* @__PURE__ */ jsxRuntimeExports.jsx("div", { className: "text-[10px] font-bold text-muted-foreground uppercase tracking-widest mt-1", children: "Audio" })
       ] }),
       /* @__PURE__ */ jsxRuntimeExports.jsxs("div", { className: "bg-card border border-border p-4 rounded-2xl shadow-sm text-center", children: [
         /* @__PURE__ */ jsxRuntimeExports.jsx("div", { className: "text-2xl font-black", children: stats.albums }),
@@ -109095,6 +109875,7 @@ function RelationshipMemoriesTab({ person, records, relationships, loadData }) {
               cover,
               photosCount,
               vidsCount,
+              memoryId: memory._id,
               onClick: () => setPreviewMemory(memory),
               onFavorite: (e3) => handleFavoriteToggle(e3, memory),
               onArchive: (e3) => handleArchiveToggle(e3, memory),
@@ -109201,42 +109982,31 @@ function RelationshipMemoriesTab({ person, records, relationships, loadData }) {
         memory: previewMemory,
         relationships,
         onEdit: () => handleEdit(),
-        onDelete: () => handleDelete2(),
-        onDuplicate: () => handleDuplicate()
+        onDelete: () => handleDelete2()
       }
     )
   ] });
 }
-function MemoryCard({ memory, cover, photosCount, vidsCount, onClick, onFavorite, onArchive, onDelete, onEdit, onDuplicate }) {
-  const [showMenu, setShowMenu] = reactExports.useState(false);
-  return /* @__PURE__ */ jsxRuntimeExports.jsxs("div", { className: "bg-card border border-border rounded-3xl shadow-sm hover:shadow-xl transition-all relative flex flex-col group h-full", children: [
-    /* @__PURE__ */ jsxRuntimeExports.jsxs("div", { className: "absolute right-3 top-3 flex gap-1 z-10", children: [
-      /* @__PURE__ */ jsxRuntimeExports.jsx("button", { onClick: onFavorite, className: "p-2 bg-black/40 hover:bg-black/60 rounded-full backdrop-blur-md transition-colors text-yellow-400", children: /* @__PURE__ */ jsxRuntimeExports.jsx(Star, { size: 14, className: memory.isFavorite ? "fill-yellow-400" : "" }) }),
-      /* @__PURE__ */ jsxRuntimeExports.jsxs("div", { className: "relative", children: [
-        /* @__PURE__ */ jsxRuntimeExports.jsx("button", { onClick: (e3) => {
-          e3.stopPropagation();
-          setShowMenu(!showMenu);
-        }, className: "p-2 bg-black/40 hover:bg-black/60 rounded-full backdrop-blur-md transition-colors text-white", children: /* @__PURE__ */ jsxRuntimeExports.jsx(EllipsisVertical, { size: 14 }) }),
-        showMenu && /* @__PURE__ */ jsxRuntimeExports.jsxs("div", { className: "absolute right-0 top-10 w-48 bg-background border border-border rounded-xl shadow-2xl py-1 z-50 text-sm font-medium", children: [
-          /* @__PURE__ */ jsxRuntimeExports.jsx("button", { onClick: (e3) => {
-            setShowMenu(false);
-            onEdit(e3);
-          }, className: "w-full text-left px-4 py-2 hover:bg-accent", children: "Edit Memory" }),
-          /* @__PURE__ */ jsxRuntimeExports.jsx("button", { onClick: (e3) => {
-            setShowMenu(false);
-            onDuplicate(e3);
-          }, className: "w-full text-left px-4 py-2 hover:bg-accent", children: "Duplicate" }),
-          /* @__PURE__ */ jsxRuntimeExports.jsx("button", { onClick: (e3) => {
-            setShowMenu(false);
-            onArchive(e3);
-          }, className: "w-full text-left px-4 py-2 hover:bg-accent text-yellow-500", children: memory.isArchived ? "Restore" : "Archive" }),
-          /* @__PURE__ */ jsxRuntimeExports.jsx("div", { className: "my-1 border-t border-border" }),
-          /* @__PURE__ */ jsxRuntimeExports.jsx("button", { onClick: (e3) => {
-            setShowMenu(false);
-            onDelete(e3);
-          }, className: "w-full text-left px-4 py-2 hover:bg-red-500 hover:text-white text-red-500", children: "Delete" })
-        ] })
-      ] })
+function MemoryCard({ memory, cover, photosCount, vidsCount, memoryId, onClick, onFavorite, onArchive, onDelete, onEdit, onDuplicate }) {
+  return /* @__PURE__ */ jsxRuntimeExports.jsxs("div", { id: `memory-card-${memoryId}`, className: "bg-card border border-border rounded-3xl shadow-sm hover:shadow-xl transition-all relative flex flex-col group h-full", children: [
+    /* @__PURE__ */ jsxRuntimeExports.jsxs("div", { className: "absolute right-3 top-3 flex gap-1 z-20 opacity-0 group-hover:opacity-100 transition-opacity duration-200", children: [
+      /* @__PURE__ */ jsxRuntimeExports.jsx("button", { onClick: onFavorite, className: "p-2 bg-black/40 hover:bg-black/60 rounded-full backdrop-blur-md transition-colors text-yellow-400", title: "Favorite", children: /* @__PURE__ */ jsxRuntimeExports.jsx(Star, { size: 14, className: memory.isFavorite ? "fill-yellow-400" : "" }) }),
+      /* @__PURE__ */ jsxRuntimeExports.jsx("button", { onClick: (e3) => {
+        e3.stopPropagation();
+        onEdit(e3);
+      }, className: "p-2 bg-black/40 hover:bg-black/60 rounded-full backdrop-blur-md transition-colors text-white", title: "Edit", children: /* @__PURE__ */ jsxRuntimeExports.jsx(Pen, { size: 14 }) }),
+      /* @__PURE__ */ jsxRuntimeExports.jsx("button", { onClick: (e3) => {
+        e3.stopPropagation();
+        onDuplicate(e3);
+      }, className: "p-2 bg-black/40 hover:bg-black/60 rounded-full backdrop-blur-md transition-colors text-white", title: "Duplicate", children: /* @__PURE__ */ jsxRuntimeExports.jsx(Copy, { size: 14 }) }),
+      /* @__PURE__ */ jsxRuntimeExports.jsx("button", { onClick: (e3) => {
+        e3.stopPropagation();
+        onArchive(e3);
+      }, className: "p-2 bg-black/40 hover:bg-black/60 rounded-full backdrop-blur-md transition-colors text-yellow-500", title: memory.isArchived ? "Restore" : "Archive", children: /* @__PURE__ */ jsxRuntimeExports.jsx(Archive, { size: 14 }) }),
+      /* @__PURE__ */ jsxRuntimeExports.jsx("button", { onClick: (e3) => {
+        e3.stopPropagation();
+        onDelete(e3);
+      }, className: "p-2 bg-black/40 hover:bg-red-600 rounded-full backdrop-blur-md transition-colors text-red-500 hover:text-white", title: "Delete", children: /* @__PURE__ */ jsxRuntimeExports.jsx(Trash2, { size: 14 }) })
     ] }),
     /* @__PURE__ */ jsxRuntimeExports.jsxs("div", { className: "aspect-[4/3] bg-accent relative overflow-hidden rounded-t-3xl cursor-pointer", onClick, children: [
       cover ? /* @__PURE__ */ jsxRuntimeExports.jsx("img", { src: cover, className: "w-full h-full object-cover group-hover:scale-105 transition-transform duration-700" }) : /* @__PURE__ */ jsxRuntimeExports.jsxs("div", { className: "w-full h-full flex flex-col items-center justify-center text-muted-foreground bg-gradient-to-br from-accent to-background", children: [
@@ -109270,11 +110040,7 @@ function MemoryCard({ memory, cover, photosCount, vidsCount, onClick, onFavorite
         ] }),
         /* @__PURE__ */ jsxRuntimeExports.jsx("span", { className: "text-primary group-hover:text-primary/80 transition-colors", children: "Preview →" })
       ] })
-    ] }),
-    showMenu && /* @__PURE__ */ jsxRuntimeExports.jsx("div", { className: "fixed inset-0 z-40", onClick: (e3) => {
-      e3.stopPropagation();
-      setShowMenu(false);
-    } })
+    ] })
   ] });
 }
 function MemoryTimelineCard({ memory }) {
@@ -109377,7 +110143,7 @@ function RelationshipProfile() {
   const updateProfilePicture = async (picPath) => {
     if (!person) return;
     try {
-      await window.api.db.update("relationships", { _id: person._id }, { $set: { profilePicture: picPath } }, {});
+      await window.api.db.update("relationships", { _id: person._id }, { $set: { profilePicture: picPath, updatedAt: Date.now() } }, {});
       setPerson({ ...person, profilePicture: picPath });
       setShowChangePicture(false);
       setShowProfilePicManager(false);
@@ -109401,6 +110167,7 @@ function RelationshipProfile() {
           };
           await window.api.db.insert("records", newRecord);
         }
+        await window.api.db.update("relationships", { _id: person._id }, { $set: { updatedAt: Date.now() } }, {});
         loadData(person._id);
       }
     } catch (e3) {
@@ -109416,14 +110183,15 @@ function RelationshipProfile() {
       if (person.photos) updatePayload.photos = person.photos.filter((a2) => a2 !== photoUrl);
       if (person.video) updatePayload.video = person.video.filter((a2) => a2 !== photoUrl);
       if (person.audio) updatePayload.audio = person.audio.filter((a2) => a2 !== photoUrl);
-      await window.api.db.update("relationships", { _id: person._id }, { $set: updatePayload }, {});
+      await window.api.db.update("relationships", { _id: person._id }, { $set: { ...updatePayload, updatedAt: Date.now() } }, {});
       loadData(person._id);
       return;
     }
     const record = records.find((r2) => r2.attachments?.includes(photoUrl));
     if (record) {
       const newAttachments = record.attachments.filter((a2) => a2 !== photoUrl);
-      await window.api.db.update("records", { _id: record._id }, { $set: { attachments: newAttachments } }, {});
+      await window.api.db.update("records", { _id: record._id }, { $set: { attachments: newAttachments, updatedAt: Date.now() } }, {});
+      await window.api.db.update("relationships", { _id: person._id }, { $set: { updatedAt: Date.now() } }, {});
       loadData(person._id);
     }
   };
@@ -109439,7 +110207,7 @@ function RelationshipProfile() {
   const handleArchivePerson = async () => {
     if (!person) return;
     try {
-      await window.api.db.update("relationships", { _id: person._id }, { $set: { isArchived: !person.isArchived } }, {});
+      await window.api.db.update("relationships", { _id: person._id }, { $set: { isArchived: !person.isArchived, updatedAt: Date.now() } }, {});
       setPerson({ ...person, isArchived: !person.isArchived });
     } catch (e3) {
       console.error(e3);
@@ -109447,20 +110215,27 @@ function RelationshipProfile() {
   };
   const handleExportProfile = () => {
     if (!person) return;
-    const data = { person, records };
-    const blob = new Blob([JSON.stringify(data, null, 2)], { type: "application/json" });
-    const url = URL.createObjectURL(blob);
-    const a2 = document.createElement("a");
-    a2.href = url;
-    a2.download = `kiseki_profile_${person.name.replace(/\s+/g, "_")}.json`;
-    a2.click();
-    URL.revokeObjectURL(url);
+    try {
+      const enrichedRecords = records.map((r2) => ({ ...r2, attachments: r2.attachments || [] }));
+      const data = { person, records: enrichedRecords };
+      const blob = new Blob([JSON.stringify(data, null, 2)], { type: "application/json" });
+      const url = URL.createObjectURL(blob);
+      const a2 = document.createElement("a");
+      a2.href = url;
+      a2.download = `kiseki_profile_${person.name.replace(/\s+/g, "_")}.json`;
+      a2.click();
+      URL.revokeObjectURL(url);
+      NotificationEngine.notify("success", "Export Complete", `Successfully exported ${person.name}'s profile.`, "Relationships");
+    } catch (e3) {
+      console.error("Failed to export profile", e3);
+      NotificationEngine.notify("error", "Export Failed", "An error occurred while exporting the profile.", "Relationships");
+    }
   };
   const saveEditPerson = async (e3) => {
     e3.preventDefault();
     if (!person) return;
     try {
-      await window.api.db.update("relationships", { _id: person._id }, { $set: editForm }, {});
+      await window.api.db.update("relationships", { _id: person._id }, { $set: { ...editForm, updatedAt: Date.now() } }, {});
       setPerson({ ...person, ...editForm });
       setShowEditModal(false);
     } catch (err) {
@@ -109504,6 +110279,7 @@ function RelationshipProfile() {
     };
     try {
       await window.api.db.insert("records", newRecord);
+      await window.api.db.update("relationships", { _id: person._id }, { $set: { updatedAt: Date.now() } }, {});
       setFormState({});
       setShowTimelineForm(false);
       setShowMemoryForm(false);
@@ -109529,7 +110305,7 @@ function RelationshipProfile() {
       });
     }
     try {
-      await window.api.db.update("relationships", { _id: person._id }, { $set: { notes: newNotes } }, {});
+      await window.api.db.update("relationships", { _id: person._id }, { $set: { notes: newNotes, updatedAt: Date.now() } }, {});
       setPerson({ ...person, notes: newNotes });
       setFormState({});
       setEditNoteId(null);
@@ -109542,7 +110318,7 @@ function RelationshipProfile() {
     if (!person) return;
     const newNotes = (person.notes || []).filter((n2) => n2._id !== noteId);
     try {
-      await window.api.db.update("relationships", { _id: person._id }, { $set: { notes: newNotes } }, {});
+      await window.api.db.update("relationships", { _id: person._id }, { $set: { notes: newNotes, updatedAt: Date.now() } }, {});
       setPerson({ ...person, notes: newNotes });
     } catch (err) {
       console.error(err);
@@ -109554,19 +110330,162 @@ function RelationshipProfile() {
     const idx = newNotes.findIndex((n2) => n2._id === noteId);
     if (idx !== -1) newNotes[idx].isPinned = !newNotes[idx].isPinned;
     try {
-      await window.api.db.update("relationships", { _id: person._id }, { $set: { notes: newNotes } }, {});
+      await window.api.db.update("relationships", { _id: person._id }, { $set: { notes: newNotes, updatedAt: Date.now() } }, {});
       setPerson({ ...person, notes: newNotes });
     } catch (err) {
       console.error(err);
     }
   };
+  const handleImportMemory = async (e3) => {
+    const file = e3.target.files?.[0];
+    if (!file || !person) return;
+    try {
+      const text2 = await file.text();
+      const importedData = JSON.parse(text2);
+      if (!importedData.title || !importedData.date) {
+        NotificationEngine.notify("error", "Invalid File", "The JSON file does not contain valid memory data.", "Relationships");
+        return;
+      }
+      const now2 = Date.now();
+      const newRecord = {
+        title: importedData.title,
+        description: importedData.description || "",
+        date: importedData.date,
+        type: importedData.type || "Memory",
+        tags: importedData.tags || [],
+        people: [person._id],
+        // Associate with current relationship
+        importance: importedData.importance || 3,
+        privacyLevel: importedData.privacyLevel || "private",
+        createdAt: now2,
+        updatedAt: now2,
+        isFavorite: importedData.isFavorite || false,
+        isArchived: importedData.isArchived || false,
+        attachments: importedData.attachments || [],
+        mood: importedData.mood || "",
+        location: importedData.location || ""
+      };
+      await window.api.db.insert("records", newRecord);
+      await window.api.db.update("relationships", { _id: person._id }, { $set: { updatedAt: Date.now() } }, {});
+      NotificationEngine.notify("success", "Import Successful", `Memory "${importedData.title}" has been imported to ${person.name}'s profile.`, "Relationships");
+      loadData(person._id);
+      e3.target.value = "";
+    } catch (err) {
+      console.error("Failed to import memory:", err);
+      NotificationEngine.notify("error", "Import Failed", "Failed to import the memory. Please check the file format.", "Relationships");
+    }
+  };
+  const calculateRelationshipMetrics = () => {
+    if (!person || !records) return { score: 50, trust: 50, communication: 50, intimacy: 50, growth: 50 };
+    const activeRecords2 = records.filter((r2) => !r2.isArchived);
+    const now2 = Date.now();
+    const oneMonthAgo = now2 - 30 * 24 * 60 * 60 * 1e3;
+    const threeMonthsAgo = now2 - 90 * 24 * 60 * 60 * 1e3;
+    const sixMonthsAgo = now2 - 180 * 24 * 60 * 60 * 1e3;
+    let score = 50;
+    const interactionCount = activeRecords2.length;
+    score += Math.min(20, interactionCount * 2);
+    const recentInteractions = activeRecords2.filter((r2) => new Date(r2.date).getTime() > oneMonthAgo);
+    const veryRecentInteractions = activeRecords2.filter((r2) => new Date(r2.date).getTime() > threeMonthsAgo);
+    score += Math.min(20, recentInteractions.length * 5);
+    score += Math.min(10, veryRecentInteractions.length * 2);
+    const totalAttachments = activeRecords2.reduce((acc, r2) => acc + (r2.attachments?.length || 0), 0);
+    score += Math.min(15, totalAttachments * 2);
+    const favoriteCount = activeRecords2.filter((r2) => r2.isFavorite).length;
+    score += Math.min(10, favoriteCount * 3);
+    if (person.relationshipStarted) {
+      const startDate = new Date(person.relationshipStarted).getTime();
+      const monthsSinceStart = Math.floor((now2 - startDate) / (30 * 24 * 60 * 60 * 1e3));
+      score += Math.min(10, monthsSinceStart * 0.5);
+    }
+    const uniqueTypes = new Set(activeRecords2.map((r2) => r2.type)).size;
+    score += Math.min(15, uniqueTypes * 3);
+    const oldInteractions = activeRecords2.filter((r2) => new Date(r2.date).getTime() < sixMonthsAgo);
+    if (interactionCount > 0 && recentInteractions.length === 0) {
+      score -= Math.min(30, oldInteractions.length * 3);
+    }
+    const totalRecords = records.length;
+    const archivedCount = records.filter((r2) => r2.isArchived).length;
+    let archiveRatio = 0;
+    if (totalRecords > 0) {
+      archiveRatio = archivedCount / totalRecords;
+      if (archiveRatio > 0.5) {
+        score -= Math.min(20, Math.round(archiveRatio * 40));
+      }
+    }
+    if (interactionCount > 5 && totalAttachments === 0) {
+      score -= 10;
+    }
+    if (interactionCount > 3 && favoriteCount === 0) {
+      score -= 10;
+    }
+    let trust = 50;
+    let communication = 50;
+    let intimacy = 50;
+    let growth = 50;
+    if (person.relationshipStarted) {
+      const startDate = new Date(person.relationshipStarted).getTime();
+      const monthsSinceStart = Math.floor((now2 - startDate) / (30 * 24 * 60 * 60 * 1e3));
+      trust += Math.min(30, monthsSinceStart * 2);
+    }
+    trust += Math.min(20, interactionCount);
+    trust -= Math.min(20, archivedCount * 5);
+    communication += Math.min(30, recentInteractions.length * 10);
+    communication += Math.min(20, veryRecentInteractions.length * 5);
+    if (interactionCount > 0 && recentInteractions.length === 0) {
+      communication -= Math.min(40, oldInteractions.length * 5);
+    }
+    intimacy += Math.min(30, totalAttachments * 3);
+    intimacy += Math.min(30, favoriteCount * 5);
+    if (interactionCount > 5 && totalAttachments === 0) intimacy -= 20;
+    growth += Math.min(30, uniqueTypes * 5);
+    growth += Math.min(20, recentInteractions.length * 3);
+    if (archiveRatio > 0.3) growth -= Math.min(20, archiveRatio * 50);
+    score = Math.max(0, Math.min(100, Math.round(score)));
+    trust = Math.max(0, Math.min(100, Math.round(trust)));
+    communication = Math.max(0, Math.min(100, Math.round(communication)));
+    intimacy = Math.max(0, Math.min(100, Math.round(intimacy)));
+    growth = Math.max(0, Math.min(100, Math.round(growth)));
+    return { score, trust, communication, intimacy, growth };
+  };
+  const metrics = calculateRelationshipMetrics();
+  const dynamicScore = metrics.score;
+  reactExports.useEffect(() => {
+    if (person && dynamicScore !== person.relationshipScore) {
+      const updateScore = async () => {
+        try {
+          await window.api.db.update("relationships", { _id: person._id }, { $set: { relationshipScore: dynamicScore, updatedAt: Date.now() } });
+          setPerson({ ...person, relationshipScore: dynamicScore });
+          const scoreChange = dynamicScore - person.relationshipScore;
+          if (scoreChange > 0) {
+            NotificationEngine.notify(
+              "success",
+              "Relationship Score Improved",
+              `Score increased by ${scoreChange} points to ${dynamicScore}/100`,
+              "Relationships"
+            );
+          } else if (scoreChange < 0) {
+            NotificationEngine.notify(
+              "warning",
+              "Relationship Score Changed",
+              `Score decreased by ${Math.abs(scoreChange)} points to ${dynamicScore}/100`,
+              "Relationships"
+            );
+          }
+        } catch (err) {
+          console.error("Failed to update relationship score:", err);
+        }
+      };
+      updateScore();
+    }
+  }, [dynamicScore]);
   const generateInsights = async () => {
     if (!person) return;
     setIsGenerating(true);
     setAiInsights("");
     const systemPrompt = `You are a relationship analyst for the Kiseki Records app. Analyze the relationship with "${person.name}".
 Relationship Type: ${person.relationshipType}
-Score: ${person.relationshipScore}/100
+Score: ${dynamicScore}/100
 Bio: ${person.bio || "None"}
 Start Date: ${person.relationshipStarted || "Unknown"}
 
@@ -109607,14 +110526,49 @@ Provide a brief, insightful summary of this relationship's health and suggest 1-
   records.filter((r2) => ["Memory", "Journal", "Voice", "Video", "Photo", "Document", "Link"].includes(r2.type));
   records.filter((r2) => r2.type === "Event");
   const pAttachments = person.attachments || [];
-  const photos = Array.from(/* @__PURE__ */ new Set([...person.photos || [], ...pAttachments.filter((a2) => a2.match(/\.(jpg|jpeg|png|gif|webp)$/i)), ...records.filter((r2) => r2.type === "Photo").flatMap((r2) => r2.attachments || [])]));
-  const audio = Array.from(/* @__PURE__ */ new Set([...person.audio || [], ...pAttachments.filter((a2) => a2.match(/\.(mp3|wav|ogg|m4a|mpeg)$/i)), ...records.filter((r2) => r2.type === "Audio" || r2.type === "Voice").flatMap((r2) => r2.attachments || [])]));
-  const video = Array.from(/* @__PURE__ */ new Set([...person.video || [], ...pAttachments.filter((a2) => a2.match(/\.(mp4|webm|mov|mkv|avi|wmv|flv)$/i)), ...records.filter((r2) => r2.type === "Video").flatMap((r2) => r2.attachments || [])]));
+  const activeRecords = records.filter((r2) => !r2.isArchived);
+  const allPhotoAttachments = activeRecords.flatMap((r2) => r2.attachments?.filter((a2) => a2.match(/\.(jpg|jpeg|png|gif|webp)$/i)) || []);
+  const photos = Array.from(/* @__PURE__ */ new Set([...person.photos || [], ...pAttachments.filter((a2) => a2.match(/\.(jpg|jpeg|png|gif|webp)$/i)), ...allPhotoAttachments]));
+  const allAudioAttachments = activeRecords.flatMap((r2) => r2.attachments?.filter((a2) => a2.match(/\.(mp3|wav|ogg|m4a|mpeg)$/i)) || []);
+  const audio = Array.from(/* @__PURE__ */ new Set([...person.audio || [], ...pAttachments.filter((a2) => a2.match(/\.(mp3|wav|ogg|m4a|mpeg)$/i)), ...allAudioAttachments]));
+  const allVideoAttachments = activeRecords.flatMap((r2) => r2.attachments?.filter((a2) => a2.match(/\.(mp4|webm|mov|mkv|avi|wmv|flv)$/i)) || []);
+  const video = Array.from(/* @__PURE__ */ new Set([...person.video || [], ...pAttachments.filter((a2) => a2.match(/\.(mp4|webm|mov|mkv|avi|wmv|flv)$/i)), ...allVideoAttachments]));
   const sortedNotes = [...person.notes || []].sort((a2, b2) => {
     if (a2.isPinned && !b2.isPinned) return -1;
     if (!a2.isPinned && b2.isPinned) return 1;
     return b2.createdAt - a2.createdAt;
   });
+  const findMemoryByAttachment = (attachmentUrl) => {
+    return records.find((r2) => r2.attachments?.includes(attachmentUrl));
+  };
+  const handleGoToMemory = (attachmentUrl) => {
+    const memory = findMemoryByAttachment(attachmentUrl);
+    if (memory) {
+      if (memory.type === "Event") {
+        setActiveTab("Events");
+        setTimeout(() => {
+          const el2 = document.getElementById(`event-card-${memory._id}`);
+          if (el2) {
+            el2.scrollIntoView({ behavior: "smooth", block: "center" });
+            el2.classList.add("ring-4", "ring-primary", "shadow-2xl", "shadow-primary/40", "animate-[pulse_2s_ease-in-out_3]", "z-50");
+            setTimeout(() => el2.classList.remove("ring-4", "ring-primary", "shadow-2xl", "shadow-primary/40", "animate-[pulse_2s_ease-in-out_3]", "z-50"), 4e3);
+          }
+        }, 100);
+      } else {
+        setActiveTab("Memories");
+        setTimeout(() => {
+          const el2 = document.getElementById(`memory-card-${memory._id}`);
+          if (el2) {
+            el2.scrollIntoView({ behavior: "smooth", block: "center" });
+            el2.classList.add("ring-4", "ring-primary", "shadow-2xl", "shadow-primary/40", "animate-[pulse_2s_ease-in-out_3]", "z-50");
+            setTimeout(() => el2.classList.remove("ring-4", "ring-primary", "shadow-2xl", "shadow-primary/40", "animate-[pulse_2s_ease-in-out_3]", "z-50"), 4e3);
+          }
+        }, 100);
+      }
+    } else {
+      NotificationEngine.notify("info", "Not Found", "Attachment not found in any memory or event", "Relationships");
+    }
+  };
   return /* @__PURE__ */ jsxRuntimeExports.jsxs("div", { className: "flex flex-col h-full bg-background animate-in fade-in duration-500 relative", children: [
     /* @__PURE__ */ jsxRuntimeExports.jsxs("div", { className: "bg-card border-b border-border p-6 shrink-0 flex items-center justify-between", children: [
       /* @__PURE__ */ jsxRuntimeExports.jsxs("div", { className: "flex items-center gap-6", children: [
@@ -109636,7 +110590,7 @@ Provide a brief, insightful summary of this relationship's health and suggest 1-
             /* @__PURE__ */ jsxRuntimeExports.jsxs("span", { className: "flex items-center gap-1", children: [
               /* @__PURE__ */ jsxRuntimeExports.jsx(Heart, { size: 14, className: "text-destructive fill-destructive" }),
               " Score: ",
-              person.relationshipScore
+              dynamicScore
             ] }),
             person.relationshipStarted && /* @__PURE__ */ jsxRuntimeExports.jsxs("span", { className: "flex items-center gap-1", children: [
               /* @__PURE__ */ jsxRuntimeExports.jsx(Calendar, { size: 14 }),
@@ -109670,6 +110624,13 @@ Provide a brief, insightful summary of this relationship's health and suggest 1-
               handleExportProfile();
               setShowMenu(false);
             }, className: "w-full text-left px-4 py-2 text-sm hover:bg-accent", children: "Export Profile" }),
+            /* @__PURE__ */ jsxRuntimeExports.jsxs("button", { title: "Import memory from JSON file", onClick: () => {
+              document.getElementById("import-memory-input")?.click();
+              setShowMenu(false);
+            }, className: "w-full text-left px-4 py-2 text-sm hover:bg-accent flex items-center gap-2", children: [
+              /* @__PURE__ */ jsxRuntimeExports.jsx(Upload, { size: 14 }),
+              " Import Memory"
+            ] }),
             /* @__PURE__ */ jsxRuntimeExports.jsx("button", { title: "Generate relationship summary with local AI", onClick: () => {
               setActiveTab("AI Insights");
               setShowMenu(false);
@@ -109684,61 +110645,167 @@ Provide a brief, insightful summary of this relationship's health and suggest 1-
         ] })
       ] })
     ] }),
+    /* @__PURE__ */ jsxRuntimeExports.jsx(
+      "input",
+      {
+        id: "import-memory-input",
+        type: "file",
+        accept: ".json",
+        className: "hidden",
+        onChange: handleImportMemory
+      }
+    ),
     /* @__PURE__ */ jsxRuntimeExports.jsx("div", { className: "flex gap-1 px-6 border-b border-border bg-card/50 overflow-x-auto shrink-0 scrollbar-hide", children: tabs.map((tab2) => /* @__PURE__ */ jsxRuntimeExports.jsx("button", { onClick: () => setActiveTab(tab2), className: `px-4 py-3 text-sm font-medium border-b-2 whitespace-nowrap transition-colors ${activeTab === tab2 ? "border-primary text-primary" : "border-transparent text-muted-foreground hover:text-foreground hover:border-border"}`, children: tab2 }, tab2)) }),
     /* @__PURE__ */ jsxRuntimeExports.jsx("div", { className: "flex-1 overflow-y-auto p-6 bg-background", children: /* @__PURE__ */ jsxRuntimeExports.jsxs("div", { className: "max-w-5xl mx-auto", children: [
-      activeTab === "Overview" && /* @__PURE__ */ jsxRuntimeExports.jsxs("div", { className: "grid grid-cols-1 md:grid-cols-3 gap-6", children: [
-        /* @__PURE__ */ jsxRuntimeExports.jsxs("div", { className: "md:col-span-2 space-y-6", children: [
-          person.bio && /* @__PURE__ */ jsxRuntimeExports.jsxs("div", { className: "bg-card border border-border rounded-xl p-6 shadow-sm", children: [
-            /* @__PURE__ */ jsxRuntimeExports.jsxs("h3", { className: "font-bold mb-3 flex items-center gap-2", children: [
+      activeTab === "Overview" && /* @__PURE__ */ jsxRuntimeExports.jsxs("div", { className: "space-y-6", children: [
+        /* @__PURE__ */ jsxRuntimeExports.jsxs("div", { className: "grid grid-cols-2 md:grid-cols-4 gap-4", children: [
+          /* @__PURE__ */ jsxRuntimeExports.jsxs("div", { className: "bg-gradient-to-br from-primary/20 to-primary/5 border border-primary/30 p-5 rounded-2xl shadow-sm", children: [
+            /* @__PURE__ */ jsxRuntimeExports.jsxs("div", { className: "flex items-center gap-2 mb-2", children: [
+              /* @__PURE__ */ jsxRuntimeExports.jsx(Heart, { size: 20, className: "text-primary" }),
+              /* @__PURE__ */ jsxRuntimeExports.jsx("span", { className: "text-xs font-bold text-primary uppercase tracking-wider", children: "Score" })
+            ] }),
+            /* @__PURE__ */ jsxRuntimeExports.jsxs("div", { className: "text-3xl font-black text-primary", children: [
+              dynamicScore,
+              /* @__PURE__ */ jsxRuntimeExports.jsx("span", { className: "text-lg text-primary/60", children: "/100" })
+            ] })
+          ] }),
+          /* @__PURE__ */ jsxRuntimeExports.jsxs("div", { className: "bg-card border border-border p-5 rounded-2xl shadow-sm", children: [
+            /* @__PURE__ */ jsxRuntimeExports.jsxs("div", { className: "flex items-center gap-2 mb-2", children: [
+              /* @__PURE__ */ jsxRuntimeExports.jsx(Calendar, { size: 20, className: "text-muted-foreground" }),
+              /* @__PURE__ */ jsxRuntimeExports.jsx("span", { className: "text-xs font-bold text-muted-foreground uppercase tracking-wider", children: "Interactions" })
+            ] }),
+            /* @__PURE__ */ jsxRuntimeExports.jsx("div", { className: "text-3xl font-black", children: records.filter((r2) => !r2.isArchived).length })
+          ] }),
+          /* @__PURE__ */ jsxRuntimeExports.jsxs("div", { className: "bg-card border border-border p-5 rounded-2xl shadow-sm", children: [
+            /* @__PURE__ */ jsxRuntimeExports.jsxs("div", { className: "flex items-center gap-2 mb-2", children: [
+              /* @__PURE__ */ jsxRuntimeExports.jsx(Image$2, { size: 20, className: "text-muted-foreground" }),
+              /* @__PURE__ */ jsxRuntimeExports.jsx("span", { className: "text-xs font-bold text-muted-foreground uppercase tracking-wider", children: "Media" })
+            ] }),
+            /* @__PURE__ */ jsxRuntimeExports.jsx("div", { className: "text-3xl font-black", children: records.filter((r2) => !r2.isArchived).reduce((acc, r2) => acc + (r2.attachments?.length || 0), 0) })
+          ] }),
+          /* @__PURE__ */ jsxRuntimeExports.jsxs("div", { className: "bg-card border border-border p-5 rounded-2xl shadow-sm", children: [
+            /* @__PURE__ */ jsxRuntimeExports.jsxs("div", { className: "flex items-center gap-2 mb-2", children: [
+              /* @__PURE__ */ jsxRuntimeExports.jsx(Star, { size: 20, className: "text-yellow-500" }),
+              /* @__PURE__ */ jsxRuntimeExports.jsx("span", { className: "text-xs font-bold text-muted-foreground uppercase tracking-wider", children: "Favorites" })
+            ] }),
+            /* @__PURE__ */ jsxRuntimeExports.jsx("div", { className: "text-3xl font-black", children: records.filter((r2) => !r2.isArchived && r2.isFavorite).length })
+          ] })
+        ] }),
+        /* @__PURE__ */ jsxRuntimeExports.jsxs("div", { className: "bg-card border border-border rounded-2xl p-6 shadow-sm", children: [
+          /* @__PURE__ */ jsxRuntimeExports.jsxs("div", { className: "flex items-center justify-between mb-6", children: [
+            /* @__PURE__ */ jsxRuntimeExports.jsxs("h3", { className: "font-bold text-lg flex items-center gap-2", children: [
+              /* @__PURE__ */ jsxRuntimeExports.jsx(Heart, { size: 20, className: "text-destructive fill-destructive" }),
+              " Relationship Health"
+            ] }),
+            /* @__PURE__ */ jsxRuntimeExports.jsxs("div", { className: "text-sm font-medium text-muted-foreground", children: [
+              "Overall: ",
+              dynamicScore,
+              "/100"
+            ] })
+          ] }),
+          /* @__PURE__ */ jsxRuntimeExports.jsxs("div", { className: "grid grid-cols-1 md:grid-cols-2 gap-6", children: [
+            /* @__PURE__ */ jsxRuntimeExports.jsxs("div", { className: "space-y-4", children: [
+              /* @__PURE__ */ jsxRuntimeExports.jsxs("div", { children: [
+                /* @__PURE__ */ jsxRuntimeExports.jsxs("div", { className: "flex justify-between items-center mb-2", children: [
+                  /* @__PURE__ */ jsxRuntimeExports.jsxs("span", { className: "text-sm font-medium flex items-center gap-2", children: [
+                    /* @__PURE__ */ jsxRuntimeExports.jsx(Shield, { size: 16, className: "text-primary" }),
+                    " Trust"
+                  ] }),
+                  /* @__PURE__ */ jsxRuntimeExports.jsxs("span", { className: "text-sm font-bold text-primary", children: [
+                    metrics.trust,
+                    "%"
+                  ] })
+                ] }),
+                /* @__PURE__ */ jsxRuntimeExports.jsx("div", { className: "w-full bg-accent rounded-full h-3 overflow-hidden", children: /* @__PURE__ */ jsxRuntimeExports.jsx("div", { className: "bg-primary h-3 rounded-full transition-all duration-500", style: { width: `${metrics.trust}%` } }) })
+              ] }),
+              /* @__PURE__ */ jsxRuntimeExports.jsxs("div", { children: [
+                /* @__PURE__ */ jsxRuntimeExports.jsxs("div", { className: "flex justify-between items-center mb-2", children: [
+                  /* @__PURE__ */ jsxRuntimeExports.jsxs("span", { className: "text-sm font-medium flex items-center gap-2", children: [
+                    /* @__PURE__ */ jsxRuntimeExports.jsx(MessageCircle, { size: 16, className: "text-blue-500" }),
+                    " Communication"
+                  ] }),
+                  /* @__PURE__ */ jsxRuntimeExports.jsxs("span", { className: "text-sm font-bold text-blue-500", children: [
+                    metrics.communication,
+                    "%"
+                  ] })
+                ] }),
+                /* @__PURE__ */ jsxRuntimeExports.jsx("div", { className: "w-full bg-accent rounded-full h-3 overflow-hidden", children: /* @__PURE__ */ jsxRuntimeExports.jsx("div", { className: "bg-blue-500 h-3 rounded-full transition-all duration-500", style: { width: `${metrics.communication}%` } }) })
+              ] })
+            ] }),
+            /* @__PURE__ */ jsxRuntimeExports.jsxs("div", { className: "space-y-4", children: [
+              /* @__PURE__ */ jsxRuntimeExports.jsxs("div", { children: [
+                /* @__PURE__ */ jsxRuntimeExports.jsxs("div", { className: "flex justify-between items-center mb-2", children: [
+                  /* @__PURE__ */ jsxRuntimeExports.jsxs("span", { className: "text-sm font-medium flex items-center gap-2", children: [
+                    /* @__PURE__ */ jsxRuntimeExports.jsx(Sparkles, { size: 16, className: "text-purple-500" }),
+                    " Intimacy"
+                  ] }),
+                  /* @__PURE__ */ jsxRuntimeExports.jsxs("span", { className: "text-sm font-bold text-purple-500", children: [
+                    metrics.intimacy,
+                    "%"
+                  ] })
+                ] }),
+                /* @__PURE__ */ jsxRuntimeExports.jsx("div", { className: "w-full bg-accent rounded-full h-3 overflow-hidden", children: /* @__PURE__ */ jsxRuntimeExports.jsx("div", { className: "bg-purple-500 h-3 rounded-full transition-all duration-500", style: { width: `${metrics.intimacy}%` } }) })
+              ] }),
+              /* @__PURE__ */ jsxRuntimeExports.jsxs("div", { children: [
+                /* @__PURE__ */ jsxRuntimeExports.jsxs("div", { className: "flex justify-between items-center mb-2", children: [
+                  /* @__PURE__ */ jsxRuntimeExports.jsxs("span", { className: "text-sm font-medium flex items-center gap-2", children: [
+                    /* @__PURE__ */ jsxRuntimeExports.jsx(TrendingUp, { size: 16, className: "text-green-500" }),
+                    " Growth"
+                  ] }),
+                  /* @__PURE__ */ jsxRuntimeExports.jsxs("span", { className: "text-sm font-bold text-green-500", children: [
+                    metrics.growth,
+                    "%"
+                  ] })
+                ] }),
+                /* @__PURE__ */ jsxRuntimeExports.jsx("div", { className: "w-full bg-accent rounded-full h-3 overflow-hidden", children: /* @__PURE__ */ jsxRuntimeExports.jsx("div", { className: "bg-green-500 h-3 rounded-full transition-all duration-500", style: { width: `${metrics.growth}%` } }) })
+              ] })
+            ] })
+          ] })
+        ] }),
+        /* @__PURE__ */ jsxRuntimeExports.jsxs("div", { className: "grid grid-cols-1 md:grid-cols-2 gap-6", children: [
+          person.bio && /* @__PURE__ */ jsxRuntimeExports.jsxs("div", { className: "bg-card border border-border rounded-2xl p-6 shadow-sm", children: [
+            /* @__PURE__ */ jsxRuntimeExports.jsxs("h3", { className: "font-bold mb-4 flex items-center gap-2", children: [
               /* @__PURE__ */ jsxRuntimeExports.jsx(User, { size: 18 }),
               " Bio"
             ] }),
             /* @__PURE__ */ jsxRuntimeExports.jsx("p", { className: "whitespace-pre-wrap text-muted-foreground text-sm leading-relaxed", children: person.bio })
           ] }),
-          /* @__PURE__ */ jsxRuntimeExports.jsxs("div", { className: "bg-card border border-border rounded-xl p-6 shadow-sm", children: [
-            /* @__PURE__ */ jsxRuntimeExports.jsxs("h3", { className: "font-bold mb-3 flex items-center gap-2", children: [
-              /* @__PURE__ */ jsxRuntimeExports.jsx(Heart, { size: 18 }),
-              " Relationship Health"
-            ] }),
-            /* @__PURE__ */ jsxRuntimeExports.jsxs("div", { className: "space-y-4 mt-4", children: [
-              /* @__PURE__ */ jsxRuntimeExports.jsxs("div", { children: [
-                /* @__PURE__ */ jsxRuntimeExports.jsxs("div", { className: "flex justify-between text-xs mb-1", children: [
-                  /* @__PURE__ */ jsxRuntimeExports.jsx("span", { className: "font-medium", children: "Trust" }),
-                  /* @__PURE__ */ jsxRuntimeExports.jsxs("span", { children: [
-                    Math.min(100, person.relationshipScore + 10),
-                    "%"
-                  ] })
-                ] }),
-                /* @__PURE__ */ jsxRuntimeExports.jsx("div", { className: "w-full bg-accent rounded-full h-2", children: /* @__PURE__ */ jsxRuntimeExports.jsx("div", { className: "bg-primary h-2 rounded-full", style: { width: `${Math.min(100, person.relationshipScore + 10)}%` } }) })
+          /* @__PURE__ */ jsxRuntimeExports.jsxs("div", { className: "bg-card border border-border rounded-2xl p-6 shadow-sm", children: [
+            /* @__PURE__ */ jsxRuntimeExports.jsx("h3", { className: "font-bold mb-4", children: "Details" }),
+            /* @__PURE__ */ jsxRuntimeExports.jsxs("ul", { className: "space-y-3 text-sm", children: [
+              person.relationshipType && /* @__PURE__ */ jsxRuntimeExports.jsxs("li", { className: "flex justify-between", children: [
+                /* @__PURE__ */ jsxRuntimeExports.jsx("span", { className: "text-muted-foreground", children: "Relationship Type" }),
+                " ",
+                /* @__PURE__ */ jsxRuntimeExports.jsx("span", { className: "font-medium", children: person.relationshipType })
               ] }),
-              /* @__PURE__ */ jsxRuntimeExports.jsxs("div", { children: [
-                /* @__PURE__ */ jsxRuntimeExports.jsxs("div", { className: "flex justify-between text-xs mb-1", children: [
-                  /* @__PURE__ */ jsxRuntimeExports.jsx("span", { className: "font-medium", children: "Communication" }),
-                  /* @__PURE__ */ jsxRuntimeExports.jsxs("span", { children: [
-                    person.relationshipScore,
-                    "%"
-                  ] })
-                ] }),
-                /* @__PURE__ */ jsxRuntimeExports.jsx("div", { className: "w-full bg-accent rounded-full h-2", children: /* @__PURE__ */ jsxRuntimeExports.jsx("div", { className: "bg-blue-500 h-2 rounded-full", style: { width: `${person.relationshipScore}%` } }) })
+              person.relationshipStarted && /* @__PURE__ */ jsxRuntimeExports.jsxs("li", { className: "flex justify-between", children: [
+                /* @__PURE__ */ jsxRuntimeExports.jsx("span", { className: "text-muted-foreground", children: "Since" }),
+                " ",
+                /* @__PURE__ */ jsxRuntimeExports.jsx("span", { className: "font-medium", children: new Date(person.relationshipStarted).toLocaleDateString() })
+              ] }),
+              person.birthday && /* @__PURE__ */ jsxRuntimeExports.jsxs("li", { className: "flex justify-between", children: [
+                /* @__PURE__ */ jsxRuntimeExports.jsx("span", { className: "text-muted-foreground", children: "Birthday" }),
+                " ",
+                /* @__PURE__ */ jsxRuntimeExports.jsx("span", { className: "font-medium", children: person.birthday })
+              ] }),
+              person.occupation && /* @__PURE__ */ jsxRuntimeExports.jsxs("li", { className: "flex justify-between", children: [
+                /* @__PURE__ */ jsxRuntimeExports.jsx("span", { className: "text-muted-foreground", children: "Occupation" }),
+                " ",
+                /* @__PURE__ */ jsxRuntimeExports.jsx("span", { className: "font-medium", children: person.occupation })
+              ] }),
+              person.phone && /* @__PURE__ */ jsxRuntimeExports.jsxs("li", { className: "flex justify-between", children: [
+                /* @__PURE__ */ jsxRuntimeExports.jsx("span", { className: "text-muted-foreground", children: "Phone" }),
+                " ",
+                /* @__PURE__ */ jsxRuntimeExports.jsx("span", { className: "font-medium", children: person.phone })
+              ] }),
+              person.email && /* @__PURE__ */ jsxRuntimeExports.jsxs("li", { className: "flex justify-between", children: [
+                /* @__PURE__ */ jsxRuntimeExports.jsx("span", { className: "text-muted-foreground", children: "Email" }),
+                " ",
+                /* @__PURE__ */ jsxRuntimeExports.jsx("span", { className: "font-medium", children: person.email })
               ] })
             ] })
           ] })
-        ] }),
-        /* @__PURE__ */ jsxRuntimeExports.jsx("div", { className: "space-y-6", children: /* @__PURE__ */ jsxRuntimeExports.jsxs("div", { className: "bg-card border border-border rounded-xl p-6 shadow-sm", children: [
-          /* @__PURE__ */ jsxRuntimeExports.jsx("h3", { className: "font-bold mb-4", children: "Details" }),
-          /* @__PURE__ */ jsxRuntimeExports.jsxs("ul", { className: "space-y-3 text-sm", children: [
-            person.birthday && /* @__PURE__ */ jsxRuntimeExports.jsxs("li", { className: "flex justify-between", children: [
-              /* @__PURE__ */ jsxRuntimeExports.jsx("span", { className: "text-muted-foreground", children: "Birthday" }),
-              " ",
-              /* @__PURE__ */ jsxRuntimeExports.jsx("span", { className: "font-medium", children: person.birthday })
-            ] }),
-            person.occupation && /* @__PURE__ */ jsxRuntimeExports.jsxs("li", { className: "flex justify-between", children: [
-              /* @__PURE__ */ jsxRuntimeExports.jsx("span", { className: "text-muted-foreground", children: "Occupation" }),
-              " ",
-              /* @__PURE__ */ jsxRuntimeExports.jsx("span", { className: "font-medium", children: person.occupation })
-            ] })
-          ] })
-        ] }) })
+        ] })
       ] }),
       activeTab === "Timeline" && /* @__PURE__ */ jsxRuntimeExports.jsxs("div", { className: "max-w-3xl mx-auto", children: [
         /* @__PURE__ */ jsxRuntimeExports.jsxs("div", { className: "flex justify-between items-center mb-6", children: [
@@ -109813,6 +110880,7 @@ Provide a brief, insightful summary of this relationship's health and suggest 1-
             /* @__PURE__ */ jsxRuntimeExports.jsxs("div", { className: "flex gap-2 justify-between items-center text-white", children: [
               /* @__PURE__ */ jsxRuntimeExports.jsx("span", { className: "text-xs truncate max-w-[100px]", children: photo.split(/[/\\]/).pop() }),
               /* @__PURE__ */ jsxRuntimeExports.jsxs("div", { className: "flex gap-1", children: [
+                ["Memory", "Event"].includes(findMemoryByAttachment(photo)?.type || "") && /* @__PURE__ */ jsxRuntimeExports.jsx("button", { onClick: () => handleGoToMemory(photo), className: "p-1.5 bg-white/20 rounded hover:bg-white/40", title: "Go to Memory", children: /* @__PURE__ */ jsxRuntimeExports.jsx(Folder, { size: 14 }) }),
                 /* @__PURE__ */ jsxRuntimeExports.jsx("button", { onClick: () => setViewingPhoto(photo), className: "p-1.5 bg-white/20 rounded hover:bg-white/40", children: /* @__PURE__ */ jsxRuntimeExports.jsx(Eye, { size: 14 }) }),
                 /* @__PURE__ */ jsxRuntimeExports.jsx("a", { href: normalizeUrl(photo), download: true, target: "_blank", rel: "noreferrer", className: "p-1.5 bg-white/20 rounded hover:bg-white/40 flex items-center", children: /* @__PURE__ */ jsxRuntimeExports.jsx(Download, { size: 14 }) }),
                 /* @__PURE__ */ jsxRuntimeExports.jsx("button", { onClick: () => removeAttachment(photo), className: "p-1.5 bg-destructive/80 rounded hover:bg-destructive", children: /* @__PURE__ */ jsxRuntimeExports.jsx(Trash2, { size: 14 }) })
@@ -109844,6 +110912,7 @@ Provide a brief, insightful summary of this relationship's health and suggest 1-
           /* @__PURE__ */ jsxRuntimeExports.jsxs("div", { className: "p-3 bg-card border-t border-border flex justify-between items-center", children: [
             /* @__PURE__ */ jsxRuntimeExports.jsx("span", { className: "text-xs truncate max-w-[150px]", children: vid.split(/[/\\]/).pop() }),
             /* @__PURE__ */ jsxRuntimeExports.jsxs("div", { className: "flex gap-1", children: [
+              ["Memory", "Event"].includes(findMemoryByAttachment(vid)?.type || "") && /* @__PURE__ */ jsxRuntimeExports.jsx("button", { onClick: () => handleGoToMemory(vid), className: "p-1.5 bg-accent rounded hover:bg-muted", title: "Go to Memory", children: /* @__PURE__ */ jsxRuntimeExports.jsx(Folder, { size: 14 }) }),
               /* @__PURE__ */ jsxRuntimeExports.jsx("a", { href: normalizeUrl(vid), download: true, target: "_blank", rel: "noreferrer", className: "p-1.5 bg-accent rounded hover:bg-muted", children: /* @__PURE__ */ jsxRuntimeExports.jsx(Download, { size: 14 }) }),
               /* @__PURE__ */ jsxRuntimeExports.jsx("button", { onClick: () => removeAttachment(vid), className: "p-1.5 bg-destructive/10 text-destructive rounded hover:bg-destructive hover:text-white", children: /* @__PURE__ */ jsxRuntimeExports.jsx(Trash2, { size: 14 }) })
             ] })
@@ -109875,6 +110944,7 @@ Provide a brief, insightful summary of this relationship's health and suggest 1-
             /* @__PURE__ */ jsxRuntimeExports.jsx("audio", { src: getSafeMediaUrl(aud), controls: true, className: "w-full mt-2 h-10" })
           ] }),
           /* @__PURE__ */ jsxRuntimeExports.jsxs("div", { className: "flex gap-1 ml-4 shrink-0 flex-col sm:flex-row", children: [
+            ["Memory", "Event"].includes(findMemoryByAttachment(aud)?.type || "") && /* @__PURE__ */ jsxRuntimeExports.jsx("button", { onClick: () => handleGoToMemory(aud), className: "p-2 bg-background rounded hover:bg-muted text-muted-foreground", title: "Go to Memory", children: /* @__PURE__ */ jsxRuntimeExports.jsx(Folder, { size: 16 }) }),
             /* @__PURE__ */ jsxRuntimeExports.jsx("a", { href: normalizeUrl(aud), download: true, target: "_blank", rel: "noreferrer", className: "p-2 bg-background rounded hover:bg-muted text-muted-foreground", children: /* @__PURE__ */ jsxRuntimeExports.jsx(Download, { size: 16 }) }),
             /* @__PURE__ */ jsxRuntimeExports.jsx("button", { onClick: () => removeAttachment(aud), className: "p-2 bg-destructive/10 rounded hover:bg-destructive text-destructive hover:text-white", children: /* @__PURE__ */ jsxRuntimeExports.jsx(Trash2, { size: 16 }) })
           ] })
@@ -110605,11 +111675,51 @@ function EducationList() {
   const [loading, setLoading] = reactExports.useState(true);
   const [isAdding, setIsAdding] = reactExports.useState(false);
   const [editingId, setEditingId] = reactExports.useState(null);
+  const [viewingEducation, setViewingEducation] = reactExports.useState(null);
+  const [slideshowActive, setSlideshowActive] = reactExports.useState(false);
+  const [slideIndex, setSlideIndex] = reactExports.useState(0);
+  const [isSlideshowPaused, setIsSlideshowPaused] = reactExports.useState(false);
   const [isDragging, setIsDragging] = reactExports.useState(false);
   const [dragStartY, setDragStartY] = reactExports.useState(0);
   const [scrollTop, setScrollTop] = reactExports.useState(0);
   const [showSuccessOverlay, setShowSuccessOverlay] = reactExports.useState(false);
   const scrollContainerRef = reactExports.useRef(null);
+  reactExports.useEffect(() => {
+    let interval2;
+    const allMedia = viewingEducation?.photos || [];
+    if (slideshowActive && allMedia.length > 0 && !isSlideshowPaused) {
+      interval2 = setInterval(() => {
+        setSlideIndex((prev) => (prev + 1) % allMedia.length);
+      }, 3e3);
+    }
+    return () => clearInterval(interval2);
+  }, [slideshowActive, viewingEducation, isSlideshowPaused]);
+  reactExports.useEffect(() => {
+    const handleKeyDown22 = (e3) => {
+      if (!slideshowActive) return;
+      const tag = document.activeElement?.tagName.toLowerCase();
+      const isInput = tag === "input" || tag === "textarea" || document.activeElement?.getAttribute("contenteditable") === "true";
+      if (isInput) return;
+      if (e3.key === "Escape") {
+        setSlideshowActive(false);
+      }
+      if (e3.key === " ") {
+        e3.preventDefault();
+        setIsSlideshowPaused(true);
+      }
+    };
+    const handleKeyUp = (e3) => {
+      if (e3.key === " " && slideshowActive) {
+        setIsSlideshowPaused(false);
+      }
+    };
+    window.addEventListener("keydown", handleKeyDown22);
+    window.addEventListener("keyup", handleKeyUp);
+    return () => {
+      window.removeEventListener("keydown", handleKeyDown22);
+      window.removeEventListener("keyup", handleKeyUp);
+    };
+  }, [slideshowActive]);
   const defaultForm = {
     school: "",
     degree: "",
@@ -110676,6 +111786,18 @@ function EducationList() {
       console.error(err);
     }
   };
+  reactExports.useEffect(() => {
+    const down = (e3) => {
+      if (e3.ctrlKey && e3.key.toLowerCase() === "s") {
+        if (isAdding) {
+          e3.preventDefault();
+          handleSave();
+        }
+      }
+    };
+    window.addEventListener("keydown", down);
+    return () => window.removeEventListener("keydown", down);
+  }, [isAdding, form, editingId]);
   const handleDelete2 = async (id2, title) => {
     if (!confirm("Delete this record?")) return;
     try {
@@ -110853,13 +111975,14 @@ function EducationList() {
           /* @__PURE__ */ jsxRuntimeExports.jsxs("div", { className: "space-y-6", children: [
             education.map((record) => /* @__PURE__ */ jsxRuntimeExports.jsxs("div", { id: `education-${record._id}`, className: "bg-card border border-border p-6 rounded-2xl shadow-sm relative group hover:border-primary/50 transition-all duration-1000", children: [
               /* @__PURE__ */ jsxRuntimeExports.jsxs("div", { className: "absolute top-6 right-6 opacity-0 group-hover:opacity-100 transition-opacity flex items-center gap-2", children: [
+                /* @__PURE__ */ jsxRuntimeExports.jsx("button", { onClick: () => setViewingEducation(record), className: "p-2 bg-background border border-border rounded-md hover:bg-accent text-foreground", title: "View Details", children: /* @__PURE__ */ jsxRuntimeExports.jsx(Eye, { size: 16 }) }),
                 /* @__PURE__ */ jsxRuntimeExports.jsx("button", { onClick: () => openEdit(record), className: "p-2 bg-background border border-border rounded-md hover:bg-accent", children: /* @__PURE__ */ jsxRuntimeExports.jsx(Pen, { size: 16 }) }),
                 /* @__PURE__ */ jsxRuntimeExports.jsx("button", { onClick: () => handleDelete2(record._id, record.degree || record.school), className: "p-2 bg-background border border-border text-destructive rounded-md hover:bg-destructive/10", children: /* @__PURE__ */ jsxRuntimeExports.jsx(Trash2, { size: 16 }) })
               ] }),
               /* @__PURE__ */ jsxRuntimeExports.jsxs("div", { className: "flex items-start gap-4 mb-4", children: [
                 /* @__PURE__ */ jsxRuntimeExports.jsx("div", { className: "w-12 h-12 bg-primary/10 text-primary rounded-xl flex items-center justify-center shrink-0", children: /* @__PURE__ */ jsxRuntimeExports.jsx(GraduationCap, { size: 24 }) }),
                 /* @__PURE__ */ jsxRuntimeExports.jsxs("div", { children: [
-                  /* @__PURE__ */ jsxRuntimeExports.jsx("h3", { className: "text-xl font-bold", children: record.school }),
+                  /* @__PURE__ */ jsxRuntimeExports.jsx("h3", { onClick: () => setViewingEducation(record), className: "text-xl font-bold cursor-pointer hover:text-primary transition-colors decoration-primary/30 hover:underline underline-offset-4", children: record.school }),
                   /* @__PURE__ */ jsxRuntimeExports.jsxs("p", { className: "text-lg text-muted-foreground", children: [
                     record.degree,
                     " in ",
@@ -110887,7 +112010,7 @@ function EducationList() {
               ] }),
               record.description && /* @__PURE__ */ jsxRuntimeExports.jsx("p", { className: "text-muted-foreground text-sm mb-4", children: record.description }),
               (record.photos && record.photos.length > 0 || record.attachments && record.attachments.length > 0) && /* @__PURE__ */ jsxRuntimeExports.jsxs("div", { className: "mt-6 pt-6 border-t border-border space-y-4", children: [
-                record.photos && record.photos.length > 0 && /* @__PURE__ */ jsxRuntimeExports.jsx("div", { className: "flex gap-2 overflow-x-auto pb-2 scrollbar-none", children: record.photos.map((img) => /* @__PURE__ */ jsxRuntimeExports.jsx("img", { src: normalizeUrl(img), alt: "Education", className: "h-24 w-36 object-cover rounded-md border border-border shrink-0 hover:scale-105 transition-transform" }, img)) }),
+                record.photos && record.photos.length > 0 && /* @__PURE__ */ jsxRuntimeExports.jsx("div", { className: "flex gap-2 overflow-x-auto pb-2 scrollbar-custom", children: record.photos.map((img) => /* @__PURE__ */ jsxRuntimeExports.jsx("img", { src: normalizeUrl(img), alt: "Education", className: "h-24 w-36 object-cover rounded-md border border-border shrink-0 hover:scale-105 transition-transform cursor-pointer", onClick: () => setViewingEducation(record) }, img)) }),
                 record.attachments && record.attachments.length > 0 && /* @__PURE__ */ jsxRuntimeExports.jsx("div", { className: "flex flex-wrap gap-2", children: record.attachments.map((att) => /* @__PURE__ */ jsxRuntimeExports.jsxs("a", { href: normalizeUrl(att), target: "_blank", className: "flex items-center gap-1.5 text-xs font-medium bg-accent px-3 py-1.5 rounded-md hover:bg-primary/10 hover:text-primary transition-colors", children: [
                   /* @__PURE__ */ jsxRuntimeExports.jsx(FileText, { size: 14 }),
                   " ",
@@ -110899,6 +112022,168 @@ function EducationList() {
           ] })
         ]
       }
+    ),
+    viewingEducation && /* @__PURE__ */ jsxRuntimeExports.jsxs("div", { className: "fixed inset-0 z-[100] flex items-center justify-center p-4 sm:p-6 md:p-12", children: [
+      /* @__PURE__ */ jsxRuntimeExports.jsx("div", { className: "absolute inset-0 bg-background/80 backdrop-blur-sm animate-in fade-in duration-200", onClick: () => setViewingEducation(null) }),
+      /* @__PURE__ */ jsxRuntimeExports.jsxs("div", { className: "relative bg-card border border-border w-full max-w-4xl max-h-full rounded-2xl shadow-2xl flex flex-col overflow-hidden animate-in zoom-in-95 duration-200", children: [
+        viewingEducation.photos && viewingEducation.photos.length > 0 && /* @__PURE__ */ jsxRuntimeExports.jsxs(
+          "div",
+          {
+            className: "h-64 w-full border-b border-border bg-accent/30 shrink-0 cursor-pointer group relative",
+            onClick: () => {
+              setSlideIndex(0);
+              setSlideshowActive(true);
+            },
+            children: [
+              /* @__PURE__ */ jsxRuntimeExports.jsx("img", { src: normalizeUrl(viewingEducation.photos[0]), alt: viewingEducation.school, className: "w-full h-full object-cover group-hover:scale-[1.02] transition-transform duration-700" }),
+              /* @__PURE__ */ jsxRuntimeExports.jsx("div", { className: "absolute inset-0 bg-black/0 group-hover:bg-black/10 transition-colors flex items-center justify-center opacity-0 group-hover:opacity-100", children: /* @__PURE__ */ jsxRuntimeExports.jsx(CirclePlay, { size: 48, className: "text-white/80 drop-shadow-lg" }) })
+            ]
+          }
+        ),
+        /* @__PURE__ */ jsxRuntimeExports.jsx("button", { onClick: () => setViewingEducation(null), className: "absolute top-4 right-4 p-2 bg-background/50 backdrop-blur rounded-full hover:bg-background/80 transition-colors z-10 text-foreground border border-border", children: /* @__PURE__ */ jsxRuntimeExports.jsx(X, { size: 20 }) }),
+        /* @__PURE__ */ jsxRuntimeExports.jsxs(
+          "div",
+          {
+            className: `p-6 md:p-10 overflow-y-auto scrollbar-thin ${isDragging ? "cursor-grabbing" : "cursor-grab"}`,
+            ref: (el2) => {
+              if (el2 && !el2.onmousedown) {
+                let isDown = false;
+                let startY = 0;
+                let scrollTop2 = 0;
+                el2.onmousedown = (e3) => {
+                  isDown = true;
+                  startY = e3.pageY - el2.offsetTop;
+                  scrollTop2 = el2.scrollTop;
+                  el2.classList.add("cursor-grabbing");
+                  el2.classList.remove("cursor-grab");
+                };
+                el2.onmouseleave = () => {
+                  isDown = false;
+                  el2.classList.remove("cursor-grabbing");
+                  el2.classList.add("cursor-grab");
+                };
+                el2.onmouseup = () => {
+                  isDown = false;
+                  el2.classList.remove("cursor-grabbing");
+                  el2.classList.add("cursor-grab");
+                };
+                el2.onmousemove = (e3) => {
+                  if (!isDown) return;
+                  e3.preventDefault();
+                  const y2 = e3.pageY - el2.offsetTop;
+                  const walk = (y2 - startY) * 1.5;
+                  el2.scrollTop = scrollTop2 - walk;
+                };
+              }
+            },
+            children: [
+              /* @__PURE__ */ jsxRuntimeExports.jsxs("div", { className: "flex justify-between items-start mb-4 pr-12", children: [
+                /* @__PURE__ */ jsxRuntimeExports.jsxs("div", { className: "flex items-center gap-4", children: [
+                  /* @__PURE__ */ jsxRuntimeExports.jsx("div", { className: "w-14 h-14 bg-primary/10 text-primary rounded-xl flex items-center justify-center shrink-0 hidden sm:flex", children: /* @__PURE__ */ jsxRuntimeExports.jsx(GraduationCap, { size: 28 }) }),
+                  /* @__PURE__ */ jsxRuntimeExports.jsxs("div", { children: [
+                    /* @__PURE__ */ jsxRuntimeExports.jsx("h2", { className: "text-3xl font-extrabold", children: viewingEducation.school }),
+                    /* @__PURE__ */ jsxRuntimeExports.jsxs("p", { className: "text-xl text-muted-foreground font-medium mt-1", children: [
+                      viewingEducation.degree,
+                      " in ",
+                      viewingEducation.field
+                    ] })
+                  ] })
+                ] }),
+                /* @__PURE__ */ jsxRuntimeExports.jsx("div", { className: "flex items-center gap-3", children: viewingEducation.photos && viewingEducation.photos.length > 0 && /* @__PURE__ */ jsxRuntimeExports.jsxs("button", { onClick: () => {
+                  setSlideIndex(0);
+                  setSlideshowActive(true);
+                }, className: "px-4 py-2 bg-primary text-primary-foreground font-bold rounded-xl hover:scale-105 transition-transform flex items-center gap-2 shadow-lg shadow-primary/20 hidden sm:flex", children: [
+                  /* @__PURE__ */ jsxRuntimeExports.jsx(CirclePlay, { size: 18 }),
+                  " Slideshow"
+                ] }) })
+              ] }),
+              /* @__PURE__ */ jsxRuntimeExports.jsxs("div", { className: "grid grid-cols-2 md:grid-cols-4 gap-4 mb-8 text-sm bg-accent/30 p-5 rounded-2xl border border-border", children: [
+                /* @__PURE__ */ jsxRuntimeExports.jsxs("div", { children: [
+                  /* @__PURE__ */ jsxRuntimeExports.jsx("span", { className: "text-muted-foreground block text-xs uppercase tracking-wider mb-1", children: "Status" }),
+                  /* @__PURE__ */ jsxRuntimeExports.jsx("span", { className: `font-bold px-3 py-1 rounded-md inline-block ${viewingEducation.status === "Current" ? "bg-green-500/10 text-green-500" : viewingEducation.status === "Graduated" ? "bg-blue-500/10 text-blue-500" : "bg-red-500/10 text-red-500"}`, children: viewingEducation.status })
+                ] }),
+                /* @__PURE__ */ jsxRuntimeExports.jsxs("div", { children: [
+                  /* @__PURE__ */ jsxRuntimeExports.jsx("span", { className: "text-muted-foreground block text-xs uppercase tracking-wider mb-1", children: "Duration" }),
+                  /* @__PURE__ */ jsxRuntimeExports.jsxs("span", { className: "font-bold text-lg", children: [
+                    viewingEducation.startDate ? new Date(viewingEducation.startDate).getFullYear() : "",
+                    " - ",
+                    viewingEducation.endDate ? new Date(viewingEducation.endDate).getFullYear() : "Present"
+                  ] })
+                ] }),
+                viewingEducation.grade && /* @__PURE__ */ jsxRuntimeExports.jsxs("div", { children: [
+                  /* @__PURE__ */ jsxRuntimeExports.jsx("span", { className: "text-muted-foreground block text-xs uppercase tracking-wider mb-1", children: "Grade/GPA" }),
+                  /* @__PURE__ */ jsxRuntimeExports.jsx("span", { className: "font-bold text-lg", children: viewingEducation.grade })
+                ] })
+              ] }),
+              /* @__PURE__ */ jsxRuntimeExports.jsxs("div", { className: "mb-8", children: [
+                /* @__PURE__ */ jsxRuntimeExports.jsx("h4", { className: "text-sm font-bold text-muted-foreground uppercase tracking-wider mb-3", children: "About this education" }),
+                /* @__PURE__ */ jsxRuntimeExports.jsx("div", { className: "prose prose-sm dark:prose-invert max-w-none prose-p:leading-relaxed prose-a:text-primary hover:prose-a:text-primary/80 whitespace-pre-wrap", children: viewingEducation.description || /* @__PURE__ */ jsxRuntimeExports.jsx("span", { className: "text-muted-foreground italic", children: "No description provided." }) })
+              ] }),
+              viewingEducation.subjects && viewingEducation.subjects.length > 0 && /* @__PURE__ */ jsxRuntimeExports.jsxs("div", { className: "mb-8", children: [
+                /* @__PURE__ */ jsxRuntimeExports.jsx("h4", { className: "text-sm font-bold text-muted-foreground uppercase tracking-wider mb-3", children: "Subjects" }),
+                /* @__PURE__ */ jsxRuntimeExports.jsx("div", { className: "flex flex-wrap gap-2", children: viewingEducation.subjects.map((subj, i2) => /* @__PURE__ */ jsxRuntimeExports.jsx("span", { className: "bg-primary/10 text-primary px-3 py-1 rounded-md border border-primary/20 text-sm font-bold shadow-sm", children: subj }, i2)) })
+              ] }),
+              viewingEducation.photos && viewingEducation.photos.length > 0 && /* @__PURE__ */ jsxRuntimeExports.jsxs("div", { className: "mb-8", children: [
+                /* @__PURE__ */ jsxRuntimeExports.jsx("h4", { className: "text-sm font-bold text-muted-foreground uppercase tracking-wider mb-3", children: "Gallery" }),
+                /* @__PURE__ */ jsxRuntimeExports.jsx("div", { className: "grid grid-cols-2 md:grid-cols-3 gap-4", children: viewingEducation.photos.map((img, i2) => /* @__PURE__ */ jsxRuntimeExports.jsxs(
+                  "div",
+                  {
+                    className: "aspect-video rounded-xl overflow-hidden border border-border shadow-sm group relative cursor-pointer",
+                    onClick: () => {
+                      setSlideIndex(i2);
+                      setSlideshowActive(true);
+                    },
+                    children: [
+                      /* @__PURE__ */ jsxRuntimeExports.jsx("img", { src: normalizeUrl(img), alt: `Photo ${i2 + 1}`, className: "w-full h-full object-cover group-hover:scale-105 transition-transform duration-500" }),
+                      /* @__PURE__ */ jsxRuntimeExports.jsx("div", { className: "absolute inset-0 bg-black/0 group-hover:bg-black/20 transition-colors flex items-center justify-center opacity-0 group-hover:opacity-100", children: /* @__PURE__ */ jsxRuntimeExports.jsx(Eye, { size: 32, className: "text-white drop-shadow-md" }) })
+                    ]
+                  },
+                  i2
+                )) })
+              ] }),
+              viewingEducation.attachments && viewingEducation.attachments.length > 0 && /* @__PURE__ */ jsxRuntimeExports.jsxs("div", { className: "mb-8", children: [
+                /* @__PURE__ */ jsxRuntimeExports.jsx("h4", { className: "text-sm font-bold text-muted-foreground uppercase tracking-wider mb-3", children: "Attachments" }),
+                /* @__PURE__ */ jsxRuntimeExports.jsx("div", { className: "flex flex-wrap gap-2", children: viewingEducation.attachments.map((att, i2) => /* @__PURE__ */ jsxRuntimeExports.jsxs("a", { href: normalizeUrl(att), target: "_blank", rel: "noreferrer", className: "flex items-center gap-2 px-4 py-2 rounded-xl bg-accent hover:bg-primary/10 hover:text-primary font-medium transition-colors border border-border shadow-sm", children: [
+                  /* @__PURE__ */ jsxRuntimeExports.jsx(FileText, { size: 18 }),
+                  " ",
+                  att ? att.split(/[\\/]/).pop() : "Attachment"
+                ] }, i2)) })
+              ] })
+            ]
+          }
+        )
+      ] })
+    ] }),
+    slideshowActive && viewingEducation && viewingEducation.photos && viewingEducation.photos.length > 0 && reactDomExports.createPortal(
+      /* @__PURE__ */ jsxRuntimeExports.jsxs(
+        "div",
+        {
+          className: "fixed inset-0 bg-black z-[9999] flex flex-col items-center justify-center animate-in fade-in duration-1000",
+          onMouseDown: () => setIsSlideshowPaused(true),
+          onMouseUp: () => setIsSlideshowPaused(false),
+          onMouseLeave: () => setIsSlideshowPaused(false),
+          children: [
+            /* @__PURE__ */ jsxRuntimeExports.jsx("button", { onClick: () => setSlideshowActive(false), className: "absolute top-6 right-6 p-3 bg-white/10 hover:bg-white/30 text-white rounded-full backdrop-blur-sm transition-colors z-10", children: /* @__PURE__ */ jsxRuntimeExports.jsx(X, { size: 32 }) }),
+            /* @__PURE__ */ jsxRuntimeExports.jsxs("div", { className: "absolute top-6 left-6 text-white text-xl font-black drop-shadow-md z-10 opacity-70", children: [
+              slideIndex + 1,
+              " / ",
+              viewingEducation.photos.length
+            ] }),
+            /* @__PURE__ */ jsxRuntimeExports.jsxs("div", { className: "w-full h-full flex items-center justify-center relative p-12", children: [
+              /* @__PURE__ */ jsxRuntimeExports.jsx(
+                "img",
+                {
+                  src: normalizeUrl(viewingEducation.photos[slideIndex]),
+                  className: "max-w-full max-h-full object-contain shadow-2xl rounded-lg animate-in zoom-in-95 duration-700"
+                },
+                viewingEducation.photos[slideIndex]
+              ),
+              /* @__PURE__ */ jsxRuntimeExports.jsx("div", { className: "absolute bottom-12 left-1/2 -translate-x-1/2 bg-black/50 backdrop-blur-md px-6 py-3 rounded-full text-white text-lg font-medium shadow-2xl", children: viewingEducation.school })
+            ] })
+          ]
+        }
+      ),
+      document.body
     ),
     showSuccessOverlay && /* @__PURE__ */ jsxRuntimeExports.jsxs("div", { className: "absolute inset-0 z-50 flex items-center justify-center bg-[radial-gradient(ellipse_at_center,_var(--tw-gradient-stops))] from-indigo-500/30 via-background/80 to-background/95 backdrop-blur-sm animate-in fade-in duration-300", children: [
       /* @__PURE__ */ jsxRuntimeExports.jsx("style", { children: `
@@ -110965,11 +112250,51 @@ function CareerList() {
   const [loading, setLoading] = reactExports.useState(true);
   const [isAdding, setIsAdding] = reactExports.useState(false);
   const [editingId, setEditingId] = reactExports.useState(null);
+  const [viewingJob, setViewingJob] = reactExports.useState(null);
+  const [slideshowActive, setSlideshowActive] = reactExports.useState(false);
+  const [slideIndex, setSlideIndex] = reactExports.useState(0);
+  const [isSlideshowPaused, setIsSlideshowPaused] = reactExports.useState(false);
   const [isDragging, setIsDragging] = reactExports.useState(false);
   const [dragStartY, setDragStartY] = reactExports.useState(0);
   const [scrollTop, setScrollTop] = reactExports.useState(0);
   const [showSuccessOverlay, setShowSuccessOverlay] = reactExports.useState(false);
   const scrollContainerRef = reactExports.useRef(null);
+  reactExports.useEffect(() => {
+    let interval2;
+    const allMedia = viewingJob?.photos || [];
+    if (slideshowActive && allMedia.length > 0 && !isSlideshowPaused) {
+      interval2 = setInterval(() => {
+        setSlideIndex((prev) => (prev + 1) % allMedia.length);
+      }, 3e3);
+    }
+    return () => clearInterval(interval2);
+  }, [slideshowActive, viewingJob, isSlideshowPaused]);
+  reactExports.useEffect(() => {
+    const handleKeyDown22 = (e3) => {
+      if (!slideshowActive) return;
+      const tag = document.activeElement?.tagName.toLowerCase();
+      const isInput = tag === "input" || tag === "textarea" || document.activeElement?.getAttribute("contenteditable") === "true";
+      if (isInput) return;
+      if (e3.key === "Escape") {
+        setSlideshowActive(false);
+      }
+      if (e3.key === " ") {
+        e3.preventDefault();
+        setIsSlideshowPaused(true);
+      }
+    };
+    const handleKeyUp = (e3) => {
+      if (e3.key === " " && slideshowActive) {
+        setIsSlideshowPaused(false);
+      }
+    };
+    window.addEventListener("keydown", handleKeyDown22);
+    window.addEventListener("keyup", handleKeyUp);
+    return () => {
+      window.removeEventListener("keydown", handleKeyDown22);
+      window.removeEventListener("keyup", handleKeyUp);
+    };
+  }, [slideshowActive]);
   const defaultForm = {
     company: "",
     position: "",
@@ -111047,6 +112372,18 @@ function CareerList() {
       console.error(err);
     }
   };
+  reactExports.useEffect(() => {
+    const down = (e3) => {
+      if (e3.ctrlKey && e3.key.toLowerCase() === "s") {
+        if (isAdding) {
+          e3.preventDefault();
+          handleSave();
+        }
+      }
+    };
+    window.addEventListener("keydown", down);
+    return () => window.removeEventListener("keydown", down);
+  }, [isAdding, form, editingId]);
   const handleDelete2 = async (id2, title) => {
     if (!confirm("Delete this career record?")) return;
     try {
@@ -111282,8 +112619,9 @@ function CareerList() {
           /* @__PURE__ */ jsxRuntimeExports.jsxs("div", { className: "space-y-6 relative before:absolute before:inset-0 before:ml-[23px] before:-translate-x-px md:before:mx-auto md:before:translate-x-0 before:h-full before:w-0.5 before:bg-border", children: [
             jobs.map((record) => /* @__PURE__ */ jsxRuntimeExports.jsxs("div", { className: "relative flex items-center justify-between md:justify-normal md:odd:flex-row-reverse group is-active", children: [
               /* @__PURE__ */ jsxRuntimeExports.jsx("div", { className: "flex items-center justify-center w-12 h-12 rounded-full border-4 border-background bg-blue-500 text-white shadow shrink-0 md:order-1 md:group-odd:-translate-x-1/2 md:group-even:translate-x-1/2", children: /* @__PURE__ */ jsxRuntimeExports.jsx(Briefcase, { size: 20 }) }),
-              /* @__PURE__ */ jsxRuntimeExports.jsxs("div", { id: `career-${record._id}`, className: "w-[calc(100%-4rem)] md:w-[calc(50%-2.5rem)] bg-card border border-border p-6 rounded-2xl shadow-sm relative group-hover:border-blue-500/50 transition-all duration-1000", children: [
+              /* @__PURE__ */ jsxRuntimeExports.jsxs("div", { id: `career-${record._id}`, className: "w-[calc(100%-4rem)] md:w-[calc(50%-2.5rem)] bg-card border border-border p-6 rounded-2xl shadow-sm relative group hover:border-blue-500/50 transition-all duration-1000", children: [
                 /* @__PURE__ */ jsxRuntimeExports.jsxs("div", { className: "absolute top-4 right-4 opacity-0 group-hover:opacity-100 transition-opacity flex items-center gap-2", children: [
+                  /* @__PURE__ */ jsxRuntimeExports.jsx("button", { onClick: () => setViewingJob(record), className: "p-1.5 bg-background border border-border rounded-md hover:bg-accent text-foreground", title: "View Details", children: /* @__PURE__ */ jsxRuntimeExports.jsx(Eye, { size: 14 }) }),
                   /* @__PURE__ */ jsxRuntimeExports.jsx("button", { onClick: () => openEdit(record), className: "p-1.5 bg-background border border-border rounded-md hover:bg-accent", children: /* @__PURE__ */ jsxRuntimeExports.jsx(Pen, { size: 14 }) }),
                   /* @__PURE__ */ jsxRuntimeExports.jsx("button", { onClick: () => handleDelete2(record._id, record.position), className: "p-1.5 bg-background border border-border text-destructive rounded-md hover:bg-destructive/10", children: /* @__PURE__ */ jsxRuntimeExports.jsx(Trash2, { size: 14 }) })
                 ] }),
@@ -111296,7 +112634,7 @@ function CareerList() {
                   ] }),
                   record.isCurrent && /* @__PURE__ */ jsxRuntimeExports.jsx("span", { className: "ml-2 px-2 py-0.5 bg-blue-500/10 text-blue-500 rounded-full text-xs", children: "Current" })
                 ] }),
-                /* @__PURE__ */ jsxRuntimeExports.jsx("h3", { className: "text-xl font-bold mb-1", children: record.position }),
+                /* @__PURE__ */ jsxRuntimeExports.jsx("h3", { onClick: () => setViewingJob(record), className: "text-xl font-bold mb-1 pr-24 cursor-pointer hover:text-blue-500 transition-colors decoration-blue-500/30 hover:underline underline-offset-4", children: record.position }),
                 /* @__PURE__ */ jsxRuntimeExports.jsxs("div", { className: "flex items-center gap-4 text-muted-foreground text-sm mb-4", children: [
                   /* @__PURE__ */ jsxRuntimeExports.jsxs("span", { className: "flex items-center gap-1", children: [
                     /* @__PURE__ */ jsxRuntimeExports.jsx(Building, { size: 14 }),
@@ -111321,7 +112659,7 @@ function CareerList() {
                 ] }, i2)) }),
                 record.skillsUsed && record.skillsUsed.length > 0 && /* @__PURE__ */ jsxRuntimeExports.jsx("div", { className: "flex flex-wrap gap-2 mt-4 pt-4 border-t border-border", children: record.skillsUsed.map((s3) => /* @__PURE__ */ jsxRuntimeExports.jsx("span", { className: "bg-blue-500/10 text-blue-500 border border-blue-500/20 px-2 py-0.5 rounded-md text-xs font-medium", children: s3 }, s3)) }),
                 (record.photos && record.photos.length > 0 || record.attachments && record.attachments.length > 0) && /* @__PURE__ */ jsxRuntimeExports.jsxs("div", { className: "mt-4 pt-4 border-t border-border space-y-3", children: [
-                  record.photos && record.photos.length > 0 && /* @__PURE__ */ jsxRuntimeExports.jsx("div", { className: "flex gap-2 overflow-x-auto pb-1 scrollbar-none", children: record.photos.map((img, i2) => /* @__PURE__ */ jsxRuntimeExports.jsx("img", { src: normalizeUrl(img), alt: "Job Photo", className: "h-16 w-24 object-cover rounded-md border border-border shrink-0 hover:scale-105 transition-transform" }, i2)) }),
+                  record.photos && record.photos.length > 0 && /* @__PURE__ */ jsxRuntimeExports.jsx("div", { className: "flex gap-2 overflow-x-auto pb-2 scrollbar-custom", children: record.photos.map((img, i2) => /* @__PURE__ */ jsxRuntimeExports.jsx("img", { src: normalizeUrl(img), alt: "Job Photo", className: "h-16 w-24 object-cover rounded-md border border-border shrink-0 hover:scale-105 transition-transform cursor-pointer", onClick: () => setViewingJob(record) }, i2)) }),
                   record.attachments && record.attachments.length > 0 && /* @__PURE__ */ jsxRuntimeExports.jsx("div", { className: "flex flex-wrap gap-2", children: record.attachments.map((att, i2) => /* @__PURE__ */ jsxRuntimeExports.jsxs("a", { href: normalizeUrl(att), target: "_blank", className: "flex items-center gap-1.5 text-xs font-medium bg-accent px-2 py-1 rounded hover:bg-blue-500/10 hover:text-blue-500 transition-colors truncate max-w-[150px]", children: [
                     /* @__PURE__ */ jsxRuntimeExports.jsx(Briefcase, { size: 12 }),
                     " ",
@@ -111334,6 +112672,175 @@ function CareerList() {
           ] })
         ]
       }
+    ),
+    viewingJob && /* @__PURE__ */ jsxRuntimeExports.jsxs("div", { className: "fixed inset-0 z-[100] flex items-center justify-center p-4 sm:p-6 md:p-12", children: [
+      /* @__PURE__ */ jsxRuntimeExports.jsx("div", { className: "absolute inset-0 bg-background/80 backdrop-blur-sm animate-in fade-in duration-200", onClick: () => setViewingJob(null) }),
+      /* @__PURE__ */ jsxRuntimeExports.jsxs("div", { className: "relative bg-card border border-border w-full max-w-4xl max-h-full rounded-2xl shadow-2xl flex flex-col overflow-hidden animate-in zoom-in-95 duration-200", children: [
+        viewingJob.photos && viewingJob.photos.length > 0 && /* @__PURE__ */ jsxRuntimeExports.jsxs(
+          "div",
+          {
+            className: "h-64 w-full border-b border-border bg-accent/30 shrink-0 cursor-pointer group relative",
+            onClick: () => {
+              setSlideIndex(0);
+              setSlideshowActive(true);
+            },
+            children: [
+              /* @__PURE__ */ jsxRuntimeExports.jsx("img", { src: normalizeUrl(viewingJob.photos[0]), alt: viewingJob.company, className: "w-full h-full object-cover group-hover:scale-[1.02] transition-transform duration-700" }),
+              /* @__PURE__ */ jsxRuntimeExports.jsx("div", { className: "absolute inset-0 bg-black/0 group-hover:bg-black/10 transition-colors flex items-center justify-center opacity-0 group-hover:opacity-100", children: /* @__PURE__ */ jsxRuntimeExports.jsx(CirclePlay, { size: 48, className: "text-white/80 drop-shadow-lg" }) })
+            ]
+          }
+        ),
+        /* @__PURE__ */ jsxRuntimeExports.jsx("button", { onClick: () => setViewingJob(null), className: "absolute top-4 right-4 p-2 bg-background/50 backdrop-blur rounded-full hover:bg-background/80 transition-colors z-10 text-foreground border border-border", children: /* @__PURE__ */ jsxRuntimeExports.jsx(X, { size: 20 }) }),
+        /* @__PURE__ */ jsxRuntimeExports.jsxs(
+          "div",
+          {
+            className: `p-6 md:p-10 overflow-y-auto scrollbar-thin ${isDragging ? "cursor-grabbing" : "cursor-grab"}`,
+            ref: (el2) => {
+              if (el2 && !el2.onmousedown) {
+                let isDown = false;
+                let startY = 0;
+                let scrollTop2 = 0;
+                el2.onmousedown = (e3) => {
+                  isDown = true;
+                  startY = e3.pageY - el2.offsetTop;
+                  scrollTop2 = el2.scrollTop;
+                  el2.classList.add("cursor-grabbing");
+                  el2.classList.remove("cursor-grab");
+                };
+                el2.onmouseleave = () => {
+                  isDown = false;
+                  el2.classList.remove("cursor-grabbing");
+                  el2.classList.add("cursor-grab");
+                };
+                el2.onmouseup = () => {
+                  isDown = false;
+                  el2.classList.remove("cursor-grabbing");
+                  el2.classList.add("cursor-grab");
+                };
+                el2.onmousemove = (e3) => {
+                  if (!isDown) return;
+                  e3.preventDefault();
+                  const y2 = e3.pageY - el2.offsetTop;
+                  const walk = (y2 - startY) * 1.5;
+                  el2.scrollTop = scrollTop2 - walk;
+                };
+              }
+            },
+            children: [
+              /* @__PURE__ */ jsxRuntimeExports.jsxs("div", { className: "flex justify-between items-start mb-4 pr-12", children: [
+                /* @__PURE__ */ jsxRuntimeExports.jsxs("div", { className: "flex items-center gap-4", children: [
+                  /* @__PURE__ */ jsxRuntimeExports.jsx("div", { className: "w-14 h-14 bg-blue-500/10 text-blue-500 rounded-xl flex items-center justify-center shrink-0 hidden sm:flex", children: /* @__PURE__ */ jsxRuntimeExports.jsx(Briefcase, { size: 28 }) }),
+                  /* @__PURE__ */ jsxRuntimeExports.jsxs("div", { children: [
+                    /* @__PURE__ */ jsxRuntimeExports.jsx("h2", { className: "text-3xl font-extrabold", children: viewingJob.position }),
+                    /* @__PURE__ */ jsxRuntimeExports.jsx("p", { className: "text-xl text-muted-foreground font-medium mt-1", children: viewingJob.company })
+                  ] })
+                ] }),
+                /* @__PURE__ */ jsxRuntimeExports.jsx("div", { className: "flex items-center gap-3", children: viewingJob.photos && viewingJob.photos.length > 0 && /* @__PURE__ */ jsxRuntimeExports.jsxs("button", { onClick: () => {
+                  setSlideIndex(0);
+                  setSlideshowActive(true);
+                }, className: "px-4 py-2 bg-blue-500 text-white font-bold rounded-xl hover:scale-105 transition-transform flex items-center gap-2 shadow-lg shadow-blue-500/20 hidden sm:flex", children: [
+                  /* @__PURE__ */ jsxRuntimeExports.jsx(CirclePlay, { size: 18 }),
+                  " Slideshow"
+                ] }) })
+              ] }),
+              /* @__PURE__ */ jsxRuntimeExports.jsxs("div", { className: "grid grid-cols-2 md:grid-cols-4 gap-4 mb-8 text-sm bg-accent/30 p-5 rounded-2xl border border-border", children: [
+                /* @__PURE__ */ jsxRuntimeExports.jsxs("div", { children: [
+                  /* @__PURE__ */ jsxRuntimeExports.jsx("span", { className: "text-muted-foreground block text-xs uppercase tracking-wider mb-1", children: "Employment Type" }),
+                  /* @__PURE__ */ jsxRuntimeExports.jsxs("span", { className: "font-bold text-lg flex items-center gap-1.5", children: [
+                    /* @__PURE__ */ jsxRuntimeExports.jsx(MapPin, { size: 16 }),
+                    viewingJob.employmentType
+                  ] })
+                ] }),
+                /* @__PURE__ */ jsxRuntimeExports.jsxs("div", { className: "col-span-2", children: [
+                  /* @__PURE__ */ jsxRuntimeExports.jsx("span", { className: "text-muted-foreground block text-xs uppercase tracking-wider mb-1", children: "Duration" }),
+                  /* @__PURE__ */ jsxRuntimeExports.jsxs("span", { className: "font-bold text-lg flex items-center gap-1.5", children: [
+                    /* @__PURE__ */ jsxRuntimeExports.jsx(Calendar, { size: 16 }),
+                    new Date(viewingJob.startDate).toLocaleDateString([], { month: "short", year: "numeric" }),
+                    " - ",
+                    viewingJob.isCurrent || !viewingJob.endDate ? "Present" : new Date(viewingJob.endDate).toLocaleDateString([], { month: "short", year: "numeric" }),
+                    viewingJob.isCurrent && /* @__PURE__ */ jsxRuntimeExports.jsx("span", { className: "ml-2 px-2 py-0.5 bg-blue-500/10 text-blue-500 rounded-full text-xs uppercase tracking-wider", children: "Current" })
+                  ] })
+                ] }),
+                viewingJob.salary && /* @__PURE__ */ jsxRuntimeExports.jsxs("div", { children: [
+                  /* @__PURE__ */ jsxRuntimeExports.jsx("span", { className: "text-muted-foreground block text-xs uppercase tracking-wider mb-1", children: "Salary" }),
+                  /* @__PURE__ */ jsxRuntimeExports.jsxs("span", { className: "font-bold text-lg flex items-center gap-1.5", children: [
+                    /* @__PURE__ */ jsxRuntimeExports.jsx(DollarSign, { size: 16 }),
+                    viewingJob.salary
+                  ] })
+                ] })
+              ] }),
+              viewingJob.responsibilities && viewingJob.responsibilities.length > 0 && /* @__PURE__ */ jsxRuntimeExports.jsxs("div", { className: "mb-8", children: [
+                /* @__PURE__ */ jsxRuntimeExports.jsx("h4", { className: "text-sm font-bold text-muted-foreground uppercase tracking-wider mb-3", children: "Responsibilities" }),
+                /* @__PURE__ */ jsxRuntimeExports.jsx("ul", { className: "space-y-3", children: viewingJob.responsibilities.map((resp, i2) => /* @__PURE__ */ jsxRuntimeExports.jsxs("li", { className: "flex gap-3 text-foreground/90 leading-relaxed", children: [
+                  /* @__PURE__ */ jsxRuntimeExports.jsx("span", { className: "text-blue-500 mt-1 shrink-0", children: /* @__PURE__ */ jsxRuntimeExports.jsx(Briefcase, { size: 16 }) }),
+                  resp
+                ] }, i2)) })
+              ] }),
+              viewingJob.skillsUsed && viewingJob.skillsUsed.length > 0 && /* @__PURE__ */ jsxRuntimeExports.jsxs("div", { className: "mb-8", children: [
+                /* @__PURE__ */ jsxRuntimeExports.jsx("h4", { className: "text-sm font-bold text-muted-foreground uppercase tracking-wider mb-3", children: "Skills Used" }),
+                /* @__PURE__ */ jsxRuntimeExports.jsx("div", { className: "flex flex-wrap gap-2", children: viewingJob.skillsUsed.map((skill, i2) => /* @__PURE__ */ jsxRuntimeExports.jsx("span", { className: "bg-blue-500/10 text-blue-500 px-3 py-1.5 rounded-md border border-blue-500/20 text-sm font-bold shadow-sm", children: skill }, i2)) })
+              ] }),
+              viewingJob.photos && viewingJob.photos.length > 0 && /* @__PURE__ */ jsxRuntimeExports.jsxs("div", { className: "mb-8", children: [
+                /* @__PURE__ */ jsxRuntimeExports.jsx("h4", { className: "text-sm font-bold text-muted-foreground uppercase tracking-wider mb-3", children: "Gallery" }),
+                /* @__PURE__ */ jsxRuntimeExports.jsx("div", { className: "grid grid-cols-2 md:grid-cols-3 gap-4", children: viewingJob.photos.map((img, i2) => /* @__PURE__ */ jsxRuntimeExports.jsxs(
+                  "div",
+                  {
+                    className: "aspect-video rounded-xl overflow-hidden border border-border shadow-sm group relative cursor-pointer",
+                    onClick: () => {
+                      setSlideIndex(i2);
+                      setSlideshowActive(true);
+                    },
+                    children: [
+                      /* @__PURE__ */ jsxRuntimeExports.jsx("img", { src: normalizeUrl(img), alt: `Photo ${i2 + 1}`, className: "w-full h-full object-cover group-hover:scale-105 transition-transform duration-500" }),
+                      /* @__PURE__ */ jsxRuntimeExports.jsx("div", { className: "absolute inset-0 bg-black/0 group-hover:bg-black/20 transition-colors flex items-center justify-center opacity-0 group-hover:opacity-100", children: /* @__PURE__ */ jsxRuntimeExports.jsx(Eye, { size: 32, className: "text-white drop-shadow-md" }) })
+                    ]
+                  },
+                  i2
+                )) })
+              ] }),
+              viewingJob.attachments && viewingJob.attachments.length > 0 && /* @__PURE__ */ jsxRuntimeExports.jsxs("div", { className: "mb-8", children: [
+                /* @__PURE__ */ jsxRuntimeExports.jsx("h4", { className: "text-sm font-bold text-muted-foreground uppercase tracking-wider mb-3", children: "Attachments" }),
+                /* @__PURE__ */ jsxRuntimeExports.jsx("div", { className: "flex flex-wrap gap-2", children: viewingJob.attachments.map((att, i2) => /* @__PURE__ */ jsxRuntimeExports.jsxs("a", { href: normalizeUrl(att), target: "_blank", rel: "noreferrer", className: "flex items-center gap-2 px-4 py-2 rounded-xl bg-accent hover:bg-blue-500/10 hover:text-blue-500 font-medium transition-colors border border-border shadow-sm", children: [
+                  /* @__PURE__ */ jsxRuntimeExports.jsx(Briefcase, { size: 18 }),
+                  " ",
+                  att ? att.split(/[\\/]/).pop() : "Attachment"
+                ] }, i2)) })
+              ] })
+            ]
+          }
+        )
+      ] })
+    ] }),
+    slideshowActive && viewingJob && viewingJob.photos && viewingJob.photos.length > 0 && reactDomExports.createPortal(
+      /* @__PURE__ */ jsxRuntimeExports.jsxs(
+        "div",
+        {
+          className: "fixed inset-0 bg-black z-[9999] flex flex-col items-center justify-center animate-in fade-in duration-1000",
+          onMouseDown: () => setIsSlideshowPaused(true),
+          onMouseUp: () => setIsSlideshowPaused(false),
+          onMouseLeave: () => setIsSlideshowPaused(false),
+          children: [
+            /* @__PURE__ */ jsxRuntimeExports.jsx("button", { onClick: () => setSlideshowActive(false), className: "absolute top-6 right-6 p-3 bg-white/10 hover:bg-white/30 text-white rounded-full backdrop-blur-sm transition-colors z-10", children: /* @__PURE__ */ jsxRuntimeExports.jsx(X, { size: 32 }) }),
+            /* @__PURE__ */ jsxRuntimeExports.jsxs("div", { className: "absolute top-6 left-6 text-white text-xl font-black drop-shadow-md z-10 opacity-70", children: [
+              slideIndex + 1,
+              " / ",
+              viewingJob.photos.length
+            ] }),
+            /* @__PURE__ */ jsxRuntimeExports.jsxs("div", { className: "w-full h-full flex items-center justify-center relative p-12", children: [
+              /* @__PURE__ */ jsxRuntimeExports.jsx(
+                "img",
+                {
+                  src: normalizeUrl(viewingJob.photos[slideIndex]),
+                  className: "max-w-full max-h-full object-contain shadow-2xl rounded-lg animate-in zoom-in-95 duration-700"
+                },
+                viewingJob.photos[slideIndex]
+              ),
+              /* @__PURE__ */ jsxRuntimeExports.jsx("div", { className: "absolute bottom-12 left-1/2 -translate-x-1/2 bg-black/50 backdrop-blur-md px-6 py-3 rounded-full text-white text-lg font-medium shadow-2xl", children: viewingJob.company })
+            ] })
+          ]
+        }
+      ),
+      document.body
     ),
     showSuccessOverlay && /* @__PURE__ */ jsxRuntimeExports.jsxs("div", { className: "absolute inset-0 z-50 flex items-center justify-center bg-[radial-gradient(ellipse_at_center,_var(--tw-gradient-stops))] from-blue-500/30 via-background/80 to-background/95 backdrop-blur-sm animate-in fade-in duration-300", children: [
       /* @__PURE__ */ jsxRuntimeExports.jsx("style", { children: `
@@ -111403,11 +112910,51 @@ function ProjectsPortfolio() {
   const [loading, setLoading] = reactExports.useState(true);
   const [isAdding, setIsAdding] = reactExports.useState(false);
   const [editingId, setEditingId] = reactExports.useState(null);
+  const [viewingProject, setViewingProject] = reactExports.useState(null);
   const [isDragging, setIsDragging] = reactExports.useState(false);
   const [dragStartY, setDragStartY] = reactExports.useState(0);
   const [scrollTop, setScrollTop] = reactExports.useState(0);
   const [showSuccessOverlay, setShowSuccessOverlay] = reactExports.useState(false);
   const scrollContainerRef = reactExports.useRef(null);
+  const [slideshowActive, setSlideshowActive] = reactExports.useState(false);
+  const [slideIndex, setSlideIndex] = reactExports.useState(0);
+  const [isSlideshowPaused, setIsSlideshowPaused] = reactExports.useState(false);
+  reactExports.useEffect(() => {
+    let interval2;
+    const allMedia = viewingProject?.screenshots || [];
+    if (slideshowActive && allMedia.length > 0 && !isSlideshowPaused) {
+      interval2 = setInterval(() => {
+        setSlideIndex((prev) => (prev + 1) % allMedia.length);
+      }, 3e3);
+    }
+    return () => clearInterval(interval2);
+  }, [slideshowActive, viewingProject, isSlideshowPaused]);
+  reactExports.useEffect(() => {
+    const handleKeyDown22 = (e3) => {
+      if (!slideshowActive) return;
+      const tag = document.activeElement?.tagName.toLowerCase();
+      const isInput = tag === "input" || tag === "textarea" || document.activeElement?.getAttribute("contenteditable") === "true";
+      if (isInput) return;
+      if (e3.key === "Escape") {
+        setSlideshowActive(false);
+      }
+      if (e3.key === " ") {
+        e3.preventDefault();
+        setIsSlideshowPaused(true);
+      }
+    };
+    const handleKeyUp = (e3) => {
+      if (e3.key === " " && slideshowActive) {
+        setIsSlideshowPaused(false);
+      }
+    };
+    window.addEventListener("keydown", handleKeyDown22);
+    window.addEventListener("keyup", handleKeyUp);
+    return () => {
+      window.removeEventListener("keydown", handleKeyDown22);
+      window.removeEventListener("keyup", handleKeyUp);
+    };
+  }, [slideshowActive]);
   const defaultForm = {
     title: "",
     description: "",
@@ -111473,6 +113020,18 @@ function ProjectsPortfolio() {
       console.error(err);
     }
   };
+  reactExports.useEffect(() => {
+    const down = (e3) => {
+      if (e3.ctrlKey && e3.key.toLowerCase() === "s") {
+        if (isAdding) {
+          e3.preventDefault();
+          handleSave();
+        }
+      }
+    };
+    window.addEventListener("keydown", down);
+    return () => window.removeEventListener("keydown", down);
+  }, [isAdding, form, editingId]);
   const handleDelete2 = async (id2, title) => {
     if (!confirm("Delete this project?")) return;
     try {
@@ -111635,11 +113194,12 @@ function ProjectsPortfolio() {
             record.screenshots && record.screenshots.length > 0 && /* @__PURE__ */ jsxRuntimeExports.jsx("div", { className: "h-48 w-full border-b border-border bg-accent/30 relative", children: /* @__PURE__ */ jsxRuntimeExports.jsx("img", { src: normalizeUrl(record.screenshots[0]), alt: record.title, className: "w-full h-full object-cover" }) }),
             /* @__PURE__ */ jsxRuntimeExports.jsxs("div", { className: "p-6 flex-1 flex flex-col", children: [
               /* @__PURE__ */ jsxRuntimeExports.jsxs("div", { className: "absolute top-4 right-4 opacity-0 group-hover:opacity-100 transition-opacity flex items-center gap-1 z-10 bg-background/80 backdrop-blur-sm p-1 rounded-lg border border-border", children: [
-                /* @__PURE__ */ jsxRuntimeExports.jsx("button", { onClick: () => openEdit(record), className: "p-1.5 rounded-md hover:bg-accent text-foreground", children: /* @__PURE__ */ jsxRuntimeExports.jsx(Pen, { size: 14 }) }),
-                /* @__PURE__ */ jsxRuntimeExports.jsx("button", { onClick: () => handleDelete2(record._id, record.title), className: "p-1.5 rounded-md hover:bg-destructive/10 text-destructive", children: /* @__PURE__ */ jsxRuntimeExports.jsx(Trash2, { size: 14 }) })
+                /* @__PURE__ */ jsxRuntimeExports.jsx("button", { onClick: () => setViewingProject(record), className: "p-1.5 rounded-md hover:bg-accent text-foreground", title: "View Details", children: /* @__PURE__ */ jsxRuntimeExports.jsx(Eye, { size: 14 }) }),
+                /* @__PURE__ */ jsxRuntimeExports.jsx("button", { onClick: () => openEdit(record), className: "p-1.5 rounded-md hover:bg-accent text-foreground", title: "Edit", children: /* @__PURE__ */ jsxRuntimeExports.jsx(Pen, { size: 14 }) }),
+                /* @__PURE__ */ jsxRuntimeExports.jsx("button", { onClick: () => handleDelete2(record._id, record.title), className: "p-1.5 rounded-md hover:bg-destructive/10 text-destructive", title: "Delete", children: /* @__PURE__ */ jsxRuntimeExports.jsx(Trash2, { size: 14 }) })
               ] }),
-              /* @__PURE__ */ jsxRuntimeExports.jsxs("div", { className: "flex justify-between items-start mb-2 pr-16", children: [
-                /* @__PURE__ */ jsxRuntimeExports.jsx("h3", { className: "text-xl font-bold", children: record.title }),
+              /* @__PURE__ */ jsxRuntimeExports.jsxs("div", { className: "flex justify-between items-start mb-2 pr-24", children: [
+                /* @__PURE__ */ jsxRuntimeExports.jsx("h3", { onClick: () => setViewingProject(record), className: "text-xl font-bold cursor-pointer hover:text-pink-500 transition-colors decoration-pink-500/30 hover:underline underline-offset-4", children: record.title }),
                 /* @__PURE__ */ jsxRuntimeExports.jsx("span", { className: `px-2 py-0.5 rounded-full text-xs font-medium ${record.status === "Completed" ? "bg-green-500/10 text-green-500" : record.status === "Active" ? "bg-blue-500/10 text-blue-500" : "bg-muted text-muted-foreground"}`, children: record.status })
               ] }),
               /* @__PURE__ */ jsxRuntimeExports.jsxs("div", { className: "text-sm text-muted-foreground mb-4", children: [
@@ -111664,7 +113224,122 @@ function ProjectsPortfolio() {
         ]
       }
     ),
-    showSuccessOverlay && /* @__PURE__ */ jsxRuntimeExports.jsxs("div", { className: "absolute inset-0 z-50 flex items-center justify-center bg-[radial-gradient(ellipse_at_center,_var(--tw-gradient-stops))] from-pink-500/30 via-background/80 to-background/95 backdrop-blur-sm animate-in fade-in duration-300", children: [
+    viewingProject && /* @__PURE__ */ jsxRuntimeExports.jsxs("div", { className: "fixed inset-0 z-[100] flex items-center justify-center p-4 sm:p-6 md:p-12", children: [
+      /* @__PURE__ */ jsxRuntimeExports.jsx("div", { className: "absolute inset-0 bg-background/80 backdrop-blur-sm animate-in fade-in duration-200", onClick: () => setViewingProject(null) }),
+      /* @__PURE__ */ jsxRuntimeExports.jsxs("div", { className: "relative bg-card border border-border w-full max-w-4xl max-h-full rounded-2xl shadow-2xl flex flex-col overflow-hidden animate-in zoom-in-95 duration-200", children: [
+        viewingProject.screenshots && viewingProject.screenshots.length > 0 && /* @__PURE__ */ jsxRuntimeExports.jsxs(
+          "div",
+          {
+            className: "h-64 w-full border-b border-border bg-accent/30 shrink-0 cursor-pointer group relative",
+            onClick: () => {
+              setSlideIndex(0);
+              setSlideshowActive(true);
+            },
+            children: [
+              /* @__PURE__ */ jsxRuntimeExports.jsx("img", { src: normalizeUrl(viewingProject.screenshots[0]), alt: viewingProject.title, className: "w-full h-full object-cover group-hover:scale-[1.02] transition-transform duration-700" }),
+              /* @__PURE__ */ jsxRuntimeExports.jsx("div", { className: "absolute inset-0 bg-black/0 group-hover:bg-black/10 transition-colors flex items-center justify-center opacity-0 group-hover:opacity-100", children: /* @__PURE__ */ jsxRuntimeExports.jsx(CirclePlay, { size: 48, className: "text-white/80 drop-shadow-lg" }) })
+            ]
+          }
+        ),
+        /* @__PURE__ */ jsxRuntimeExports.jsx("button", { onClick: () => setViewingProject(null), className: "absolute top-4 right-4 p-2 bg-background/50 backdrop-blur rounded-full hover:bg-background/80 transition-colors z-10 text-foreground border border-border", children: /* @__PURE__ */ jsxRuntimeExports.jsx(X, { size: 20 }) }),
+        /* @__PURE__ */ jsxRuntimeExports.jsxs(
+          "div",
+          {
+            className: `p-6 md:p-10 overflow-y-auto scrollbar-thin ${isDragging ? "cursor-grabbing" : "cursor-grab"}`,
+            ref: (el2) => {
+              if (el2 && !el2.onmousedown) {
+                let isDown = false;
+                let startY = 0;
+                let scrollTop2 = 0;
+                el2.onmousedown = (e3) => {
+                  isDown = true;
+                  startY = e3.pageY - el2.offsetTop;
+                  scrollTop2 = el2.scrollTop;
+                  el2.classList.add("cursor-grabbing");
+                  el2.classList.remove("cursor-grab");
+                };
+                el2.onmouseleave = () => {
+                  isDown = false;
+                  el2.classList.remove("cursor-grabbing");
+                  el2.classList.add("cursor-grab");
+                };
+                el2.onmouseup = () => {
+                  isDown = false;
+                  el2.classList.remove("cursor-grabbing");
+                  el2.classList.add("cursor-grab");
+                };
+                el2.onmousemove = (e3) => {
+                  if (!isDown) return;
+                  e3.preventDefault();
+                  const y2 = e3.pageY - el2.offsetTop;
+                  const walk = (y2 - startY) * 1.5;
+                  el2.scrollTop = scrollTop2 - walk;
+                };
+              }
+            },
+            children: [
+              /* @__PURE__ */ jsxRuntimeExports.jsxs("div", { className: "flex justify-between items-start mb-4 pr-12", children: [
+                /* @__PURE__ */ jsxRuntimeExports.jsx("h2", { className: "text-3xl font-extrabold", children: viewingProject.title }),
+                /* @__PURE__ */ jsxRuntimeExports.jsxs("div", { className: "flex items-center gap-3", children: [
+                  /* @__PURE__ */ jsxRuntimeExports.jsx("span", { className: `px-3 py-1 rounded-full text-sm font-bold ${viewingProject.status === "Completed" ? "bg-green-500/10 text-green-500 border border-green-500/20" : viewingProject.status === "Active" ? "bg-blue-500/10 text-blue-500 border border-blue-500/20" : "bg-muted text-muted-foreground border border-border"}`, children: viewingProject.status }),
+                  viewingProject.screenshots && viewingProject.screenshots.length > 0 && /* @__PURE__ */ jsxRuntimeExports.jsxs("button", { onClick: () => {
+                    setSlideIndex(0);
+                    setSlideshowActive(true);
+                  }, className: "px-4 py-2 bg-primary text-primary-foreground font-bold rounded-xl hover:scale-105 transition-transform flex items-center gap-2 shadow-lg shadow-primary/20", children: [
+                    /* @__PURE__ */ jsxRuntimeExports.jsx(CirclePlay, { size: 18 }),
+                    " Slideshow"
+                  ] })
+                ] })
+              ] }),
+              /* @__PURE__ */ jsxRuntimeExports.jsxs("div", { className: "flex items-center gap-4 text-sm font-medium text-muted-foreground mb-8", children: [
+                /* @__PURE__ */ jsxRuntimeExports.jsx("span", { children: new Date(viewingProject.startDate).toLocaleDateString([], { month: "long", year: "numeric" }) }),
+                viewingProject.endDate && /* @__PURE__ */ jsxRuntimeExports.jsxs(jsxRuntimeExports.Fragment, { children: [
+                  /* @__PURE__ */ jsxRuntimeExports.jsx("span", { children: "—" }),
+                  /* @__PURE__ */ jsxRuntimeExports.jsx("span", { children: new Date(viewingProject.endDate).toLocaleDateString([], { month: "long", year: "numeric" }) })
+                ] })
+              ] }),
+              viewingProject.technologies && viewingProject.technologies.length > 0 && /* @__PURE__ */ jsxRuntimeExports.jsxs("div", { className: "mb-8", children: [
+                /* @__PURE__ */ jsxRuntimeExports.jsx("h4", { className: "text-sm font-bold text-muted-foreground uppercase tracking-wider mb-3", children: "Technologies" }),
+                /* @__PURE__ */ jsxRuntimeExports.jsx("div", { className: "flex flex-wrap gap-2", children: viewingProject.technologies.map((t2) => /* @__PURE__ */ jsxRuntimeExports.jsx("span", { className: "bg-pink-500/10 text-pink-500 px-3 py-1 rounded-md border border-pink-500/20 text-sm font-bold shadow-sm", children: t2 }, t2)) })
+              ] }),
+              /* @__PURE__ */ jsxRuntimeExports.jsxs("div", { className: "mb-8", children: [
+                /* @__PURE__ */ jsxRuntimeExports.jsx("h4", { className: "text-sm font-bold text-muted-foreground uppercase tracking-wider mb-3", children: "About this project" }),
+                /* @__PURE__ */ jsxRuntimeExports.jsx("div", { className: "prose prose-sm dark:prose-invert max-w-none prose-p:leading-relaxed prose-a:text-pink-500 hover:prose-a:text-pink-600 whitespace-pre-wrap", children: viewingProject.description || /* @__PURE__ */ jsxRuntimeExports.jsx("span", { className: "text-muted-foreground italic", children: "No description provided." }) })
+              ] }),
+              viewingProject.screenshots && viewingProject.screenshots.length > 0 && /* @__PURE__ */ jsxRuntimeExports.jsxs("div", { className: "mb-8", children: [
+                /* @__PURE__ */ jsxRuntimeExports.jsx("h4", { className: "text-sm font-bold text-muted-foreground uppercase tracking-wider mb-3", children: "Gallery" }),
+                /* @__PURE__ */ jsxRuntimeExports.jsx("div", { className: "grid grid-cols-2 md:grid-cols-3 gap-4", children: viewingProject.screenshots.map((img, i2) => /* @__PURE__ */ jsxRuntimeExports.jsxs(
+                  "div",
+                  {
+                    className: "aspect-video rounded-xl overflow-hidden border border-border shadow-sm group relative cursor-pointer",
+                    onClick: () => {
+                      setSlideIndex(i2);
+                      setSlideshowActive(true);
+                    },
+                    children: [
+                      /* @__PURE__ */ jsxRuntimeExports.jsx("img", { src: normalizeUrl(img), alt: `Screenshot ${i2 + 1}`, className: "w-full h-full object-cover group-hover:scale-105 transition-transform duration-500" }),
+                      /* @__PURE__ */ jsxRuntimeExports.jsx("div", { className: "absolute inset-0 bg-black/0 group-hover:bg-black/20 transition-colors flex items-center justify-center opacity-0 group-hover:opacity-100", children: /* @__PURE__ */ jsxRuntimeExports.jsx(Eye, { size: 32, className: "text-white drop-shadow-md" }) })
+                    ]
+                  },
+                  i2
+                )) })
+              ] }),
+              /* @__PURE__ */ jsxRuntimeExports.jsxs("div", { className: "flex gap-4 pt-6 border-t border-border mt-auto", children: [
+                viewingProject.gitUrl && /* @__PURE__ */ jsxRuntimeExports.jsxs("a", { href: viewingProject.gitUrl, target: "_blank", rel: "noreferrer", className: "flex items-center gap-2 px-4 py-2 rounded-xl bg-accent hover:bg-accent/80 text-sm font-bold transition-colors border border-border shadow-sm", children: [
+                  /* @__PURE__ */ jsxRuntimeExports.jsx(Github, { size: 18 }),
+                  " Source Code"
+                ] }),
+                viewingProject.websiteUrl && /* @__PURE__ */ jsxRuntimeExports.jsxs("a", { href: viewingProject.websiteUrl, target: "_blank", rel: "noreferrer", className: "flex items-center gap-2 px-4 py-2 rounded-xl bg-pink-500 hover:bg-pink-600 text-white text-sm font-bold transition-colors shadow-sm", children: [
+                  /* @__PURE__ */ jsxRuntimeExports.jsx(ExternalLink, { size: 18 }),
+                  " Visit Project"
+                ] })
+              ] })
+            ]
+          }
+        )
+      ] })
+    ] }),
+    showSuccessOverlay && /* @__PURE__ */ jsxRuntimeExports.jsxs("div", { className: "fixed inset-0 z-[200] flex items-center justify-center bg-[radial-gradient(ellipse_at_center,_var(--tw-gradient-stops))] from-pink-500/30 via-background/80 to-background/95 backdrop-blur-sm animate-in fade-in duration-300", children: [
       /* @__PURE__ */ jsxRuntimeExports.jsx("style", { children: `
             @keyframes popAndRotateRocket {
               0% { transform: scale(0) rotate(-45deg); opacity: 0; }
@@ -111728,7 +113403,38 @@ function ProjectsPortfolio() {
         }),
         /* @__PURE__ */ jsxRuntimeExports.jsx("h2", { className: "text-4xl font-extrabold text-pink-600 dark:text-pink-400 drop-shadow-lg tracking-tight text-center z-50", children: "Project Saved!" })
       ] })
-    ] })
+    ] }),
+    slideshowActive && viewingProject && viewingProject.screenshots && viewingProject.screenshots.length > 0 && reactDomExports.createPortal(
+      /* @__PURE__ */ jsxRuntimeExports.jsxs(
+        "div",
+        {
+          className: "fixed inset-0 bg-black z-[9999] flex flex-col items-center justify-center animate-in fade-in duration-1000",
+          onMouseDown: () => setIsSlideshowPaused(true),
+          onMouseUp: () => setIsSlideshowPaused(false),
+          onMouseLeave: () => setIsSlideshowPaused(false),
+          children: [
+            /* @__PURE__ */ jsxRuntimeExports.jsx("button", { onClick: () => setSlideshowActive(false), className: "absolute top-6 right-6 p-3 bg-white/10 hover:bg-white/30 text-white rounded-full backdrop-blur-sm transition-colors z-10", children: /* @__PURE__ */ jsxRuntimeExports.jsx(X, { size: 32 }) }),
+            /* @__PURE__ */ jsxRuntimeExports.jsxs("div", { className: "absolute top-6 left-6 text-white text-xl font-black drop-shadow-md z-10 opacity-70", children: [
+              slideIndex + 1,
+              " / ",
+              viewingProject.screenshots.length
+            ] }),
+            /* @__PURE__ */ jsxRuntimeExports.jsxs("div", { className: "w-full h-full flex items-center justify-center relative p-12", children: [
+              /* @__PURE__ */ jsxRuntimeExports.jsx(
+                "img",
+                {
+                  src: normalizeUrl(viewingProject.screenshots[slideIndex]),
+                  className: "max-w-full max-h-full object-contain shadow-2xl rounded-lg animate-in zoom-in-95 duration-700"
+                },
+                viewingProject.screenshots[slideIndex]
+              ),
+              /* @__PURE__ */ jsxRuntimeExports.jsx("div", { className: "absolute bottom-12 left-1/2 -translate-x-1/2 bg-black/50 backdrop-blur-md px-6 py-3 rounded-full text-white text-lg font-medium shadow-2xl", children: viewingProject.title })
+            ] })
+          ]
+        }
+      ),
+      document.body
+    )
   ] });
 }
 function SkillsStatistics({ skills, setFilters }) {
@@ -111830,6 +113536,10 @@ function SkillsTracker() {
   const [sortBy2, setSortBy] = reactExports.useState("highest");
   const [isSelectionMode, setIsSelectionMode] = reactExports.useState(false);
   const [selectedIds, setSelectedIds] = reactExports.useState(/* @__PURE__ */ new Set());
+  const [isMenuOpen, setIsMenuOpen] = reactExports.useState(false);
+  const [importConflicts, setImportConflicts] = reactExports.useState([]);
+  const [currentConflictIndex, setCurrentConflictIndex] = reactExports.useState(0);
+  const [pendingImports, setPendingImports] = reactExports.useState({ toInsert: [], toReplace: [] });
   const [form, setForm] = reactExports.useState({
     name: "",
     level: 50,
@@ -111852,6 +113562,122 @@ function SkillsTracker() {
   reactExports.useEffect(() => {
     loadData();
   }, []);
+  const handleExportSelected = () => {
+    const dataToExport = skills.filter((s3) => selectedIds.has(s3._id));
+    const dataStr = "data:text/json;charset=utf-8," + encodeURIComponent(JSON.stringify(dataToExport, null, 2));
+    const downloadAnchorNode = document.createElement("a");
+    downloadAnchorNode.setAttribute("href", dataStr);
+    downloadAnchorNode.setAttribute("download", "selected_skills.json");
+    document.body.appendChild(downloadAnchorNode);
+    downloadAnchorNode.click();
+    downloadAnchorNode.remove();
+    setIsSelectionMode(false);
+    setSelectedIds(/* @__PURE__ */ new Set());
+  };
+  const handleExportAll = () => {
+    const dataStr = "data:text/json;charset=utf-8," + encodeURIComponent(JSON.stringify(skills, null, 2));
+    const downloadAnchorNode = document.createElement("a");
+    downloadAnchorNode.setAttribute("href", dataStr);
+    downloadAnchorNode.setAttribute("download", "all_skills.json");
+    document.body.appendChild(downloadAnchorNode);
+    downloadAnchorNode.click();
+    downloadAnchorNode.remove();
+    setIsMenuOpen(false);
+  };
+  const executeImports = async (toInsert, toReplace) => {
+    try {
+      for (const skill of toInsert) {
+        const { _id, ...skillData } = skill;
+        await window.api.db.insert("skills", skillData);
+      }
+      for (const skill of toReplace) {
+        const { _id, ...skillData } = skill;
+        await window.api.db.update("skills", { _id }, { $set: skillData }, {});
+      }
+      loadData();
+      NotificationEngine.notify("success", "Import Complete", `Imported ${toInsert.length + toReplace.length} skills.`, "Skills");
+    } catch (err) {
+      console.error("Error executing imports", err);
+    }
+  };
+  const processConflict = async (action) => {
+    let { toInsert, toReplace } = pendingImports;
+    const remainingConflicts = importConflicts.slice(currentConflictIndex);
+    if (action === "replace_all") {
+      remainingConflicts.forEach((c2) => toReplace.push({ ...c2.imported, _id: c2.existing._id }));
+      setImportConflicts([]);
+    } else if (action === "skip_all") {
+      setImportConflicts([]);
+    } else if (action === "replace") {
+      const current = importConflicts[currentConflictIndex];
+      toReplace.push({ ...current.imported, _id: current.existing._id });
+      if (currentConflictIndex + 1 < importConflicts.length) {
+        setCurrentConflictIndex(currentConflictIndex + 1);
+        setPendingImports({ toInsert, toReplace });
+        return;
+      } else {
+        setImportConflicts([]);
+      }
+    } else if (action === "skip") {
+      if (currentConflictIndex + 1 < importConflicts.length) {
+        setCurrentConflictIndex(currentConflictIndex + 1);
+        return;
+      } else {
+        setImportConflicts([]);
+      }
+    }
+    await executeImports(toInsert, toReplace);
+  };
+  const handleImport = () => {
+    const input = document.createElement("input");
+    input.type = "file";
+    input.accept = ".json";
+    input.onchange = async (e3) => {
+      const file = e3.target.files[0];
+      if (!file) return;
+      const reader = new FileReader();
+      reader.onload = async (event) => {
+        try {
+          const importedSkills = JSON.parse(event.target?.result);
+          if (Array.isArray(importedSkills)) {
+            const toInsert = [];
+            const toReplace = [];
+            const conflicts = [];
+            for (const importedSkill of importedSkills) {
+              let existingSkill = skills.find((s3) => s3._id === importedSkill._id);
+              if (!existingSkill) existingSkill = skills.find((s3) => s3.name === importedSkill.name);
+              if (!existingSkill) {
+                toInsert.push(importedSkill);
+              } else {
+                const importedTime = importedSkill.updatedAt || importedSkill.createdAt || 0;
+                const existingTime = existingSkill.updatedAt || existingSkill.createdAt || 0;
+                if (importedTime > existingTime) {
+                  toReplace.push({ ...importedSkill, _id: existingSkill._id });
+                } else if (importedTime < existingTime) {
+                  conflicts.push({ imported: importedSkill, existing: existingSkill });
+                } else if (importedTime === 0 && existingTime === 0) {
+                  conflicts.push({ imported: importedSkill, existing: existingSkill });
+                }
+              }
+            }
+            if (conflicts.length > 0) {
+              setPendingImports({ toInsert, toReplace });
+              setImportConflicts(conflicts);
+              setCurrentConflictIndex(0);
+              setIsMenuOpen(false);
+            } else {
+              await executeImports(toInsert, toReplace);
+            }
+          }
+        } catch (error) {
+          console.error("Error importing skills", error);
+        }
+      };
+      reader.readAsText(file);
+    };
+    input.click();
+    setIsMenuOpen(false);
+  };
   const location = useLocation();
   reactExports.useEffect(() => {
     const highlightId = new URLSearchParams(location.search).get("highlight");
@@ -111895,7 +113721,7 @@ function SkillsTracker() {
           await window.api.db.remove("skills", { _id: id2 }, {});
         } else {
           const updateData = action === "favorite" ? { isFavorite: true } : action === "archive" ? { isArchived: true } : { isArchived: false };
-          await window.api.db.update("skills", { _id: id2 }, { $set: updateData }, {});
+          await window.api.db.update("skills", { _id: id2 }, { $set: { ...updateData, updatedAt: Date.now() } }, {});
         }
       }
       setSelectedIds(/* @__PURE__ */ new Set());
@@ -111907,7 +113733,7 @@ function SkillsTracker() {
   };
   const toggleFavorite = async (id2, current) => {
     try {
-      await window.api.db.update("skills", { _id: id2 }, { $set: { isFavorite: !current } }, {});
+      await window.api.db.update("skills", { _id: id2 }, { $set: { isFavorite: !current, updatedAt: Date.now() } }, {});
       loadData();
     } catch (err) {
       console.error(err);
@@ -111915,7 +113741,7 @@ function SkillsTracker() {
   };
   const toggleArchive = async (id2, current) => {
     try {
-      await window.api.db.update("skills", { _id: id2 }, { $set: { isArchived: !current } }, {});
+      await window.api.db.update("skills", { _id: id2 }, { $set: { isArchived: !current, updatedAt: Date.now() } }, {});
       loadData();
     } catch (err) {
       console.error(err);
@@ -111948,6 +113774,18 @@ function SkillsTracker() {
       console.error(err);
     }
   };
+  reactExports.useEffect(() => {
+    const down = (e3) => {
+      if (e3.ctrlKey && e3.key.toLowerCase() === "s") {
+        if (isAdding) {
+          e3.preventDefault();
+          handleSave();
+        }
+      }
+    };
+    window.addEventListener("keydown", down);
+    return () => window.removeEventListener("keydown", down);
+  }, [isAdding, form, editingId]);
   const handleDelete2 = async (id2, e3) => {
     e3.stopPropagation();
     if (confirm("Delete this skill?")) {
@@ -112147,6 +113985,29 @@ function SkillsTracker() {
         !isAdding && /* @__PURE__ */ jsxRuntimeExports.jsxs("button", { onClick: handleAddSkill, className: "px-4 py-1.5 bg-purple-500 text-white rounded-xl hover:bg-purple-600 font-bold flex items-center gap-2 text-sm shadow-sm transition-transform hover:scale-105", children: [
           /* @__PURE__ */ jsxRuntimeExports.jsx(Plus, { size: 16 }),
           " New Skill"
+        ] }),
+        /* @__PURE__ */ jsxRuntimeExports.jsxs("div", { className: "relative", children: [
+          /* @__PURE__ */ jsxRuntimeExports.jsx(
+            "button",
+            {
+              onClick: () => setIsMenuOpen(!isMenuOpen),
+              className: "p-1.5 rounded-xl transition-colors hover:bg-accent text-muted-foreground",
+              children: /* @__PURE__ */ jsxRuntimeExports.jsx(EllipsisVertical, { size: 18 })
+            }
+          ),
+          isMenuOpen && /* @__PURE__ */ jsxRuntimeExports.jsxs(jsxRuntimeExports.Fragment, { children: [
+            /* @__PURE__ */ jsxRuntimeExports.jsx("div", { className: "fixed inset-0 z-40", onClick: () => setIsMenuOpen(false) }),
+            /* @__PURE__ */ jsxRuntimeExports.jsxs("div", { className: "absolute right-0 top-full mt-2 w-48 bg-card border border-border rounded-xl shadow-lg z-50 overflow-hidden animate-in slide-in-from-top-2", children: [
+              /* @__PURE__ */ jsxRuntimeExports.jsxs("button", { onClick: handleImport, className: "w-full text-left px-4 py-3 hover:bg-accent flex items-center gap-2 text-sm font-medium transition-colors", children: [
+                /* @__PURE__ */ jsxRuntimeExports.jsx(Upload, { size: 16 }),
+                " Import Skills"
+              ] }),
+              /* @__PURE__ */ jsxRuntimeExports.jsxs("button", { onClick: handleExportAll, className: "w-full text-left px-4 py-3 hover:bg-accent flex items-center gap-2 text-sm font-medium transition-colors border-t border-border", children: [
+                /* @__PURE__ */ jsxRuntimeExports.jsx(Download, { size: 16 }),
+                " Export All Skills"
+              ] })
+            ] })
+          ] })
         ] })
       ] })
     ] }),
@@ -112184,6 +114045,10 @@ function SkillsTracker() {
         filters.isArchived && /* @__PURE__ */ jsxRuntimeExports.jsxs("button", { onClick: () => bulkAction("unarchive"), disabled: selectedIds.size === 0, className: "flex items-center gap-1.5 px-3 py-1.5 bg-background border border-border rounded-xl text-sm font-bold hover:bg-card disabled:opacity-50", children: [
           /* @__PURE__ */ jsxRuntimeExports.jsx(ArchiveRestore, { size: 14 }),
           " Unarchive"
+        ] }),
+        /* @__PURE__ */ jsxRuntimeExports.jsxs("button", { onClick: handleExportSelected, disabled: selectedIds.size === 0, className: "flex items-center gap-1.5 px-3 py-1.5 bg-background border border-border rounded-xl text-sm font-bold hover:bg-card disabled:opacity-50", children: [
+          /* @__PURE__ */ jsxRuntimeExports.jsx(Download, { size: 14 }),
+          " Export"
         ] }),
         /* @__PURE__ */ jsxRuntimeExports.jsxs("button", { onClick: () => bulkAction("delete"), disabled: selectedIds.size === 0, className: "flex items-center gap-1.5 px-3 py-1.5 bg-red-500/10 text-red-500 rounded-xl text-sm font-bold hover:bg-red-500/20 disabled:opacity-50", children: [
           /* @__PURE__ */ jsxRuntimeExports.jsx(Trash2, { size: 14 }),
@@ -112364,11 +114229,57 @@ function SkillsTracker() {
                 ] })
               ] })
             ] }, record._id)),
-            skills.length === 0 && !isAdding && /* @__PURE__ */ jsxRuntimeExports.jsx("div", { className: "col-span-full text-center p-12 border border-dashed border-border rounded-xl text-muted-foreground", children: "No skills tracked yet. Start adding your skillset!" })
+            skills.length === 0 && !isAdding && /* @__PURE__ */ jsxRuntimeExports.jsx("div", { className: "text-center p-12 border border-dashed border-border rounded-xl text-muted-foreground bg-card/50 backdrop-blur", children: "No skills tracked yet. Time to level up!" })
           ] })
         ]
       }
     ),
+    importConflicts.length > 0 && currentConflictIndex < importConflicts.length && /* @__PURE__ */ jsxRuntimeExports.jsx("div", { className: "fixed inset-0 bg-background/80 backdrop-blur-sm z-50 flex items-center justify-center p-4", children: /* @__PURE__ */ jsxRuntimeExports.jsxs("div", { className: "bg-card border border-border w-full max-w-lg rounded-2xl shadow-2xl overflow-hidden animate-in zoom-in-95 duration-200", children: [
+      /* @__PURE__ */ jsxRuntimeExports.jsxs("div", { className: "p-6 border-b border-border bg-amber-500/10", children: [
+        /* @__PURE__ */ jsxRuntimeExports.jsxs("h2", { className: "text-xl font-bold flex items-center gap-2 text-amber-500", children: [
+          "Conflict Detected (",
+          currentConflictIndex + 1,
+          " of ",
+          importConflicts.length,
+          ")"
+        ] }),
+        /* @__PURE__ */ jsxRuntimeExports.jsxs("p", { className: "text-sm text-muted-foreground mt-2", children: [
+          "The imported skill ",
+          /* @__PURE__ */ jsxRuntimeExports.jsxs("strong", { children: [
+            '"',
+            importConflicts[currentConflictIndex].imported.name,
+            '"'
+          ] }),
+          " is older than your current version in the app."
+        ] })
+      ] }),
+      /* @__PURE__ */ jsxRuntimeExports.jsx("div", { className: "p-6 space-y-4", children: /* @__PURE__ */ jsxRuntimeExports.jsxs("div", { className: "grid grid-cols-2 gap-4", children: [
+        /* @__PURE__ */ jsxRuntimeExports.jsxs("div", { className: "p-4 bg-accent/50 rounded-xl border border-border", children: [
+          /* @__PURE__ */ jsxRuntimeExports.jsx("h3", { className: "text-sm font-bold mb-1", children: "App Version (Keep)" }),
+          /* @__PURE__ */ jsxRuntimeExports.jsxs("p", { className: "text-xs text-muted-foreground", children: [
+            "Updated: ",
+            new Date(importConflicts[currentConflictIndex].existing.updatedAt || importConflicts[currentConflictIndex].existing.createdAt || 0).toLocaleString()
+          ] })
+        ] }),
+        /* @__PURE__ */ jsxRuntimeExports.jsxs("div", { className: "p-4 bg-background rounded-xl border border-border", children: [
+          /* @__PURE__ */ jsxRuntimeExports.jsx("h3", { className: "text-sm font-bold mb-1", children: "Import Version" }),
+          /* @__PURE__ */ jsxRuntimeExports.jsxs("p", { className: "text-xs text-muted-foreground", children: [
+            "Updated: ",
+            new Date(importConflicts[currentConflictIndex].imported.updatedAt || importConflicts[currentConflictIndex].imported.createdAt || 0).toLocaleString()
+          ] })
+        ] })
+      ] }) }),
+      /* @__PURE__ */ jsxRuntimeExports.jsxs("div", { className: "p-6 border-t border-border bg-accent/30 flex flex-col gap-3", children: [
+        /* @__PURE__ */ jsxRuntimeExports.jsxs("div", { className: "grid grid-cols-2 gap-3", children: [
+          /* @__PURE__ */ jsxRuntimeExports.jsx("button", { onClick: () => processConflict("replace"), className: "w-full px-4 py-2 bg-amber-500 hover:bg-amber-600 text-white font-bold rounded-xl transition-colors", children: "Replace" }),
+          /* @__PURE__ */ jsxRuntimeExports.jsx("button", { onClick: () => processConflict("skip"), className: "w-full px-4 py-2 bg-background border border-border hover:bg-accent font-bold rounded-xl transition-colors", children: "Skip" })
+        ] }),
+        importConflicts.length > 1 && /* @__PURE__ */ jsxRuntimeExports.jsxs("div", { className: "grid grid-cols-2 gap-3", children: [
+          /* @__PURE__ */ jsxRuntimeExports.jsx("button", { onClick: () => processConflict("replace_all"), className: "w-full px-4 py-2 bg-red-500 hover:bg-red-600 text-white font-bold rounded-xl transition-colors", children: "Replace All" }),
+          /* @__PURE__ */ jsxRuntimeExports.jsx("button", { onClick: () => processConflict("skip_all"), className: "w-full px-4 py-2 bg-background border border-border hover:bg-accent font-bold rounded-xl transition-colors", children: "Skip All" })
+        ] })
+      ] })
+    ] }) }),
     celebrationLevel !== null && /* @__PURE__ */ jsxRuntimeExports.jsxs("div", { className: "absolute inset-0 overflow-hidden pointer-events-none z-50 animate-in fade-in duration-300", children: [
       /* @__PURE__ */ jsxRuntimeExports.jsx(
         "div",
@@ -112420,11 +114331,51 @@ function CertificatesGallery() {
   const [loading, setLoading] = reactExports.useState(true);
   const [isAdding, setIsAdding] = reactExports.useState(false);
   const [editingId, setEditingId] = reactExports.useState(null);
+  const [viewingCertificate, setViewingCertificate] = reactExports.useState(null);
+  const [slideshowActive, setSlideshowActive] = reactExports.useState(false);
+  const [slideIndex, setSlideIndex] = reactExports.useState(0);
+  const [isSlideshowPaused, setIsSlideshowPaused] = reactExports.useState(false);
   const [isDragging, setIsDragging] = reactExports.useState(false);
   const [dragStartY, setDragStartY] = reactExports.useState(0);
   const [scrollTop, setScrollTop] = reactExports.useState(0);
   const [showSuccessOverlay, setShowSuccessOverlay] = reactExports.useState(false);
   const scrollContainerRef = reactExports.useRef(null);
+  reactExports.useEffect(() => {
+    let interval2;
+    const allMedia = viewingCertificate?.imageAttachment ? [viewingCertificate.imageAttachment] : [];
+    if (slideshowActive && allMedia.length > 0 && !isSlideshowPaused) {
+      interval2 = setInterval(() => {
+        setSlideIndex((prev) => (prev + 1) % allMedia.length);
+      }, 3e3);
+    }
+    return () => clearInterval(interval2);
+  }, [slideshowActive, viewingCertificate, isSlideshowPaused]);
+  reactExports.useEffect(() => {
+    const handleKeyDown22 = (e3) => {
+      if (!slideshowActive) return;
+      const tag = document.activeElement?.tagName.toLowerCase();
+      const isInput = tag === "input" || tag === "textarea" || document.activeElement?.getAttribute("contenteditable") === "true";
+      if (isInput) return;
+      if (e3.key === "Escape") {
+        setSlideshowActive(false);
+      }
+      if (e3.key === " ") {
+        e3.preventDefault();
+        setIsSlideshowPaused(true);
+      }
+    };
+    const handleKeyUp = (e3) => {
+      if (e3.key === " " && slideshowActive) {
+        setIsSlideshowPaused(false);
+      }
+    };
+    window.addEventListener("keydown", handleKeyDown22);
+    window.addEventListener("keyup", handleKeyUp);
+    return () => {
+      window.removeEventListener("keydown", handleKeyDown22);
+      window.removeEventListener("keyup", handleKeyUp);
+    };
+  }, [slideshowActive]);
   const defaultForm = {
     name: "",
     organization: "",
@@ -112486,6 +114437,18 @@ function CertificatesGallery() {
       console.error(err);
     }
   };
+  reactExports.useEffect(() => {
+    const down = (e3) => {
+      if (e3.ctrlKey && e3.key.toLowerCase() === "s") {
+        if (isAdding) {
+          e3.preventDefault();
+          handleSave();
+        }
+      }
+    };
+    window.addEventListener("keydown", down);
+    return () => window.removeEventListener("keydown", down);
+  }, [isAdding, form, editingId]);
   const handleDelete2 = async (id2, title) => {
     if (!confirm("Delete this certificate?")) return;
     try {
@@ -112708,10 +114671,11 @@ function CertificatesGallery() {
             ] }) : /* @__PURE__ */ jsxRuntimeExports.jsx("div", { className: "h-32 w-full border-b border-border bg-gradient-to-br from-green-500/10 to-green-500/5 flex flex-col items-center justify-center text-green-500", children: /* @__PURE__ */ jsxRuntimeExports.jsx(Award, { size: 48, className: "opacity-50" }) }),
             /* @__PURE__ */ jsxRuntimeExports.jsxs("div", { className: "p-6 flex-1 flex flex-col", children: [
               /* @__PURE__ */ jsxRuntimeExports.jsxs("div", { className: "absolute top-4 right-4 opacity-0 group-hover:opacity-100 transition-opacity flex items-center gap-1 z-10 bg-background/80 backdrop-blur-sm p-1 rounded-lg border border-border", children: [
-                /* @__PURE__ */ jsxRuntimeExports.jsx("button", { onClick: () => openEdit(record), className: "p-1.5 rounded-md hover:bg-accent text-foreground", children: /* @__PURE__ */ jsxRuntimeExports.jsx(Pen, { size: 14 }) }),
-                /* @__PURE__ */ jsxRuntimeExports.jsx("button", { onClick: () => handleDelete2(record._id, record.name), className: "p-1.5 rounded-md hover:bg-destructive/10 text-destructive", children: /* @__PURE__ */ jsxRuntimeExports.jsx(Trash2, { size: 14 }) })
+                /* @__PURE__ */ jsxRuntimeExports.jsx("button", { onClick: () => setViewingCertificate(record), className: "p-1.5 rounded-md hover:bg-accent text-foreground", title: "View Details", children: /* @__PURE__ */ jsxRuntimeExports.jsx(Eye, { size: 14 }) }),
+                /* @__PURE__ */ jsxRuntimeExports.jsx("button", { onClick: () => openEdit(record), className: "p-1.5 rounded-md hover:bg-accent text-foreground", title: "Edit", children: /* @__PURE__ */ jsxRuntimeExports.jsx(Pen, { size: 14 }) }),
+                /* @__PURE__ */ jsxRuntimeExports.jsx("button", { onClick: () => handleDelete2(record._id, record.name), className: "p-1.5 rounded-md hover:bg-destructive/10 text-destructive", title: "Delete", children: /* @__PURE__ */ jsxRuntimeExports.jsx(Trash2, { size: 14 }) })
               ] }),
-              /* @__PURE__ */ jsxRuntimeExports.jsx("h3", { className: "text-xl font-bold mb-1 pr-16", children: record.name }),
+              /* @__PURE__ */ jsxRuntimeExports.jsx("h3", { onClick: () => setViewingCertificate(record), className: "text-xl font-bold mb-1 pr-24 cursor-pointer hover:text-green-500 transition-colors decoration-green-500/30 hover:underline underline-offset-4", children: record.name }),
               /* @__PURE__ */ jsxRuntimeExports.jsx("p", { className: "text-muted-foreground font-medium mb-4", children: record.organization }),
               /* @__PURE__ */ jsxRuntimeExports.jsxs("div", { className: "grid grid-cols-2 gap-4 text-sm mb-6 bg-accent/30 p-3 rounded-xl", children: [
                 /* @__PURE__ */ jsxRuntimeExports.jsxs("div", { children: [
@@ -112743,6 +114707,130 @@ function CertificatesGallery() {
           certificates.length === 0 && !isAdding && /* @__PURE__ */ jsxRuntimeExports.jsx("div", { className: "text-center p-12 border border-dashed border-border rounded-xl text-muted-foreground bg-card/50 backdrop-blur", children: "No certificates added yet." })
         ]
       }
+    ),
+    viewingCertificate && /* @__PURE__ */ jsxRuntimeExports.jsxs("div", { className: "fixed inset-0 z-[100] flex items-center justify-center p-4 sm:p-6 md:p-12", children: [
+      /* @__PURE__ */ jsxRuntimeExports.jsx("div", { className: "absolute inset-0 bg-background/80 backdrop-blur-sm animate-in fade-in duration-200", onClick: () => setViewingCertificate(null) }),
+      /* @__PURE__ */ jsxRuntimeExports.jsxs("div", { className: "relative bg-card border border-border w-full max-w-4xl max-h-full rounded-2xl shadow-2xl flex flex-col overflow-hidden animate-in zoom-in-95 duration-200", children: [
+        viewingCertificate.imageAttachment && /* @__PURE__ */ jsxRuntimeExports.jsxs(
+          "div",
+          {
+            className: "h-64 w-full border-b border-border bg-accent/30 shrink-0 cursor-pointer group relative",
+            onClick: () => {
+              setSlideIndex(0);
+              setSlideshowActive(true);
+            },
+            children: [
+              /* @__PURE__ */ jsxRuntimeExports.jsx("img", { src: normalizeUrl(viewingCertificate.imageAttachment), alt: viewingCertificate.name, className: "w-full h-full object-cover group-hover:scale-[1.02] transition-transform duration-700" }),
+              /* @__PURE__ */ jsxRuntimeExports.jsx("div", { className: "absolute inset-0 bg-black/0 group-hover:bg-black/10 transition-colors flex items-center justify-center opacity-0 group-hover:opacity-100", children: /* @__PURE__ */ jsxRuntimeExports.jsx(CirclePlay, { size: 48, className: "text-white/80 drop-shadow-lg" }) })
+            ]
+          }
+        ),
+        /* @__PURE__ */ jsxRuntimeExports.jsx("button", { onClick: () => setViewingCertificate(null), className: "absolute top-4 right-4 p-2 bg-background/50 backdrop-blur rounded-full hover:bg-background/80 transition-colors z-10 text-foreground border border-border", children: /* @__PURE__ */ jsxRuntimeExports.jsx(X, { size: 20 }) }),
+        /* @__PURE__ */ jsxRuntimeExports.jsxs(
+          "div",
+          {
+            className: `p-6 md:p-10 overflow-y-auto scrollbar-thin ${isDragging ? "cursor-grabbing" : "cursor-grab"}`,
+            ref: (el2) => {
+              if (el2 && !el2.onmousedown) {
+                let isDown = false;
+                let startY = 0;
+                let scrollTop2 = 0;
+                el2.onmousedown = (e3) => {
+                  isDown = true;
+                  startY = e3.pageY - el2.offsetTop;
+                  scrollTop2 = el2.scrollTop;
+                  el2.classList.add("cursor-grabbing");
+                  el2.classList.remove("cursor-grab");
+                };
+                el2.onmouseleave = () => {
+                  isDown = false;
+                  el2.classList.remove("cursor-grabbing");
+                  el2.classList.add("cursor-grab");
+                };
+                el2.onmouseup = () => {
+                  isDown = false;
+                  el2.classList.remove("cursor-grabbing");
+                  el2.classList.add("cursor-grab");
+                };
+                el2.onmousemove = (e3) => {
+                  if (!isDown) return;
+                  e3.preventDefault();
+                  const y2 = e3.pageY - el2.offsetTop;
+                  const walk = (y2 - startY) * 1.5;
+                  el2.scrollTop = scrollTop2 - walk;
+                };
+              }
+            },
+            children: [
+              /* @__PURE__ */ jsxRuntimeExports.jsxs("div", { className: "flex justify-between items-start mb-4 pr-12", children: [
+                /* @__PURE__ */ jsxRuntimeExports.jsxs("div", { children: [
+                  /* @__PURE__ */ jsxRuntimeExports.jsx("h2", { className: "text-3xl font-extrabold", children: viewingCertificate.name }),
+                  /* @__PURE__ */ jsxRuntimeExports.jsx("p", { className: "text-muted-foreground font-bold mt-1 text-lg", children: viewingCertificate.organization })
+                ] }),
+                /* @__PURE__ */ jsxRuntimeExports.jsx("div", { className: "flex items-center gap-3", children: viewingCertificate.imageAttachment && /* @__PURE__ */ jsxRuntimeExports.jsxs("button", { onClick: () => {
+                  setSlideIndex(0);
+                  setSlideshowActive(true);
+                }, className: "px-4 py-2 bg-green-500 text-white font-bold rounded-xl hover:scale-105 transition-transform flex items-center gap-2 shadow-lg shadow-green-500/20", children: [
+                  /* @__PURE__ */ jsxRuntimeExports.jsx(CirclePlay, { size: 18 }),
+                  " View Image"
+                ] }) })
+              ] }),
+              /* @__PURE__ */ jsxRuntimeExports.jsxs("div", { className: "grid grid-cols-2 md:grid-cols-3 gap-6 text-sm mb-8 bg-accent/20 p-6 rounded-2xl border border-border", children: [
+                /* @__PURE__ */ jsxRuntimeExports.jsxs("div", { children: [
+                  /* @__PURE__ */ jsxRuntimeExports.jsx("span", { className: "text-muted-foreground block text-xs uppercase tracking-wider mb-1", children: "Issued" }),
+                  /* @__PURE__ */ jsxRuntimeExports.jsx("span", { className: "font-bold text-lg", children: new Date(viewingCertificate.issueDate).toLocaleDateString([], { month: "short", year: "numeric" }) })
+                ] }),
+                /* @__PURE__ */ jsxRuntimeExports.jsxs("div", { children: [
+                  /* @__PURE__ */ jsxRuntimeExports.jsx("span", { className: "text-muted-foreground block text-xs uppercase tracking-wider mb-1", children: "Expires" }),
+                  /* @__PURE__ */ jsxRuntimeExports.jsx("span", { className: "font-bold text-lg", children: viewingCertificate.expiryDate ? new Date(viewingCertificate.expiryDate).toLocaleDateString([], { month: "short", year: "numeric" }) : "Never" })
+                ] }),
+                viewingCertificate.credentialId && /* @__PURE__ */ jsxRuntimeExports.jsxs("div", { className: "col-span-2 md:col-span-1", children: [
+                  /* @__PURE__ */ jsxRuntimeExports.jsx("span", { className: "text-muted-foreground block text-xs uppercase tracking-wider mb-1", children: "Credential ID" }),
+                  /* @__PURE__ */ jsxRuntimeExports.jsx("span", { className: "font-bold font-mono text-base", children: viewingCertificate.credentialId })
+                ] })
+              ] }),
+              (viewingCertificate.credentialUrl || viewingCertificate.pdfAttachment) && /* @__PURE__ */ jsxRuntimeExports.jsxs("div", { className: "mb-8", children: [
+                /* @__PURE__ */ jsxRuntimeExports.jsx("h4", { className: "text-sm font-bold text-muted-foreground uppercase tracking-wider mb-3", children: "Links & Documents" }),
+                /* @__PURE__ */ jsxRuntimeExports.jsxs("div", { className: "flex flex-wrap gap-4", children: [
+                  viewingCertificate.credentialUrl && /* @__PURE__ */ jsxRuntimeExports.jsxs("a", { href: viewingCertificate.credentialUrl, target: "_blank", rel: "noreferrer", className: "flex items-center gap-2 px-6 py-3 rounded-xl bg-green-500 hover:bg-green-600 text-white text-sm font-bold transition-colors shadow-sm", children: [
+                    /* @__PURE__ */ jsxRuntimeExports.jsx(ExternalLink, { size: 18 }),
+                    " Verify Credential"
+                  ] }),
+                  viewingCertificate.pdfAttachment && /* @__PURE__ */ jsxRuntimeExports.jsxs("a", { href: normalizeUrl(viewingCertificate.pdfAttachment), target: "_blank", rel: "noreferrer", className: "flex items-center gap-2 px-6 py-3 rounded-xl bg-accent hover:bg-accent/80 text-sm font-bold transition-colors border border-border shadow-sm", children: [
+                    /* @__PURE__ */ jsxRuntimeExports.jsx(FileText, { size: 18 }),
+                    " View PDF Document"
+                  ] })
+                ] })
+              ] })
+            ]
+          }
+        )
+      ] })
+    ] }),
+    slideshowActive && viewingCertificate && viewingCertificate.imageAttachment && reactDomExports.createPortal(
+      /* @__PURE__ */ jsxRuntimeExports.jsxs(
+        "div",
+        {
+          className: "fixed inset-0 bg-black z-[9999] flex flex-col items-center justify-center animate-in fade-in duration-1000",
+          onMouseDown: () => setIsSlideshowPaused(true),
+          onMouseUp: () => setIsSlideshowPaused(false),
+          onMouseLeave: () => setIsSlideshowPaused(false),
+          children: [
+            /* @__PURE__ */ jsxRuntimeExports.jsx("button", { onClick: () => setSlideshowActive(false), className: "absolute top-6 right-6 p-3 bg-white/10 hover:bg-white/30 text-white rounded-full backdrop-blur-sm transition-colors z-10", children: /* @__PURE__ */ jsxRuntimeExports.jsx(X, { size: 32 }) }),
+            /* @__PURE__ */ jsxRuntimeExports.jsxs("div", { className: "w-full h-full flex items-center justify-center relative p-12", children: [
+              /* @__PURE__ */ jsxRuntimeExports.jsx(
+                "img",
+                {
+                  src: normalizeUrl(viewingCertificate.imageAttachment),
+                  className: "max-w-full max-h-full object-contain shadow-2xl rounded-lg animate-in zoom-in-95 duration-700"
+                }
+              ),
+              /* @__PURE__ */ jsxRuntimeExports.jsx("div", { className: "absolute bottom-12 left-1/2 -translate-x-1/2 bg-black/50 backdrop-blur-md px-6 py-3 rounded-full text-white text-lg font-medium shadow-2xl", children: viewingCertificate.name })
+            ] })
+          ]
+        }
+      ),
+      document.body
     ),
     showSuccessOverlay && /* @__PURE__ */ jsxRuntimeExports.jsxs("div", { className: "absolute inset-0 z-50 flex items-center justify-center bg-[radial-gradient(ellipse_at_center,_var(--tw-gradient-stops))] from-green-500/30 via-background/80 to-background/95 backdrop-blur-sm animate-in fade-in duration-300", children: [
       /* @__PURE__ */ jsxRuntimeExports.jsx("style", { children: `
@@ -112814,11 +114902,51 @@ function Achievements() {
   const [loading, setLoading] = reactExports.useState(true);
   const [isAdding, setIsAdding] = reactExports.useState(false);
   const [editingId, setEditingId] = reactExports.useState(null);
+  const [viewingAchievement, setViewingAchievement] = reactExports.useState(null);
+  const [slideshowActive, setSlideshowActive] = reactExports.useState(false);
+  const [slideIndex, setSlideIndex] = reactExports.useState(0);
+  const [isSlideshowPaused, setIsSlideshowPaused] = reactExports.useState(false);
   const [isDragging, setIsDragging] = reactExports.useState(false);
   const [dragStartY, setDragStartY] = reactExports.useState(0);
   const [scrollTop, setScrollTop] = reactExports.useState(0);
   const [showSuccessOverlay, setShowSuccessOverlay] = reactExports.useState(false);
   const scrollContainerRef = reactExports.useRef(null);
+  reactExports.useEffect(() => {
+    let interval2;
+    const allMedia = viewingAchievement?.photos || [];
+    if (slideshowActive && allMedia.length > 0 && !isSlideshowPaused) {
+      interval2 = setInterval(() => {
+        setSlideIndex((prev) => (prev + 1) % allMedia.length);
+      }, 3e3);
+    }
+    return () => clearInterval(interval2);
+  }, [slideshowActive, viewingAchievement, isSlideshowPaused]);
+  reactExports.useEffect(() => {
+    const handleKeyDown22 = (e3) => {
+      if (!slideshowActive) return;
+      const tag = document.activeElement?.tagName.toLowerCase();
+      const isInput = tag === "input" || tag === "textarea" || document.activeElement?.getAttribute("contenteditable") === "true";
+      if (isInput) return;
+      if (e3.key === "Escape") {
+        setSlideshowActive(false);
+      }
+      if (e3.key === " ") {
+        e3.preventDefault();
+        setIsSlideshowPaused(true);
+      }
+    };
+    const handleKeyUp = (e3) => {
+      if (e3.key === " " && slideshowActive) {
+        setIsSlideshowPaused(false);
+      }
+    };
+    window.addEventListener("keydown", handleKeyDown22);
+    window.addEventListener("keyup", handleKeyUp);
+    return () => {
+      window.removeEventListener("keydown", handleKeyDown22);
+      window.removeEventListener("keyup", handleKeyUp);
+    };
+  }, [slideshowActive]);
   const defaultForm = {
     title: "",
     date: "",
@@ -112879,6 +115007,18 @@ function Achievements() {
       console.error(err);
     }
   };
+  reactExports.useEffect(() => {
+    const down = (e3) => {
+      if (e3.ctrlKey && e3.key.toLowerCase() === "s") {
+        if (isAdding) {
+          e3.preventDefault();
+          handleSave();
+        }
+      }
+    };
+    window.addEventListener("keydown", down);
+    return () => window.removeEventListener("keydown", down);
+  }, [isAdding, form, editingId]);
   const handleDelete2 = async (id2, title) => {
     if (!confirm("Delete this achievement?")) return;
     try {
@@ -113092,18 +115232,19 @@ function Achievements() {
             ] }) : /* @__PURE__ */ jsxRuntimeExports.jsx("div", { className: "h-16 bg-gradient-to-r from-yellow-500/20 to-orange-500/20 w-full border-b border-border" }),
             /* @__PURE__ */ jsxRuntimeExports.jsxs("div", { className: "p-6 flex-1 flex flex-col", children: [
               /* @__PURE__ */ jsxRuntimeExports.jsxs("div", { className: "absolute top-4 right-4 opacity-0 group-hover:opacity-100 transition-opacity flex items-center gap-1 z-10 bg-background/80 backdrop-blur-sm p-1 rounded-lg border border-border", children: [
-                /* @__PURE__ */ jsxRuntimeExports.jsx("button", { onClick: () => openEdit(record), className: "p-1.5 rounded-md hover:bg-accent text-foreground", children: /* @__PURE__ */ jsxRuntimeExports.jsx(Pen, { size: 14 }) }),
-                /* @__PURE__ */ jsxRuntimeExports.jsx("button", { onClick: () => handleDelete2(record._id, record.title), className: "p-1.5 rounded-md hover:bg-destructive/10 text-destructive", children: /* @__PURE__ */ jsxRuntimeExports.jsx(Trash2, { size: 14 }) })
+                /* @__PURE__ */ jsxRuntimeExports.jsx("button", { onClick: () => setViewingAchievement(record), className: "p-1.5 rounded-md hover:bg-accent text-foreground", title: "View Details", children: /* @__PURE__ */ jsxRuntimeExports.jsx(Eye, { size: 14 }) }),
+                /* @__PURE__ */ jsxRuntimeExports.jsx("button", { onClick: () => openEdit(record), className: "p-1.5 rounded-md hover:bg-accent text-foreground", title: "Edit", children: /* @__PURE__ */ jsxRuntimeExports.jsx(Pen, { size: 14 }) }),
+                /* @__PURE__ */ jsxRuntimeExports.jsx("button", { onClick: () => handleDelete2(record._id, record.title), className: "p-1.5 rounded-md hover:bg-destructive/10 text-destructive", title: "Delete", children: /* @__PURE__ */ jsxRuntimeExports.jsx(Trash2, { size: 14 }) })
               ] }),
               /* @__PURE__ */ jsxRuntimeExports.jsxs("div", { className: "flex items-center gap-2 text-xs font-bold text-yellow-600 uppercase tracking-wider mb-2", children: [
                 /* @__PURE__ */ jsxRuntimeExports.jsx(Award, { size: 14 }),
                 " ",
                 new Date(record.date).toLocaleDateString([], { month: "long", year: "numeric" })
               ] }),
-              /* @__PURE__ */ jsxRuntimeExports.jsx("h3", { className: "text-xl font-bold mb-2 pr-16", children: record.title }),
+              /* @__PURE__ */ jsxRuntimeExports.jsx("h3", { onClick: () => setViewingAchievement(record), className: "text-xl font-bold mb-2 pr-24 cursor-pointer hover:text-yellow-500 transition-colors decoration-yellow-500/30 hover:underline underline-offset-4", children: record.title }),
               record.description && /* @__PURE__ */ jsxRuntimeExports.jsx("p", { className: "text-sm text-foreground/80 flex-1", children: record.description }),
               (record.photos && record.photos.length > 1 || record.attachments && record.attachments.length > 0) && /* @__PURE__ */ jsxRuntimeExports.jsxs("div", { className: "mt-4 pt-4 border-t border-border space-y-3", children: [
-                record.photos && record.photos.length > 1 && /* @__PURE__ */ jsxRuntimeExports.jsx("div", { className: "flex gap-2 overflow-x-auto pb-1 scrollbar-none", children: record.photos.slice(1).map((img, i2) => /* @__PURE__ */ jsxRuntimeExports.jsx("img", { src: normalizeUrl(img), alt: "Achievement", className: "h-16 w-24 object-cover rounded-md border border-border shrink-0 hover:scale-105 transition-transform" }, i2)) }),
+                record.photos && record.photos.length > 1 && /* @__PURE__ */ jsxRuntimeExports.jsx("div", { className: "flex gap-2 overflow-x-auto pb-2 scrollbar-custom", children: record.photos.slice(1).map((img, i2) => /* @__PURE__ */ jsxRuntimeExports.jsx("img", { src: normalizeUrl(img), alt: "Achievement", className: "h-16 w-24 object-cover rounded-md border border-border shrink-0 hover:scale-105 transition-transform cursor-pointer", onClick: () => setViewingAchievement(record) }, i2)) }),
                 record.attachments && record.attachments.length > 0 && /* @__PURE__ */ jsxRuntimeExports.jsx("div", { className: "flex flex-wrap gap-2", children: record.attachments.map((att, i2) => /* @__PURE__ */ jsxRuntimeExports.jsxs("a", { href: normalizeUrl(att), target: "_blank", className: "flex items-center gap-1.5 text-xs font-medium bg-accent px-2 py-1 rounded hover:bg-yellow-500/10 hover:text-yellow-600 transition-colors truncate max-w-[200px]", children: [
                   /* @__PURE__ */ jsxRuntimeExports.jsx(FileText, { size: 12 }),
                   " ",
@@ -113115,6 +115256,141 @@ function Achievements() {
           achievements.length === 0 && !isAdding && /* @__PURE__ */ jsxRuntimeExports.jsx("div", { className: "text-center p-12 border border-dashed border-border rounded-xl text-muted-foreground bg-card/50 backdrop-blur", children: "No achievements logged yet. Celebrate your wins!" })
         ]
       }
+    ),
+    viewingAchievement && /* @__PURE__ */ jsxRuntimeExports.jsxs("div", { className: "fixed inset-0 z-[100] flex items-center justify-center p-4 sm:p-6 md:p-12", children: [
+      /* @__PURE__ */ jsxRuntimeExports.jsx("div", { className: "absolute inset-0 bg-background/80 backdrop-blur-sm animate-in fade-in duration-200", onClick: () => setViewingAchievement(null) }),
+      /* @__PURE__ */ jsxRuntimeExports.jsxs("div", { className: "relative bg-card border border-border w-full max-w-4xl max-h-full rounded-2xl shadow-2xl flex flex-col overflow-hidden animate-in zoom-in-95 duration-200", children: [
+        viewingAchievement.photos && viewingAchievement.photos.length > 0 && /* @__PURE__ */ jsxRuntimeExports.jsxs(
+          "div",
+          {
+            className: "h-64 w-full border-b border-border bg-accent/30 shrink-0 cursor-pointer group relative",
+            onClick: () => {
+              setSlideIndex(0);
+              setSlideshowActive(true);
+            },
+            children: [
+              /* @__PURE__ */ jsxRuntimeExports.jsx("img", { src: normalizeUrl(viewingAchievement.photos[0]), alt: viewingAchievement.title, className: "w-full h-full object-cover group-hover:scale-[1.02] transition-transform duration-700" }),
+              /* @__PURE__ */ jsxRuntimeExports.jsx("div", { className: "absolute inset-0 bg-black/0 group-hover:bg-black/10 transition-colors flex items-center justify-center opacity-0 group-hover:opacity-100", children: /* @__PURE__ */ jsxRuntimeExports.jsx(CirclePlay, { size: 48, className: "text-white/80 drop-shadow-lg" }) })
+            ]
+          }
+        ),
+        /* @__PURE__ */ jsxRuntimeExports.jsx("button", { onClick: () => setViewingAchievement(null), className: "absolute top-4 right-4 p-2 bg-background/50 backdrop-blur rounded-full hover:bg-background/80 transition-colors z-10 text-foreground border border-border", children: /* @__PURE__ */ jsxRuntimeExports.jsx(X, { size: 20 }) }),
+        /* @__PURE__ */ jsxRuntimeExports.jsxs(
+          "div",
+          {
+            className: `p-6 md:p-10 overflow-y-auto scrollbar-thin ${isDragging ? "cursor-grabbing" : "cursor-grab"}`,
+            ref: (el2) => {
+              if (el2 && !el2.onmousedown) {
+                let isDown = false;
+                let startY = 0;
+                let scrollTop2 = 0;
+                el2.onmousedown = (e3) => {
+                  isDown = true;
+                  startY = e3.pageY - el2.offsetTop;
+                  scrollTop2 = el2.scrollTop;
+                  el2.classList.add("cursor-grabbing");
+                  el2.classList.remove("cursor-grab");
+                };
+                el2.onmouseleave = () => {
+                  isDown = false;
+                  el2.classList.remove("cursor-grabbing");
+                  el2.classList.add("cursor-grab");
+                };
+                el2.onmouseup = () => {
+                  isDown = false;
+                  el2.classList.remove("cursor-grabbing");
+                  el2.classList.add("cursor-grab");
+                };
+                el2.onmousemove = (e3) => {
+                  if (!isDown) return;
+                  e3.preventDefault();
+                  const y2 = e3.pageY - el2.offsetTop;
+                  const walk = (y2 - startY) * 1.5;
+                  el2.scrollTop = scrollTop2 - walk;
+                };
+              }
+            },
+            children: [
+              /* @__PURE__ */ jsxRuntimeExports.jsxs("div", { className: "flex justify-between items-start mb-4 pr-12", children: [
+                /* @__PURE__ */ jsxRuntimeExports.jsx("h2", { className: "text-3xl font-extrabold", children: viewingAchievement.title }),
+                /* @__PURE__ */ jsxRuntimeExports.jsx("div", { className: "flex items-center gap-3", children: viewingAchievement.photos && viewingAchievement.photos.length > 0 && /* @__PURE__ */ jsxRuntimeExports.jsxs("button", { onClick: () => {
+                  setSlideIndex(0);
+                  setSlideshowActive(true);
+                }, className: "px-4 py-2 bg-yellow-500 text-white font-bold rounded-xl hover:scale-105 transition-transform flex items-center gap-2 shadow-lg shadow-yellow-500/20", children: [
+                  /* @__PURE__ */ jsxRuntimeExports.jsx(CirclePlay, { size: 18 }),
+                  " Slideshow"
+                ] }) })
+              ] }),
+              /* @__PURE__ */ jsxRuntimeExports.jsxs("div", { className: "flex items-center gap-2 text-sm font-bold text-yellow-600 uppercase tracking-wider mb-8", children: [
+                /* @__PURE__ */ jsxRuntimeExports.jsx(Award, { size: 18 }),
+                " ",
+                new Date(viewingAchievement.date).toLocaleDateString([], { month: "long", year: "numeric" })
+              ] }),
+              /* @__PURE__ */ jsxRuntimeExports.jsxs("div", { className: "mb-8", children: [
+                /* @__PURE__ */ jsxRuntimeExports.jsx("h4", { className: "text-sm font-bold text-muted-foreground uppercase tracking-wider mb-3", children: "About this achievement" }),
+                /* @__PURE__ */ jsxRuntimeExports.jsx("div", { className: "prose prose-sm dark:prose-invert max-w-none prose-p:leading-relaxed prose-a:text-yellow-500 hover:prose-a:text-yellow-600 whitespace-pre-wrap", children: viewingAchievement.description || /* @__PURE__ */ jsxRuntimeExports.jsx("span", { className: "text-muted-foreground italic", children: "No description provided." }) })
+              ] }),
+              viewingAchievement.photos && viewingAchievement.photos.length > 0 && /* @__PURE__ */ jsxRuntimeExports.jsxs("div", { className: "mb-8", children: [
+                /* @__PURE__ */ jsxRuntimeExports.jsx("h4", { className: "text-sm font-bold text-muted-foreground uppercase tracking-wider mb-3", children: "Gallery" }),
+                /* @__PURE__ */ jsxRuntimeExports.jsx("div", { className: "grid grid-cols-2 md:grid-cols-3 gap-4", children: viewingAchievement.photos.map((img, i2) => /* @__PURE__ */ jsxRuntimeExports.jsxs(
+                  "div",
+                  {
+                    className: "aspect-video rounded-xl overflow-hidden border border-border shadow-sm group relative cursor-pointer",
+                    onClick: () => {
+                      setSlideIndex(i2);
+                      setSlideshowActive(true);
+                    },
+                    children: [
+                      /* @__PURE__ */ jsxRuntimeExports.jsx("img", { src: normalizeUrl(img), alt: `Photo ${i2 + 1}`, className: "w-full h-full object-cover group-hover:scale-105 transition-transform duration-500" }),
+                      /* @__PURE__ */ jsxRuntimeExports.jsx("div", { className: "absolute inset-0 bg-black/0 group-hover:bg-black/20 transition-colors flex items-center justify-center opacity-0 group-hover:opacity-100", children: /* @__PURE__ */ jsxRuntimeExports.jsx(Eye, { size: 32, className: "text-white drop-shadow-md" }) })
+                    ]
+                  },
+                  i2
+                )) })
+              ] }),
+              viewingAchievement.attachments && viewingAchievement.attachments.length > 0 && /* @__PURE__ */ jsxRuntimeExports.jsxs("div", { className: "mb-8", children: [
+                /* @__PURE__ */ jsxRuntimeExports.jsx("h4", { className: "text-sm font-bold text-muted-foreground uppercase tracking-wider mb-3", children: "Attachments" }),
+                /* @__PURE__ */ jsxRuntimeExports.jsx("div", { className: "flex flex-wrap gap-2", children: viewingAchievement.attachments.map((att, i2) => /* @__PURE__ */ jsxRuntimeExports.jsxs("a", { href: normalizeUrl(att), target: "_blank", className: "flex items-center gap-2 px-4 py-2 rounded-xl bg-accent hover:bg-yellow-500/10 hover:text-yellow-600 font-medium transition-colors border border-border shadow-sm", children: [
+                  /* @__PURE__ */ jsxRuntimeExports.jsx(FileText, { size: 18 }),
+                  " ",
+                  att ? att.split(/[\\/]/).pop() : "Attachment"
+                ] }, i2)) })
+              ] })
+            ]
+          }
+        )
+      ] })
+    ] }),
+    slideshowActive && viewingAchievement && viewingAchievement.photos && viewingAchievement.photos.length > 0 && reactDomExports.createPortal(
+      /* @__PURE__ */ jsxRuntimeExports.jsxs(
+        "div",
+        {
+          className: "fixed inset-0 bg-black z-[9999] flex flex-col items-center justify-center animate-in fade-in duration-1000",
+          onMouseDown: () => setIsSlideshowPaused(true),
+          onMouseUp: () => setIsSlideshowPaused(false),
+          onMouseLeave: () => setIsSlideshowPaused(false),
+          children: [
+            /* @__PURE__ */ jsxRuntimeExports.jsx("button", { onClick: () => setSlideshowActive(false), className: "absolute top-6 right-6 p-3 bg-white/10 hover:bg-white/30 text-white rounded-full backdrop-blur-sm transition-colors z-10", children: /* @__PURE__ */ jsxRuntimeExports.jsx(X, { size: 32 }) }),
+            /* @__PURE__ */ jsxRuntimeExports.jsxs("div", { className: "absolute top-6 left-6 text-white text-xl font-black drop-shadow-md z-10 opacity-70", children: [
+              slideIndex + 1,
+              " / ",
+              viewingAchievement.photos.length
+            ] }),
+            /* @__PURE__ */ jsxRuntimeExports.jsxs("div", { className: "w-full h-full flex items-center justify-center relative p-12", children: [
+              /* @__PURE__ */ jsxRuntimeExports.jsx(
+                "img",
+                {
+                  src: normalizeUrl(viewingAchievement.photos[slideIndex]),
+                  className: "max-w-full max-h-full object-contain shadow-2xl rounded-lg animate-in zoom-in-95 duration-700"
+                },
+                viewingAchievement.photos[slideIndex]
+              ),
+              /* @__PURE__ */ jsxRuntimeExports.jsx("div", { className: "absolute bottom-12 left-1/2 -translate-x-1/2 bg-black/50 backdrop-blur-md px-6 py-3 rounded-full text-white text-lg font-medium shadow-2xl", children: viewingAchievement.title })
+            ] })
+          ]
+        }
+      ),
+      document.body
     ),
     showSuccessOverlay && /* @__PURE__ */ jsxRuntimeExports.jsxs("div", { className: "absolute inset-0 z-50 flex items-center justify-center bg-[radial-gradient(ellipse_at_center,_var(--tw-gradient-stops))] from-yellow-500/30 via-background/80 to-background/95 backdrop-blur-sm animate-in fade-in duration-300", children: [
       /* @__PURE__ */ jsxRuntimeExports.jsx("style", { children: `
@@ -113257,6 +115533,7 @@ function Goals() {
   const [editingId, setEditingId] = reactExports.useState(null);
   const [showCelebration, setShowCelebration] = reactExports.useState(false);
   const [expandedNotesId, setExpandedNotesId] = reactExports.useState(null);
+  const [expandedSubGoalsId, setExpandedSubGoalsId] = reactExports.useState(null);
   const [isDragging, setIsDragging] = reactExports.useState(false);
   const [dragStartY, setDragStartY] = reactExports.useState(0);
   const [scrollTop, setScrollTop] = reactExports.useState(0);
@@ -113266,6 +115543,11 @@ function Goals() {
   const [sortBy2, setSortBy] = reactExports.useState("newest");
   const [isSelectionMode, setIsSelectionMode] = reactExports.useState(false);
   const [selectedIds, setSelectedIds] = reactExports.useState(/* @__PURE__ */ new Set());
+  const [viewMode, setViewMode] = reactExports.useState("grid");
+  const [isMenuOpen, setIsMenuOpen] = reactExports.useState(false);
+  const [importConflicts, setImportConflicts] = reactExports.useState([]);
+  const [currentConflictIndex, setCurrentConflictIndex] = reactExports.useState(0);
+  const [pendingImports, setPendingImports] = reactExports.useState({ toInsert: [], toReplace: [] });
   const [form, setForm] = reactExports.useState({
     title: "",
     description: "",
@@ -113275,7 +115557,8 @@ function Goals() {
     targetDate: "",
     progress: 0,
     status: "Active",
-    notes: ""
+    notes: "",
+    subGoals: []
   });
   const [currentBackground, setCurrentBackground] = reactExports.useState("Default");
   const [transitionStage, setTransitionStage] = reactExports.useState("idle");
@@ -113318,17 +115601,37 @@ function Goals() {
     }
   };
   const handleProgressChange = (value) => {
+    if (form.subGoals && form.subGoals.length > 0) return;
     setForm({ ...form, progress: value });
-    if (value === 100) {
+    if (value === 100 && form.status !== "Completed") {
       setForm((prev) => ({ ...prev, status: "Completed" }));
+    } else if (value < 100 && form.status === "Completed") {
+      setForm((prev) => ({ ...prev, status: "Active" }));
     }
   };
   const handleStatusChange = (value) => {
     setForm({ ...form, status: value });
     if (value === "Completed") {
-      setForm((prev) => ({ ...prev, progress: 100 }));
+      if (!form.subGoals || form.subGoals.length === 0) {
+        setForm((prev) => ({ ...prev, progress: 100 }));
+      }
     }
   };
+  const updateSubGoals = (newSubGoals) => {
+    if (newSubGoals.length === 0) {
+      setForm((prev) => ({ ...prev, subGoals: newSubGoals }));
+      return;
+    }
+    const completedCount = newSubGoals.filter((sg2) => sg2.completed).length;
+    const progress = Math.round(completedCount / newSubGoals.length * 100);
+    setForm((prev) => {
+      const newStatus = progress === 100 ? "Completed" : prev.status === "Completed" ? "Active" : prev.status;
+      return { ...prev, subGoals: newSubGoals, progress, status: newStatus };
+    });
+  };
+  const [subGoalForm, setSubGoalForm] = reactExports.useState({ title: "", description: "", completed: false });
+  const [isAddingSubGoal, setIsAddingSubGoal] = reactExports.useState(false);
+  const [editingSubGoalId, setEditingSubGoalId] = reactExports.useState(null);
   const loadData = async () => {
     try {
       const data = await window.api.db.find("goals", {});
@@ -113341,6 +115644,122 @@ function Goals() {
   reactExports.useEffect(() => {
     loadData();
   }, []);
+  const handleExportSelected = () => {
+    const dataToExport = goals.filter((g2) => selectedIds.has(g2._id));
+    const dataStr = "data:text/json;charset=utf-8," + encodeURIComponent(JSON.stringify(dataToExport, null, 2));
+    const downloadAnchorNode = document.createElement("a");
+    downloadAnchorNode.setAttribute("href", dataStr);
+    downloadAnchorNode.setAttribute("download", "selected_goals.json");
+    document.body.appendChild(downloadAnchorNode);
+    downloadAnchorNode.click();
+    downloadAnchorNode.remove();
+    setIsSelectionMode(false);
+    setSelectedIds(/* @__PURE__ */ new Set());
+  };
+  const handleExportAll = () => {
+    const dataStr = "data:text/json;charset=utf-8," + encodeURIComponent(JSON.stringify(goals, null, 2));
+    const downloadAnchorNode = document.createElement("a");
+    downloadAnchorNode.setAttribute("href", dataStr);
+    downloadAnchorNode.setAttribute("download", "all_goals.json");
+    document.body.appendChild(downloadAnchorNode);
+    downloadAnchorNode.click();
+    downloadAnchorNode.remove();
+    setIsMenuOpen(false);
+  };
+  const executeImports = async (toInsert, toReplace) => {
+    try {
+      for (const goal of toInsert) {
+        const { _id, ...goalData } = goal;
+        await window.api.db.insert("goals", goalData);
+      }
+      for (const goal of toReplace) {
+        const { _id, ...goalData } = goal;
+        await window.api.db.update("goals", { _id }, { $set: goalData }, {});
+      }
+      loadData();
+      NotificationEngine.notify("success", "Import Complete", `Imported ${toInsert.length + toReplace.length} goals.`, "Goals");
+    } catch (err) {
+      console.error("Error executing imports", err);
+    }
+  };
+  const processConflict = async (action) => {
+    let { toInsert, toReplace } = pendingImports;
+    const remainingConflicts = importConflicts.slice(currentConflictIndex);
+    if (action === "replace_all") {
+      remainingConflicts.forEach((c2) => toReplace.push({ ...c2.imported, _id: c2.existing._id }));
+      setImportConflicts([]);
+    } else if (action === "skip_all") {
+      setImportConflicts([]);
+    } else if (action === "replace") {
+      const current = importConflicts[currentConflictIndex];
+      toReplace.push({ ...current.imported, _id: current.existing._id });
+      if (currentConflictIndex + 1 < importConflicts.length) {
+        setCurrentConflictIndex(currentConflictIndex + 1);
+        setPendingImports({ toInsert, toReplace });
+        return;
+      } else {
+        setImportConflicts([]);
+      }
+    } else if (action === "skip") {
+      if (currentConflictIndex + 1 < importConflicts.length) {
+        setCurrentConflictIndex(currentConflictIndex + 1);
+        return;
+      } else {
+        setImportConflicts([]);
+      }
+    }
+    await executeImports(toInsert, toReplace);
+  };
+  const handleImport = () => {
+    const input = document.createElement("input");
+    input.type = "file";
+    input.accept = ".json";
+    input.onchange = async (e3) => {
+      const file = e3.target.files[0];
+      if (!file) return;
+      const reader = new FileReader();
+      reader.onload = async (event) => {
+        try {
+          const importedGoals = JSON.parse(event.target?.result);
+          if (Array.isArray(importedGoals)) {
+            const toInsert = [];
+            const toReplace = [];
+            const conflicts = [];
+            for (const importedGoal of importedGoals) {
+              let existingGoal = goals.find((g2) => g2._id === importedGoal._id);
+              if (!existingGoal) existingGoal = goals.find((g2) => g2.title === importedGoal.title);
+              if (!existingGoal) {
+                toInsert.push(importedGoal);
+              } else {
+                const importedTime = importedGoal.updatedAt || importedGoal.createdAt || 0;
+                const existingTime = existingGoal.updatedAt || existingGoal.createdAt || 0;
+                if (importedTime > existingTime) {
+                  toReplace.push({ ...importedGoal, _id: existingGoal._id });
+                } else if (importedTime < existingTime) {
+                  conflicts.push({ imported: importedGoal, existing: existingGoal });
+                } else if (importedTime === 0 && existingTime === 0) {
+                  conflicts.push({ imported: importedGoal, existing: existingGoal });
+                }
+              }
+            }
+            if (conflicts.length > 0) {
+              setPendingImports({ toInsert, toReplace });
+              setImportConflicts(conflicts);
+              setCurrentConflictIndex(0);
+              setIsMenuOpen(false);
+            } else {
+              await executeImports(toInsert, toReplace);
+            }
+          }
+        } catch (error) {
+          console.error("Error importing goals", error);
+        }
+      };
+      reader.readAsText(file);
+    };
+    input.click();
+    setIsMenuOpen(false);
+  };
   const filteredGoals = goals.filter((g2) => {
     if (filters.status !== "all" && g2.status !== filters.status) return false;
     if (filters.isFavorite && !g2.isFavorite) return false;
@@ -113366,7 +115785,7 @@ function Goals() {
           await window.api.db.remove("goals", { _id: id2 }, {});
         } else {
           const updateData = action === "favorite" ? { isFavorite: true } : action === "archive" ? { isArchived: true } : { isArchived: false };
-          await window.api.db.update("goals", { _id: id2 }, { $set: updateData }, {});
+          await window.api.db.update("goals", { _id: id2 }, { $set: { ...updateData, updatedAt: Date.now() } }, {});
         }
       }
       setSelectedIds(/* @__PURE__ */ new Set());
@@ -113378,7 +115797,7 @@ function Goals() {
   };
   const toggleFavorite = async (id2, current) => {
     try {
-      await window.api.db.update("goals", { _id: id2 }, { $set: { isFavorite: !current } }, {});
+      await window.api.db.update("goals", { _id: id2 }, { $set: { isFavorite: !current, updatedAt: Date.now() } }, {});
       loadData();
     } catch (err) {
       console.error(err);
@@ -113386,7 +115805,7 @@ function Goals() {
   };
   const toggleArchive = async (id2, current) => {
     try {
-      await window.api.db.update("goals", { _id: id2 }, { $set: { isArchived: !current } }, {});
+      await window.api.db.update("goals", { _id: id2 }, { $set: { isArchived: !current, updatedAt: Date.now() } }, {});
       loadData();
     } catch (err) {
       console.error(err);
@@ -113415,11 +115834,12 @@ function Goals() {
   };
   const handleSave = async () => {
     try {
+      const now2 = Date.now();
       if (editingId) {
-        await window.api.db.update("goals", { _id: editingId }, { $set: { ...form } }, {});
+        await window.api.db.update("goals", { _id: editingId }, { $set: { ...form, updatedAt: now2 } }, {});
         NotificationEngine.notify("info", "Goal Updated", `"${form.title}" was updated.`, "Goals");
       } else {
-        await window.api.db.insert("goals", { ...form, category: "Career" });
+        await window.api.db.insert("goals", { ...form, category: "Career", createdAt: now2, updatedAt: now2 });
         NotificationEngine.notify("success", "Goal Created", `"${form.title}" was saved.`, "Goals");
       }
       if (form.status === "Completed") {
@@ -113433,6 +115853,18 @@ function Goals() {
       console.error(err);
     }
   };
+  reactExports.useEffect(() => {
+    const down = (e3) => {
+      if (e3.ctrlKey && e3.key.toLowerCase() === "s") {
+        if (isAdding) {
+          e3.preventDefault();
+          handleSave();
+        }
+      }
+    };
+    window.addEventListener("keydown", down);
+    return () => window.removeEventListener("keydown", down);
+  }, [isAdding, form, editingId]);
   const handleDelete2 = async (id2) => {
     if (confirm("Delete this goal?")) {
       try {
@@ -114294,6 +116726,26 @@ function Goals() {
             /* @__PURE__ */ jsxRuntimeExports.jsx("option", { value: "alpha", children: "Alphabetical" })
           ] })
         ] }),
+        /* @__PURE__ */ jsxRuntimeExports.jsxs("div", { className: "flex bg-accent/50 p-1 rounded-full border border-border items-center", children: [
+          /* @__PURE__ */ jsxRuntimeExports.jsx(
+            "button",
+            {
+              onClick: () => setViewMode("grid"),
+              className: `p-1.5 rounded-full transition-all ${viewMode === "grid" ? "bg-blue-100 text-blue-600 shadow-sm dark:bg-blue-500/20 dark:text-blue-400" : "text-muted-foreground hover:text-foreground"}`,
+              title: "Grid View",
+              children: /* @__PURE__ */ jsxRuntimeExports.jsx(LayoutGrid, { size: 16 })
+            }
+          ),
+          /* @__PURE__ */ jsxRuntimeExports.jsx(
+            "button",
+            {
+              onClick: () => setViewMode("list"),
+              className: `p-1.5 rounded-full transition-all ${viewMode === "list" ? "bg-blue-100 text-blue-600 shadow-sm dark:bg-blue-500/20 dark:text-blue-400" : "text-muted-foreground hover:text-foreground"}`,
+              title: "List View",
+              children: /* @__PURE__ */ jsxRuntimeExports.jsx(List$1, { size: 16 })
+            }
+          )
+        ] }),
         /* @__PURE__ */ jsxRuntimeExports.jsxs(
           "button",
           {
@@ -114312,6 +116764,29 @@ function Goals() {
         }, className: "px-4 py-1.5 bg-red-500 text-white rounded-xl hover:bg-red-600 font-bold flex items-center gap-2 text-sm shadow-sm transition-transform hover:scale-105", children: [
           /* @__PURE__ */ jsxRuntimeExports.jsx(Plus, { size: 16 }),
           " New Goal"
+        ] }),
+        /* @__PURE__ */ jsxRuntimeExports.jsxs("div", { className: "relative", children: [
+          /* @__PURE__ */ jsxRuntimeExports.jsx(
+            "button",
+            {
+              onClick: () => setIsMenuOpen(!isMenuOpen),
+              className: "p-1.5 rounded-xl transition-colors hover:bg-accent text-muted-foreground",
+              children: /* @__PURE__ */ jsxRuntimeExports.jsx(EllipsisVertical, { size: 18 })
+            }
+          ),
+          isMenuOpen && /* @__PURE__ */ jsxRuntimeExports.jsxs(jsxRuntimeExports.Fragment, { children: [
+            /* @__PURE__ */ jsxRuntimeExports.jsx("div", { className: "fixed inset-0 z-40", onClick: () => setIsMenuOpen(false) }),
+            /* @__PURE__ */ jsxRuntimeExports.jsxs("div", { className: "absolute right-0 top-full mt-2 w-48 bg-card border border-border rounded-xl shadow-lg z-50 overflow-hidden animate-in slide-in-from-top-2", children: [
+              /* @__PURE__ */ jsxRuntimeExports.jsxs("button", { onClick: handleImport, className: "w-full text-left px-4 py-3 hover:bg-accent flex items-center gap-2 text-sm font-medium transition-colors", children: [
+                /* @__PURE__ */ jsxRuntimeExports.jsx(Upload, { size: 16 }),
+                " Import Goals"
+              ] }),
+              /* @__PURE__ */ jsxRuntimeExports.jsxs("button", { onClick: handleExportAll, className: "w-full text-left px-4 py-3 hover:bg-accent flex items-center gap-2 text-sm font-medium transition-colors border-t border-border", children: [
+                /* @__PURE__ */ jsxRuntimeExports.jsx(Download, { size: 16 }),
+                " Export All Goals"
+              ] })
+            ] })
+          ] })
         ] })
       ] })
     ] }),
@@ -114350,6 +116825,10 @@ function Goals() {
           /* @__PURE__ */ jsxRuntimeExports.jsx(ArchiveRestore, { size: 14 }),
           " Unarchive"
         ] }),
+        /* @__PURE__ */ jsxRuntimeExports.jsxs("button", { onClick: handleExportSelected, disabled: selectedIds.size === 0, className: "flex items-center gap-1.5 px-3 py-1.5 bg-background border border-border rounded-xl text-sm font-bold hover:bg-card disabled:opacity-50", children: [
+          /* @__PURE__ */ jsxRuntimeExports.jsx(Download, { size: 14 }),
+          " Export"
+        ] }),
         /* @__PURE__ */ jsxRuntimeExports.jsxs("button", { onClick: () => bulkAction("delete"), disabled: selectedIds.size === 0, className: "flex items-center gap-1.5 px-3 py-1.5 bg-red-500/10 text-red-500 rounded-xl text-sm font-bold hover:bg-red-500/20 disabled:opacity-50", children: [
           /* @__PURE__ */ jsxRuntimeExports.jsx(Trash2, { size: 14 }),
           " Delete"
@@ -114370,7 +116849,7 @@ function Goals() {
         tabIndex: 0,
         children: [
           /* @__PURE__ */ jsxRuntimeExports.jsx(GoalsStatistics, { goals, setFilters }),
-          isAdding ? /* @__PURE__ */ jsxRuntimeExports.jsxs("div", { className: "bg-card/70 backdrop-blur-md border border-border rounded-xl p-6 shadow-sm mb-8 animate-in slide-in-from-top-4", children: [
+          isAdding ? /* @__PURE__ */ jsxRuntimeExports.jsxs("div", { className: "bg-slate-50/80 dark:bg-slate-900/50 backdrop-blur-md border border-border rounded-xl p-6 shadow-sm mb-8 animate-in slide-in-from-top-4", children: [
             /* @__PURE__ */ jsxRuntimeExports.jsxs("div", { className: "flex justify-between items-center mb-6", children: [
               /* @__PURE__ */ jsxRuntimeExports.jsx("h2", { className: "text-xl font-bold", children: editingId ? "Edit Goal" : "Add Goal" }),
               /* @__PURE__ */ jsxRuntimeExports.jsx("button", { onClick: () => setIsAdding(false), className: "p-2 hover:bg-accent rounded-md", children: /* @__PURE__ */ jsxRuntimeExports.jsx(X, { size: 20 }) })
@@ -114386,7 +116865,16 @@ function Goals() {
                   form.progress,
                   "%)"
                 ] }),
-                /* @__PURE__ */ jsxRuntimeExports.jsx("input", { type: "range", min: "0", max: "100", value: form.progress, onChange: (e3) => handleProgressChange(Number(e3.target.value)), className: "w-full accent-red-500" })
+                form.subGoals && form.subGoals.length > 0 ? /* @__PURE__ */ jsxRuntimeExports.jsxs("div", { className: "w-full p-2 bg-accent/50 border border-border rounded-md text-sm text-muted-foreground flex items-center gap-2", children: [
+                  /* @__PURE__ */ jsxRuntimeExports.jsx("div", { className: "flex-1 bg-background rounded-full h-2 overflow-hidden", children: /* @__PURE__ */ jsxRuntimeExports.jsx("div", { className: "bg-red-500 h-full transition-all", style: { width: `${form.progress}%` } }) }),
+                  /* @__PURE__ */ jsxRuntimeExports.jsxs("span", { children: [
+                    "Calculated from ",
+                    form.subGoals.filter((s3) => s3.completed).length,
+                    " of ",
+                    form.subGoals.length,
+                    " completed sub-goals"
+                  ] })
+                ] }) : /* @__PURE__ */ jsxRuntimeExports.jsx("input", { type: "range", min: "0", max: "100", value: form.progress, onChange: (e3) => handleProgressChange(Number(e3.target.value)), className: "w-full accent-red-500" })
               ] }),
               /* @__PURE__ */ jsxRuntimeExports.jsxs("div", { children: [
                 /* @__PURE__ */ jsxRuntimeExports.jsx("label", { className: "block text-sm font-medium mb-1", children: "Status" }),
@@ -114409,16 +116897,128 @@ function Goals() {
               /* @__PURE__ */ jsxRuntimeExports.jsxs("div", { className: "md:col-span-2", children: [
                 /* @__PURE__ */ jsxRuntimeExports.jsx("label", { className: "block text-sm font-medium mb-1", children: "Notes / Content" }),
                 /* @__PURE__ */ jsxRuntimeExports.jsx("textarea", { value: form.notes, onChange: (e3) => setForm({ ...form, notes: e3.target.value }), className: "w-full p-2 bg-background border border-border rounded-md min-h-[100px] resize-y", placeholder: "Add any additional notes, details, or content related to this goal..." })
+              ] }),
+              /* @__PURE__ */ jsxRuntimeExports.jsxs("div", { className: "md:col-span-2 mt-4", children: [
+                /* @__PURE__ */ jsxRuntimeExports.jsxs("div", { className: "flex items-center justify-between mb-4 border-b border-border pb-2", children: [
+                  /* @__PURE__ */ jsxRuntimeExports.jsxs("h3", { className: "text-lg font-bold flex items-center gap-2", children: [
+                    /* @__PURE__ */ jsxRuntimeExports.jsx(ListTodo, { size: 18 }),
+                    " Sub-Goals"
+                  ] }),
+                  /* @__PURE__ */ jsxRuntimeExports.jsxs(
+                    "button",
+                    {
+                      onClick: () => {
+                        setSubGoalForm({ title: "", description: "", completed: false, order: form.subGoals?.length || 0 });
+                        setEditingSubGoalId(null);
+                        setIsAddingSubGoal(true);
+                      },
+                      className: "text-sm font-bold flex items-center gap-1 text-red-500 hover:text-red-600",
+                      children: [
+                        /* @__PURE__ */ jsxRuntimeExports.jsx(Plus, { size: 14 }),
+                        " Add Sub-Goal"
+                      ]
+                    }
+                  )
+                ] }),
+                !form.subGoals?.length && !isAddingSubGoal && /* @__PURE__ */ jsxRuntimeExports.jsxs("div", { className: "text-center p-6 border border-dashed border-border rounded-xl text-muted-foreground bg-background/50", children: [
+                  /* @__PURE__ */ jsxRuntimeExports.jsx("p", { className: "font-medium mb-1", children: "No sub-goals yet" }),
+                  /* @__PURE__ */ jsxRuntimeExports.jsx("p", { className: "text-xs opacity-70 mb-3", children: "Break this goal into smaller steps to make progress easier to track." }),
+                  /* @__PURE__ */ jsxRuntimeExports.jsx("button", { onClick: () => {
+                    setSubGoalForm({ title: "", description: "", completed: false, order: 0 });
+                    setEditingSubGoalId(null);
+                    setIsAddingSubGoal(true);
+                  }, className: "px-3 py-1.5 bg-accent hover:bg-accent/80 rounded-md text-sm font-medium", children: "+ Add Sub-Goal" })
+                ] }),
+                isAddingSubGoal && /* @__PURE__ */ jsxRuntimeExports.jsxs("div", { className: "bg-background border border-border p-4 rounded-xl mb-4 space-y-3 relative", children: [
+                  /* @__PURE__ */ jsxRuntimeExports.jsx("h4", { className: "font-bold text-sm mb-2", children: editingSubGoalId ? "Edit Sub-Goal" : "New Sub-Goal" }),
+                  /* @__PURE__ */ jsxRuntimeExports.jsx("input", { autoFocus: true, type: "text", value: subGoalForm.title, onChange: (e3) => setSubGoalForm({ ...subGoalForm, title: e3.target.value }), placeholder: "Sub-Goal Title", className: "w-full p-2 bg-accent/30 border border-border rounded-md text-sm" }),
+                  /* @__PURE__ */ jsxRuntimeExports.jsx("textarea", { value: subGoalForm.description, onChange: (e3) => setSubGoalForm({ ...subGoalForm, description: e3.target.value }), placeholder: "Optional description...", className: "w-full p-2 bg-accent/30 border border-border rounded-md text-sm min-h-[60px]" }),
+                  /* @__PURE__ */ jsxRuntimeExports.jsxs("div", { className: "flex justify-end gap-2", children: [
+                    /* @__PURE__ */ jsxRuntimeExports.jsx("button", { onClick: () => setIsAddingSubGoal(false), className: "px-3 py-1 bg-accent hover:bg-accent/80 rounded-md text-xs font-bold", children: "Cancel" }),
+                    /* @__PURE__ */ jsxRuntimeExports.jsx(
+                      "button",
+                      {
+                        onClick: () => {
+                          if (!subGoalForm.title?.trim()) return;
+                          const currentList = [...form.subGoals || []];
+                          if (editingSubGoalId) {
+                            const idx = currentList.findIndex((s3) => s3.id === editingSubGoalId);
+                            if (idx !== -1) currentList[idx] = { ...currentList[idx], ...subGoalForm };
+                          } else {
+                            currentList.push({ ...subGoalForm, id: Math.random().toString(36).substring(7), completed: false, startDate: (/* @__PURE__ */ new Date()).toISOString().split("T")[0] });
+                          }
+                          updateSubGoals(currentList.sort((a2, b2) => a2.order - b2.order));
+                          setIsAddingSubGoal(false);
+                        },
+                        className: "px-3 py-1 bg-red-500 text-white hover:bg-red-600 rounded-md text-xs font-bold",
+                        children: editingSubGoalId ? "Save" : "Add"
+                      }
+                    )
+                  ] })
+                ] }),
+                form.subGoals && form.subGoals.length > 0 && /* @__PURE__ */ jsxRuntimeExports.jsx("div", { className: "space-y-2", children: form.subGoals.map((sg2, index2) => /* @__PURE__ */ jsxRuntimeExports.jsxs("div", { className: "flex items-start gap-3 p-3 bg-background border border-border rounded-xl group relative", children: [
+                  /* @__PURE__ */ jsxRuntimeExports.jsx(
+                    "button",
+                    {
+                      onClick: () => {
+                        const currentList = [...form.subGoals || []];
+                        const idx = currentList.findIndex((s3) => s3.id === sg2.id);
+                        if (idx !== -1) {
+                          currentList[idx].completed = !currentList[idx].completed;
+                          currentList[idx].completedAt = currentList[idx].completed ? (/* @__PURE__ */ new Date()).toISOString().split("T")[0] : void 0;
+                        }
+                        updateSubGoals(currentList);
+                      },
+                      className: "mt-0.5 flex-shrink-0",
+                      children: sg2.completed ? /* @__PURE__ */ jsxRuntimeExports.jsx(SquareCheckBig, { size: 18, className: "text-green-500" }) : /* @__PURE__ */ jsxRuntimeExports.jsx(Square, { size: 18, className: "text-muted-foreground" })
+                    }
+                  ),
+                  /* @__PURE__ */ jsxRuntimeExports.jsxs("div", { className: "flex-1 min-w-0", children: [
+                    /* @__PURE__ */ jsxRuntimeExports.jsx("p", { className: `text-sm font-bold ${sg2.completed ? "line-through text-muted-foreground opacity-70" : ""}`, children: sg2.title }),
+                    /* @__PURE__ */ jsxRuntimeExports.jsxs("div", { className: "flex gap-3 text-xs text-muted-foreground mt-0.5", children: [
+                      sg2.startDate && /* @__PURE__ */ jsxRuntimeExports.jsxs("span", { children: [
+                        "Started: ",
+                        new Date(sg2.startDate).toLocaleDateString()
+                      ] }),
+                      sg2.completedAt && /* @__PURE__ */ jsxRuntimeExports.jsxs("span", { className: "text-green-500", children: [
+                        "Completed: ",
+                        new Date(sg2.completedAt).toLocaleDateString()
+                      ] })
+                    ] }),
+                    sg2.description && /* @__PURE__ */ jsxRuntimeExports.jsx("p", { className: "text-xs text-muted-foreground mt-1", children: sg2.description })
+                  ] }),
+                  /* @__PURE__ */ jsxRuntimeExports.jsxs("div", { className: "flex items-center gap-1 opacity-0 group-hover:opacity-100 transition-opacity", children: [
+                    /* @__PURE__ */ jsxRuntimeExports.jsx("button", { disabled: index2 === 0, onClick: () => {
+                      const currentList = [...form.subGoals || []];
+                      [currentList[index2].order, currentList[index2 - 1].order] = [currentList[index2 - 1].order, currentList[index2].order];
+                      updateSubGoals(currentList.sort((a2, b2) => a2.order - b2.order));
+                    }, className: "p-1 hover:bg-accent rounded text-muted-foreground disabled:opacity-30", children: /* @__PURE__ */ jsxRuntimeExports.jsx(ChevronUp, { size: 14 }) }),
+                    /* @__PURE__ */ jsxRuntimeExports.jsx("button", { disabled: index2 === form.subGoals.length - 1, onClick: () => {
+                      const currentList = [...form.subGoals || []];
+                      [currentList[index2].order, currentList[index2 + 1].order] = [currentList[index2 + 1].order, currentList[index2].order];
+                      updateSubGoals(currentList.sort((a2, b2) => a2.order - b2.order));
+                    }, className: "p-1 hover:bg-accent rounded text-muted-foreground disabled:opacity-30", children: /* @__PURE__ */ jsxRuntimeExports.jsx(ChevronDown, { size: 14 }) }),
+                    /* @__PURE__ */ jsxRuntimeExports.jsx("button", { onClick: () => {
+                      setSubGoalForm(sg2);
+                      setEditingSubGoalId(sg2.id);
+                      setIsAddingSubGoal(true);
+                    }, className: "p-1 hover:bg-accent rounded text-muted-foreground ml-1", children: /* @__PURE__ */ jsxRuntimeExports.jsx(Pen, { size: 14 }) }),
+                    /* @__PURE__ */ jsxRuntimeExports.jsx("button", { onClick: () => {
+                      const currentList = form.subGoals.filter((s3) => s3.id !== sg2.id);
+                      updateSubGoals(currentList);
+                    }, className: "p-1 hover:bg-destructive/10 text-destructive rounded", children: /* @__PURE__ */ jsxRuntimeExports.jsx(Trash2, { size: 14 }) })
+                  ] })
+                ] }, sg2.id)) })
               ] })
             ] }),
-            /* @__PURE__ */ jsxRuntimeExports.jsxs("div", { className: "flex justify-end gap-3", children: [
+            /* @__PURE__ */ jsxRuntimeExports.jsxs("div", { className: "flex justify-end gap-3 border-t border-border pt-4 mt-2", children: [
               /* @__PURE__ */ jsxRuntimeExports.jsx("button", { onClick: () => setIsAdding(false), className: "px-4 py-2 bg-accent rounded-md hover:bg-accent/80 font-medium", children: "Cancel" }),
               /* @__PURE__ */ jsxRuntimeExports.jsx("button", { onClick: handleSave, className: "px-4 py-2 bg-red-500 text-white rounded-md hover:bg-red-600 font-medium", children: "Save Goal" })
             ] })
           ] }) : null,
-          /* @__PURE__ */ jsxRuntimeExports.jsx("div", { className: "space-y-4", children: filteredGoals.map((record) => {
+          /* @__PURE__ */ jsxRuntimeExports.jsx("div", { className: viewMode === "grid" ? "grid grid-cols-1 xl:grid-cols-2 gap-4" : "space-y-4", children: filteredGoals.map((record) => {
             const daysSinceStart = record.status === "Active" && record.startDate ? Math.floor(((/* @__PURE__ */ new Date()).getTime() - new Date(record.startDate).getTime()) / (1e3 * 60 * 60 * 24)) : null;
-            return /* @__PURE__ */ jsxRuntimeExports.jsxs("div", { className: "bg-card/70 backdrop-blur-md border border-border p-6 rounded-2xl shadow-sm relative group hover:border-red-500/50 transition-colors", children: [
+            return /* @__PURE__ */ jsxRuntimeExports.jsxs("div", { className: "bg-slate-50/80 dark:bg-slate-900/50 hover:bg-white dark:hover:bg-slate-800/80 backdrop-blur-md border border-border p-6 rounded-2xl shadow-sm hover:shadow-md relative group hover:border-red-500/50 transition-all", children: [
               /* @__PURE__ */ jsxRuntimeExports.jsxs("div", { className: "flex items-start gap-4", children: [
                 isSelectionMode && /* @__PURE__ */ jsxRuntimeExports.jsx(
                   "button",
@@ -114467,7 +117067,7 @@ function Goals() {
                   /* @__PURE__ */ jsxRuntimeExports.jsx("button", { onClick: () => toggleArchive(record._id, !!record.isArchived), className: `p-1.5 bg-background border border-border rounded-md hover:bg-gray-500/20 hover:text-gray-500 hover:border-gray-500/50 transition-colors ${record.isArchived ? "text-gray-500 bg-gray-500/10 border-gray-500/30" : "text-foreground"}`, title: record.isArchived ? "Unarchive" : "Archive", children: /* @__PURE__ */ jsxRuntimeExports.jsx(Archive, { size: 16 }) }),
                   /* @__PURE__ */ jsxRuntimeExports.jsx("button", { onClick: () => openEdit(record), className: "p-1.5 bg-background border border-border rounded-md hover:bg-accent text-foreground", title: "Edit", children: /* @__PURE__ */ jsxRuntimeExports.jsx(Pen, { size: 16 }) }),
                   /* @__PURE__ */ jsxRuntimeExports.jsx("button", { onClick: () => handleDelete2(record._id), className: "p-1.5 bg-background border border-border text-destructive rounded-md hover:bg-destructive/10", title: "Delete", children: /* @__PURE__ */ jsxRuntimeExports.jsx(Trash2, { size: 16 }) }),
-                  record.notes && record._id && /* @__PURE__ */ jsxRuntimeExports.jsx(
+                  (record.notes || record.subGoals && record.subGoals.length > 0) && record._id && /* @__PURE__ */ jsxRuntimeExports.jsx(
                     "button",
                     {
                       onClick: () => setExpandedNotesId(expandedNotesId === record._id ? null : record._id),
@@ -114477,13 +117077,121 @@ function Goals() {
                   )
                 ] })
               ] }),
+              record.subGoals && record.subGoals.length > 0 && /* @__PURE__ */ jsxRuntimeExports.jsxs("div", { className: "mt-4 flex items-center gap-2", children: [
+                /* @__PURE__ */ jsxRuntimeExports.jsxs("span", { className: "text-xs font-bold text-muted-foreground bg-accent px-2 py-1 rounded-md", children: [
+                  record.subGoals.filter((s3) => s3.completed).length,
+                  " / ",
+                  record.subGoals.length,
+                  " Sub-Goals"
+                ] }),
+                /* @__PURE__ */ jsxRuntimeExports.jsx(
+                  "button",
+                  {
+                    onClick: () => setExpandedSubGoalsId(expandedSubGoalsId === record._id ? null : record._id),
+                    className: "text-xs font-bold text-red-500 hover:underline flex items-center gap-1",
+                    children: expandedSubGoalsId === record._id ? "Hide Sub-Goals" : "▼ View Sub-Goals"
+                  }
+                )
+              ] }),
+              expandedSubGoalsId === record._id && record.subGoals && record.subGoals.length > 0 && /* @__PURE__ */ jsxRuntimeExports.jsx("div", { className: "mt-4 p-4 bg-accent/30 rounded-xl border border-border space-y-2 animate-in slide-in-from-top-2", children: record.subGoals.map((sg2) => /* @__PURE__ */ jsxRuntimeExports.jsxs("div", { className: "flex items-start gap-3", children: [
+                /* @__PURE__ */ jsxRuntimeExports.jsx(
+                  "button",
+                  {
+                    onClick: async () => {
+                      const currentList = [...record.subGoals];
+                      const idx = currentList.findIndex((s3) => s3.id === sg2.id);
+                      if (idx !== -1) {
+                        currentList[idx].completed = !currentList[idx].completed;
+                        currentList[idx].completedAt = currentList[idx].completed ? (/* @__PURE__ */ new Date()).toISOString().split("T")[0] : void 0;
+                        const completedCount = currentList.filter((s3) => s3.completed).length;
+                        const progress = Math.round(completedCount / currentList.length * 100);
+                        const newStatus = progress === 100 ? "Completed" : record.status === "Completed" ? "Active" : record.status;
+                        try {
+                          await window.api.db.update("goals", { _id: record._id }, { $set: { subGoals: currentList, progress, status: newStatus, updatedAt: Date.now() } }, {});
+                          if (newStatus === "Completed" && record.status !== "Completed") {
+                            triggerCinematicTransition("Completed");
+                          }
+                          loadData();
+                        } catch (err) {
+                          console.error(err);
+                        }
+                      }
+                    },
+                    className: "mt-0.5",
+                    children: sg2.completed ? /* @__PURE__ */ jsxRuntimeExports.jsx(CircleCheck, { size: 16, className: "text-green-500" }) : /* @__PURE__ */ jsxRuntimeExports.jsx("div", { className: "w-4 h-4 rounded-full border-2 border-muted-foreground/50" })
+                  }
+                ),
+                /* @__PURE__ */ jsxRuntimeExports.jsxs("div", { children: [
+                  sg2.description ? /* @__PURE__ */ jsxRuntimeExports.jsxs(Tooltip, { children: [
+                    /* @__PURE__ */ jsxRuntimeExports.jsx(TooltipTrigger, { asChild: true, children: /* @__PURE__ */ jsxRuntimeExports.jsx("p", { className: `text-sm font-medium cursor-help decoration-muted-foreground/50 underline-offset-2 ${sg2.completed ? "line-through text-muted-foreground opacity-70" : "underline"}`, children: sg2.title }) }),
+                    /* @__PURE__ */ jsxRuntimeExports.jsx(TooltipContent, { side: "top", className: "max-w-xs whitespace-pre-wrap", children: sg2.description })
+                  ] }) : /* @__PURE__ */ jsxRuntimeExports.jsx("p", { className: `text-sm font-medium ${sg2.completed ? "line-through text-muted-foreground opacity-70" : ""}`, children: sg2.title }),
+                  /* @__PURE__ */ jsxRuntimeExports.jsxs("div", { className: "flex gap-3 text-[10px] text-muted-foreground mt-0.5", children: [
+                    sg2.startDate && /* @__PURE__ */ jsxRuntimeExports.jsxs("span", { children: [
+                      "Started: ",
+                      new Date(sg2.startDate).toLocaleDateString()
+                    ] }),
+                    sg2.completedAt && /* @__PURE__ */ jsxRuntimeExports.jsxs("span", { className: "text-green-500 font-medium", children: [
+                      "Completed: ",
+                      new Date(sg2.completedAt).toLocaleDateString()
+                    ] })
+                  ] })
+                ] })
+              ] }, sg2.id)) }),
               expandedNotesId === record._id && record.notes && /* @__PURE__ */ jsxRuntimeExports.jsx("div", { className: "mt-4 p-4 bg-accent/50 rounded-lg border border-border animate-in slide-in-from-top-2", children: /* @__PURE__ */ jsxRuntimeExports.jsx("p", { className: "text-sm text-muted-foreground whitespace-pre-wrap", children: record.notes }) })
             ] }, record._id);
           }) }),
           goals.length === 0 && !isAdding && /* @__PURE__ */ jsxRuntimeExports.jsx("div", { className: "text-center p-12 border border-dashed border-border rounded-xl text-muted-foreground bg-card/50 backdrop-blur", children: "No career goals set yet. Aim high!" })
         ]
       }
-    )
+    ),
+    showCelebration && /* @__PURE__ */ jsxRuntimeExports.jsx(ShootingStars, {}),
+    importConflicts.length > 0 && currentConflictIndex < importConflicts.length && /* @__PURE__ */ jsxRuntimeExports.jsx("div", { className: "fixed inset-0 bg-background/80 backdrop-blur-sm z-50 flex items-center justify-center p-4", children: /* @__PURE__ */ jsxRuntimeExports.jsxs("div", { className: "bg-card border border-border w-full max-w-lg rounded-2xl shadow-2xl overflow-hidden animate-in zoom-in-95 duration-200", children: [
+      /* @__PURE__ */ jsxRuntimeExports.jsxs("div", { className: "p-6 border-b border-border bg-amber-500/10", children: [
+        /* @__PURE__ */ jsxRuntimeExports.jsxs("h2", { className: "text-xl font-bold flex items-center gap-2 text-amber-500", children: [
+          "Conflict Detected (",
+          currentConflictIndex + 1,
+          " of ",
+          importConflicts.length,
+          ")"
+        ] }),
+        /* @__PURE__ */ jsxRuntimeExports.jsxs("p", { className: "text-sm text-muted-foreground mt-2", children: [
+          "The imported goal ",
+          /* @__PURE__ */ jsxRuntimeExports.jsxs("strong", { children: [
+            '"',
+            importConflicts[currentConflictIndex].imported.title,
+            '"'
+          ] }),
+          " is older than your current version in the app."
+        ] })
+      ] }),
+      /* @__PURE__ */ jsxRuntimeExports.jsx("div", { className: "p-6 space-y-4", children: /* @__PURE__ */ jsxRuntimeExports.jsxs("div", { className: "grid grid-cols-2 gap-4", children: [
+        /* @__PURE__ */ jsxRuntimeExports.jsxs("div", { className: "p-4 bg-accent/50 rounded-xl border border-border", children: [
+          /* @__PURE__ */ jsxRuntimeExports.jsx("h3", { className: "text-sm font-bold mb-1", children: "App Version (Keep)" }),
+          /* @__PURE__ */ jsxRuntimeExports.jsxs("p", { className: "text-xs text-muted-foreground", children: [
+            "Updated: ",
+            new Date(importConflicts[currentConflictIndex].existing.updatedAt || importConflicts[currentConflictIndex].existing.createdAt || 0).toLocaleString()
+          ] })
+        ] }),
+        /* @__PURE__ */ jsxRuntimeExports.jsxs("div", { className: "p-4 bg-background rounded-xl border border-border", children: [
+          /* @__PURE__ */ jsxRuntimeExports.jsx("h3", { className: "text-sm font-bold mb-1", children: "Import Version" }),
+          /* @__PURE__ */ jsxRuntimeExports.jsxs("p", { className: "text-xs text-muted-foreground", children: [
+            "Updated: ",
+            new Date(importConflicts[currentConflictIndex].imported.updatedAt || importConflicts[currentConflictIndex].imported.createdAt || 0).toLocaleString()
+          ] })
+        ] })
+      ] }) }),
+      /* @__PURE__ */ jsxRuntimeExports.jsxs("div", { className: "p-6 border-t border-border bg-accent/30 flex flex-col gap-3", children: [
+        /* @__PURE__ */ jsxRuntimeExports.jsxs("div", { className: "grid grid-cols-2 gap-3", children: [
+          /* @__PURE__ */ jsxRuntimeExports.jsx("button", { onClick: () => processConflict("replace"), className: "w-full px-4 py-2 bg-amber-500 hover:bg-amber-600 text-white font-bold rounded-xl transition-colors", children: "Replace" }),
+          /* @__PURE__ */ jsxRuntimeExports.jsx("button", { onClick: () => processConflict("skip"), className: "w-full px-4 py-2 bg-background border border-border hover:bg-accent font-bold rounded-xl transition-colors", children: "Skip" })
+        ] }),
+        importConflicts.length > 1 && /* @__PURE__ */ jsxRuntimeExports.jsxs("div", { className: "grid grid-cols-2 gap-3", children: [
+          /* @__PURE__ */ jsxRuntimeExports.jsx("button", { onClick: () => processConflict("replace_all"), className: "w-full px-4 py-2 bg-red-500 hover:bg-red-600 text-white font-bold rounded-xl transition-colors", children: "Replace All" }),
+          /* @__PURE__ */ jsxRuntimeExports.jsx("button", { onClick: () => processConflict("skip_all"), className: "w-full px-4 py-2 bg-background border border-border hover:bg-accent font-bold rounded-xl transition-colors", children: "Skip All" })
+        ] })
+      ] })
+    ] }) })
   ] });
 }
 function RecordSelector({
@@ -144663,6 +147371,18 @@ function MemoryCapsules() {
       console.error(e3);
     }
   };
+  reactExports.useEffect(() => {
+    const down = (e3) => {
+      if (e3.ctrlKey && e3.key.toLowerCase() === "s") {
+        if (isCreating) {
+          e3.preventDefault();
+          handleCreate();
+        }
+      }
+    };
+    window.addEventListener("keydown", down);
+    return () => window.removeEventListener("keydown", down);
+  }, [isCreating, title, message, unlockDuration]);
   const handleOpen = async (capsule) => {
     if (capsule.status === "locked" && capsule.unlockDate > Date.now()) {
       NotificationEngine.notify("warning", "Capsule Locked", `This capsule unlocks on ${new Date(capsule.unlockDate).toLocaleDateString()}`, "Memory Capsules");
@@ -145014,6 +147734,7 @@ function NavigationHistoryProvider({ children: children2 }) {
   const [forwardStack, setForwardStack] = reactExports.useState([]);
   const isInternalNavigation = reactExports.useRef(false);
   const previousLocation = reactExports.useRef(location.pathname);
+  const isInitialized = reactExports.useRef(false);
   const canGoBack = backStack.length > 0;
   const canGoForward = forwardStack.length > 0;
   reactExports.useEffect(() => {
@@ -145021,12 +147742,17 @@ function NavigationHistoryProvider({ children: children2 }) {
       isInternalNavigation.current = false;
       return;
     }
+    if (!isInitialized.current) {
+      isInitialized.current = true;
+      return;
+    }
     if (location.pathname !== previousLocation.current) {
+      const locationToAdd = previousLocation.current;
       setBackStack((prev) => {
         if (prev.length > 0 && prev[prev.length - 1] === location.pathname) {
           return prev;
         }
-        const newBackStack = [...prev, previousLocation.current];
+        const newBackStack = [...prev, locationToAdd];
         setForwardStack([]);
         return newBackStack;
       });
@@ -145100,6 +147826,52 @@ function useKeyboardShortcuts() {
     window.addEventListener("keydown", handleKeyDown2);
     return () => window.removeEventListener("keydown", handleKeyDown2);
   }, [canGoBack, canGoForward, goBack, goForward]);
+}
+function NavigationButtons() {
+  const { canGoBack, canGoForward, goBack, goForward } = useNavigationHistory();
+  reactExports.useEffect(() => {
+    const handleKeyDown2 = (e3) => {
+      if (e3.ctrlKey) {
+        if (e3.key === "ArrowLeft" && canGoBack) {
+          e3.preventDefault();
+          goBack();
+        } else if (e3.key === "ArrowRight" && canGoForward) {
+          e3.preventDefault();
+          goForward();
+        }
+      }
+    };
+    window.addEventListener("keydown", handleKeyDown2);
+    return () => window.removeEventListener("keydown", handleKeyDown2);
+  }, [canGoBack, canGoForward, goBack, goForward]);
+  return /* @__PURE__ */ jsxRuntimeExports.jsxs("div", { className: "flex items-center gap-2", children: [
+    /* @__PURE__ */ jsxRuntimeExports.jsxs(Tooltip, { children: [
+      /* @__PURE__ */ jsxRuntimeExports.jsx(TooltipTrigger, { asChild: true, children: /* @__PURE__ */ jsxRuntimeExports.jsx(
+        "button",
+        {
+          onClick: goBack,
+          disabled: !canGoBack,
+          className: "p-2 rounded-lg hover:bg-accent disabled:opacity-30 disabled:cursor-not-allowed transition-colors",
+          title: "Go Back (Ctrl + Left Arrow)",
+          children: /* @__PURE__ */ jsxRuntimeExports.jsx(ChevronLeft, { size: 20 })
+        }
+      ) }),
+      /* @__PURE__ */ jsxRuntimeExports.jsx(TooltipContent, { side: "bottom", children: "Go Back (Ctrl + ←)" })
+    ] }),
+    /* @__PURE__ */ jsxRuntimeExports.jsxs(Tooltip, { children: [
+      /* @__PURE__ */ jsxRuntimeExports.jsx(TooltipTrigger, { asChild: true, children: /* @__PURE__ */ jsxRuntimeExports.jsx(
+        "button",
+        {
+          onClick: goForward,
+          disabled: !canGoForward,
+          className: "p-2 rounded-lg hover:bg-accent disabled:opacity-30 disabled:cursor-not-allowed transition-colors",
+          title: "Go Forward (Ctrl + Right Arrow)",
+          children: /* @__PURE__ */ jsxRuntimeExports.jsx(ChevronRight, { size: 20 })
+        }
+      ) }),
+      /* @__PURE__ */ jsxRuntimeExports.jsx(TooltipContent, { side: "bottom", children: "Go Forward (Ctrl + →)" })
+    ] })
+  ] });
 }
 function NavLink({ to, icon: Icon2, children: children2 }) {
   const location = useLocation();
@@ -145186,6 +147958,28 @@ function AppShell() {
   const [currentProfile, setCurrentProfile] = reactExports.useState("public");
   const [showPrivateSetup, setShowPrivateSetup] = reactExports.useState(false);
   const [showPrivateAuth, setShowPrivateAuth] = reactExports.useState(false);
+  reactExports.useEffect(() => {
+    if (currentProfile !== "private") return;
+    let lastActivityTime = Date.now();
+    const MIN_INTERVAL = 3e4;
+    const trackActivity = () => {
+      const now2 = Date.now();
+      if (now2 - lastActivityTime > MIN_INTERVAL) {
+        lastActivityTime = now2;
+        if (window.api.profile?.activity) {
+          window.api.profile.activity().catch(console.error);
+        }
+      }
+    };
+    window.addEventListener("mousemove", trackActivity, { passive: true });
+    window.addEventListener("keydown", trackActivity, { passive: true });
+    window.addEventListener("click", trackActivity, { passive: true });
+    return () => {
+      window.removeEventListener("mousemove", trackActivity);
+      window.removeEventListener("keydown", trackActivity);
+      window.removeEventListener("click", trackActivity);
+    };
+  }, [currentProfile]);
   reactExports.useEffect(() => {
     if (!window.api.ipcRenderer || !window.api.profile) return;
     window.api.profile.getCurrent().then((cp) => setCurrentProfile(cp));
@@ -145350,7 +148144,7 @@ function AppShell() {
     ] }),
     /* @__PURE__ */ jsxRuntimeExports.jsxs("div", { className: "flex-1 flex flex-col bg-background relative", children: [
       /* @__PURE__ */ jsxRuntimeExports.jsxs("header", { className: "h-16 border-b border-border bg-card/50 backdrop-blur-sm flex items-center justify-between px-6 z-50", children: [
-        /* @__PURE__ */ jsxRuntimeExports.jsx("div", { className: "text-sm text-muted-foreground font-medium", children: "Local Mode" }),
+        /* @__PURE__ */ jsxRuntimeExports.jsx(NavigationButtons, {}),
         /* @__PURE__ */ jsxRuntimeExports.jsxs("div", { className: "flex items-center gap-4", children: [
           /* @__PURE__ */ jsxRuntimeExports.jsx(NotificationDropdown, { devModeEnabled }),
           /* @__PURE__ */ jsxRuntimeExports.jsxs(Tooltip, { children: [

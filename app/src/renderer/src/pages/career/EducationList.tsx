@@ -1,6 +1,7 @@
 import { useState, useEffect, useRef } from 'react'
+import { createPortal } from 'react-dom'
 import { useLocation } from 'react-router-dom'
-import { GraduationCap, Plus, Trash2, Edit2, X, Upload, FileText } from 'lucide-react'
+import { GraduationCap, Plus, Trash2, Edit2, X, Upload, FileText, Eye, PlayCircle, ExternalLink } from 'lucide-react'
 import { NotificationEngine } from '../../lib/NotificationEngine'
 import { EducationRecord } from '../../types'
 import { normalizeUrl } from '../../lib/utils'
@@ -10,12 +11,63 @@ export default function EducationList() {
   const [loading, setLoading] = useState(true)
   const [isAdding, setIsAdding] = useState(false)
   const [editingId, setEditingId] = useState<string | null>(null)
+
+  const [viewingEducation, setViewingEducation] = useState<EducationRecord | null>(null)
+  const [slideshowActive, setSlideshowActive] = useState(false)
+  const [slideIndex, setSlideIndex] = useState(0)
+  const [isSlideshowPaused, setIsSlideshowPaused] = useState(false)
+
   const [isDragging, setIsDragging] = useState(false)
   const [dragStartY, setDragStartY] = useState(0)
   const [scrollTop, setScrollTop] = useState(0)
   const [showSuccessOverlay, setShowSuccessOverlay] = useState(false)
   const scrollContainerRef = useRef<HTMLDivElement>(null)
   
+  // Auto-advance slideshow
+  useEffect(() => {
+    let interval: any
+    const allMedia = viewingEducation?.photos || []
+    if (slideshowActive && allMedia.length > 0 && !isSlideshowPaused) {
+      interval = setInterval(() => {
+        setSlideIndex((prev) => (prev + 1) % allMedia.length)
+      }, 3000)
+    }
+    return () => clearInterval(interval)
+  }, [slideshowActive, viewingEducation, isSlideshowPaused])
+
+  // Escape key to close and space key to pause slideshow
+  useEffect(() => {
+    const handleKeyDown = (e: KeyboardEvent) => {
+      if (!slideshowActive) return
+
+      const tag = document.activeElement?.tagName.toLowerCase()
+      const isInput = tag === 'input' || tag === 'textarea' || document.activeElement?.getAttribute('contenteditable') === 'true'
+      if (isInput) return
+
+      if (e.key === 'Escape') {
+        setSlideshowActive(false)
+      }
+
+      if (e.key === ' ') {
+        e.preventDefault()
+        setIsSlideshowPaused(true)
+      }
+    }
+
+    const handleKeyUp = (e: KeyboardEvent) => {
+      if (e.key === ' ' && slideshowActive) {
+        setIsSlideshowPaused(false)
+      }
+    }
+
+    window.addEventListener('keydown', handleKeyDown)
+    window.addEventListener('keyup', handleKeyUp)
+    return () => {
+      window.removeEventListener('keydown', handleKeyDown)
+      window.removeEventListener('keyup', handleKeyUp)
+    }
+  }, [slideshowActive])
+
   const defaultForm: Partial<EducationRecord> = {
     school: '', degree: '', field: '', startDate: '', endDate: '', status: 'Current', grade: '', description: '', subjects: [], activities: [], achievements: [], attachments: [], photos: []
   }
@@ -70,6 +122,19 @@ export default function EducationList() {
       loadData()
     } catch (err) { console.error(err) }
   }
+
+  useEffect(() => {
+    const down = (e: KeyboardEvent) => {
+      if (e.ctrlKey && e.key.toLowerCase() === 's') {
+        if (isAdding) {
+          e.preventDefault()
+          handleSave()
+        }
+      }
+    }
+    window.addEventListener('keydown', down)
+    return () => window.removeEventListener('keydown', down)
+  }, [isAdding, form, editingId])
 
   const handleDelete = async (id: string, title: string) => {
     if (!confirm('Delete this record?')) return
@@ -268,6 +333,7 @@ export default function EducationList() {
         {education.map(record => (
           <div key={record._id} id={`education-${record._id}`} className="bg-card border border-border p-6 rounded-2xl shadow-sm relative group hover:border-primary/50 transition-all duration-1000">
             <div className="absolute top-6 right-6 opacity-0 group-hover:opacity-100 transition-opacity flex items-center gap-2">
+              <button onClick={() => setViewingEducation(record)} className="p-2 bg-background border border-border rounded-md hover:bg-accent text-foreground" title="View Details"><Eye size={16}/></button>
               <button onClick={() => openEdit(record)} className="p-2 bg-background border border-border rounded-md hover:bg-accent"><Edit2 size={16}/></button>
               <button onClick={() => handleDelete(record._id!, record.degree || record.school)} className="p-2 bg-background border border-border text-destructive rounded-md hover:bg-destructive/10"><Trash2 size={16}/></button>
             </div>
@@ -277,7 +343,7 @@ export default function EducationList() {
                 <GraduationCap size={24}/>
               </div>
               <div>
-                <h3 className="text-xl font-bold">{record.school}</h3>
+                <h3 onClick={() => setViewingEducation(record)} className="text-xl font-bold cursor-pointer hover:text-primary transition-colors decoration-primary/30 hover:underline underline-offset-4">{record.school}</h3>
                 <p className="text-lg text-muted-foreground">{record.degree} in {record.field}</p>
               </div>
             </div>
@@ -304,9 +370,9 @@ export default function EducationList() {
             {((record.photos && record.photos.length > 0) || (record.attachments && record.attachments.length > 0)) && (
               <div className="mt-6 pt-6 border-t border-border space-y-4">
                 {record.photos && record.photos.length > 0 && (
-                  <div className="flex gap-2 overflow-x-auto pb-2 scrollbar-none">
+                  <div className="flex gap-2 overflow-x-auto pb-2 scrollbar-custom">
                     {record.photos.map(img => (
-                      <img key={img} src={normalizeUrl(img)} alt="Education" className="h-24 w-36 object-cover rounded-md border border-border shrink-0 hover:scale-105 transition-transform" />
+                      <img key={img} src={normalizeUrl(img)} alt="Education" className="h-24 w-36 object-cover rounded-md border border-border shrink-0 hover:scale-105 transition-transform cursor-pointer" onClick={() => setViewingEducation(record)} />
                     ))}
                   </div>
                 )}
@@ -331,6 +397,182 @@ export default function EducationList() {
         )}
       </div>
       </div>
+
+      {/* Education Details Modal */}
+      {viewingEducation && (
+        <div className="fixed inset-0 z-[100] flex items-center justify-center p-4 sm:p-6 md:p-12">
+          <div className="absolute inset-0 bg-background/80 backdrop-blur-sm animate-in fade-in duration-200" onClick={() => setViewingEducation(null)}></div>
+          <div className="relative bg-card border border-border w-full max-w-4xl max-h-full rounded-2xl shadow-2xl flex flex-col overflow-hidden animate-in zoom-in-95 duration-200">
+            {viewingEducation.photos && viewingEducation.photos.length > 0 && (
+              <div 
+                className="h-64 w-full border-b border-border bg-accent/30 shrink-0 cursor-pointer group relative"
+                onClick={() => { setSlideIndex(0); setSlideshowActive(true); }}
+              >
+                <img src={normalizeUrl(viewingEducation.photos[0])} alt={viewingEducation.school} className="w-full h-full object-cover group-hover:scale-[1.02] transition-transform duration-700" />
+                <div className="absolute inset-0 bg-black/0 group-hover:bg-black/10 transition-colors flex items-center justify-center opacity-0 group-hover:opacity-100">
+                  <PlayCircle size={48} className="text-white/80 drop-shadow-lg" />
+                </div>
+              </div>
+            )}
+            
+            <button onClick={() => setViewingEducation(null)} className="absolute top-4 right-4 p-2 bg-background/50 backdrop-blur rounded-full hover:bg-background/80 transition-colors z-10 text-foreground border border-border">
+              <X size={20} />
+            </button>
+
+            <div 
+              className={`p-6 md:p-10 overflow-y-auto scrollbar-thin ${isDragging ? 'cursor-grabbing' : 'cursor-grab'}`}
+              ref={(el) => {
+                if (el && !el.onmousedown) {
+                  let isDown = false;
+                  let startY = 0;
+                  let scrollTop = 0;
+                  
+                  el.onmousedown = (e) => {
+                    isDown = true;
+                    startY = e.pageY - el.offsetTop;
+                    scrollTop = el.scrollTop;
+                    el.classList.add('cursor-grabbing');
+                    el.classList.remove('cursor-grab');
+                  };
+                  el.onmouseleave = () => {
+                    isDown = false;
+                    el.classList.remove('cursor-grabbing');
+                    el.classList.add('cursor-grab');
+                  };
+                  el.onmouseup = () => {
+                    isDown = false;
+                    el.classList.remove('cursor-grabbing');
+                    el.classList.add('cursor-grab');
+                  };
+                  el.onmousemove = (e) => {
+                    if (!isDown) return;
+                    e.preventDefault();
+                    const y = e.pageY - el.offsetTop;
+                    const walk = (y - startY) * 1.5;
+                    el.scrollTop = scrollTop - walk;
+                  };
+                }
+              }}
+            >
+              <div className="flex justify-between items-start mb-4 pr-12">
+                <div className="flex items-center gap-4">
+                  <div className="w-14 h-14 bg-primary/10 text-primary rounded-xl flex items-center justify-center shrink-0 hidden sm:flex">
+                    <GraduationCap size={28}/>
+                  </div>
+                  <div>
+                    <h2 className="text-3xl font-extrabold">{viewingEducation.school}</h2>
+                    <p className="text-xl text-muted-foreground font-medium mt-1">{viewingEducation.degree} in {viewingEducation.field}</p>
+                  </div>
+                </div>
+                <div className="flex items-center gap-3">
+                  {viewingEducation.photos && viewingEducation.photos.length > 0 && (
+                    <button onClick={() => { setSlideIndex(0); setSlideshowActive(true) }} className="px-4 py-2 bg-primary text-primary-foreground font-bold rounded-xl hover:scale-105 transition-transform flex items-center gap-2 shadow-lg shadow-primary/20 hidden sm:flex">
+                      <PlayCircle size={18} /> Slideshow
+                    </button>
+                  )}
+                </div>
+              </div>
+
+              <div className="grid grid-cols-2 md:grid-cols-4 gap-4 mb-8 text-sm bg-accent/30 p-5 rounded-2xl border border-border">
+                <div>
+                  <span className="text-muted-foreground block text-xs uppercase tracking-wider mb-1">Status</span>
+                  <span className={`font-bold px-3 py-1 rounded-md inline-block ${viewingEducation.status==='Current'?'bg-green-500/10 text-green-500':viewingEducation.status==='Graduated'?'bg-blue-500/10 text-blue-500':'bg-red-500/10 text-red-500'}`}>{viewingEducation.status}</span>
+                </div>
+                <div>
+                  <span className="text-muted-foreground block text-xs uppercase tracking-wider mb-1">Duration</span>
+                  <span className="font-bold text-lg">{viewingEducation.startDate ? new Date(viewingEducation.startDate).getFullYear() : ''} - {viewingEducation.endDate ? new Date(viewingEducation.endDate).getFullYear() : 'Present'}</span>
+                </div>
+                {viewingEducation.grade && (
+                  <div>
+                    <span className="text-muted-foreground block text-xs uppercase tracking-wider mb-1">Grade/GPA</span>
+                    <span className="font-bold text-lg">{viewingEducation.grade}</span>
+                  </div>
+                )}
+              </div>
+
+              <div className="mb-8">
+                <h4 className="text-sm font-bold text-muted-foreground uppercase tracking-wider mb-3">About this education</h4>
+                <div className="prose prose-sm dark:prose-invert max-w-none prose-p:leading-relaxed prose-a:text-primary hover:prose-a:text-primary/80 whitespace-pre-wrap">
+                  {viewingEducation.description || <span className="text-muted-foreground italic">No description provided.</span>}
+                </div>
+              </div>
+
+              {viewingEducation.subjects && viewingEducation.subjects.length > 0 && (
+                <div className="mb-8">
+                  <h4 className="text-sm font-bold text-muted-foreground uppercase tracking-wider mb-3">Subjects</h4>
+                  <div className="flex flex-wrap gap-2">
+                    {viewingEducation.subjects.map((subj, i) => (
+                      <span key={i} className="bg-primary/10 text-primary px-3 py-1 rounded-md border border-primary/20 text-sm font-bold shadow-sm">{subj}</span>
+                    ))}
+                  </div>
+                </div>
+              )}
+
+              {viewingEducation.photos && viewingEducation.photos.length > 0 && (
+                <div className="mb-8">
+                  <h4 className="text-sm font-bold text-muted-foreground uppercase tracking-wider mb-3">Gallery</h4>
+                  <div className="grid grid-cols-2 md:grid-cols-3 gap-4">
+                    {viewingEducation.photos.map((img, i) => (
+                      <div 
+                        key={i} 
+                        className="aspect-video rounded-xl overflow-hidden border border-border shadow-sm group relative cursor-pointer"
+                        onClick={() => { setSlideIndex(i); setSlideshowActive(true); }}
+                      >
+                        <img src={normalizeUrl(img)} alt={`Photo ${i + 1}`} className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-500" />
+                        <div className="absolute inset-0 bg-black/0 group-hover:bg-black/20 transition-colors flex items-center justify-center opacity-0 group-hover:opacity-100">
+                          <Eye size={32} className="text-white drop-shadow-md" />
+                        </div>
+                      </div>
+                    ))}
+                  </div>
+                </div>
+              )}
+
+              {viewingEducation.attachments && viewingEducation.attachments.length > 0 && (
+                <div className="mb-8">
+                  <h4 className="text-sm font-bold text-muted-foreground uppercase tracking-wider mb-3">Attachments</h4>
+                  <div className="flex flex-wrap gap-2">
+                    {viewingEducation.attachments.map((att, i) => (
+                      <a key={i} href={normalizeUrl(att)} target="_blank" rel="noreferrer" className="flex items-center gap-2 px-4 py-2 rounded-xl bg-accent hover:bg-primary/10 hover:text-primary font-medium transition-colors border border-border shadow-sm">
+                        <FileText size={18} /> {att ? att.split(/[\\/]/).pop() : 'Attachment'}
+                      </a>
+                    ))}
+                  </div>
+                </div>
+              )}
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Slideshow Overlay */}
+      {slideshowActive && viewingEducation && viewingEducation.photos && viewingEducation.photos.length > 0 && createPortal(
+        <div
+          className="fixed inset-0 bg-black z-[9999] flex flex-col items-center justify-center animate-in fade-in duration-1000"
+          onMouseDown={() => setIsSlideshowPaused(true)}
+          onMouseUp={() => setIsSlideshowPaused(false)}
+          onMouseLeave={() => setIsSlideshowPaused(false)}
+        >
+          <button onClick={() => setSlideshowActive(false)} className="absolute top-6 right-6 p-3 bg-white/10 hover:bg-white/30 text-white rounded-full backdrop-blur-sm transition-colors z-10">
+            <X size={32} />
+          </button>
+          <div className="absolute top-6 left-6 text-white text-xl font-black drop-shadow-md z-10 opacity-70">
+            {slideIndex + 1} / {viewingEducation.photos.length}
+          </div>
+
+          <div className="w-full h-full flex items-center justify-center relative p-12">
+            <img 
+              key={viewingEducation.photos[slideIndex]} 
+              src={normalizeUrl(viewingEducation.photos[slideIndex])} 
+              className="max-w-full max-h-full object-contain shadow-2xl rounded-lg animate-in zoom-in-95 duration-700" 
+            />
+            <div className="absolute bottom-12 left-1/2 -translate-x-1/2 bg-black/50 backdrop-blur-md px-6 py-3 rounded-full text-white text-lg font-medium shadow-2xl">
+              {viewingEducation.school}
+            </div>
+          </div>
+        </div>,
+        document.body
+      )}
 
       {/* 3D Success Overlay */}
       {showSuccessOverlay && (

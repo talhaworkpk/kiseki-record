@@ -12,11 +12,15 @@ export function setupVaultHandlers() {
       const zip = new JSZip()
       
       // Add DB files
-      const dbFiles = ['records.db', 'goals.db', 'habits.db', 'relationships.db', 'journal.db']
-      for (const file of dbFiles) {
-        const filePath = path.join(dataPath, file)
-        if (fs.existsSync(filePath)) {
-          zip.file(`data/${file}`, fs.readFileSync(filePath))
+      if (fs.existsSync(dataPath)) {
+        const files = fs.readdirSync(dataPath)
+        for (const file of files) {
+          if (file.endsWith('.db')) {
+            const filePath = path.join(dataPath, file)
+            if (fs.statSync(filePath).isFile()) {
+              zip.file(`data/${file}`, fs.readFileSync(filePath))
+            }
+          }
         }
       }
 
@@ -38,8 +42,6 @@ export function setupVaultHandlers() {
         zip.file('config.json', fs.readFileSync(settingsPath))
       }
 
-      const content = await zip.generateAsync({ type: 'nodebuffer' })
-      
       const backupsDir = path.join(userDataPath, 'backups')
       if (!fs.existsSync(backupsDir)) {
         fs.mkdirSync(backupsDir, { recursive: true })
@@ -48,8 +50,16 @@ export function setupVaultHandlers() {
       const timestamp = new Date().toISOString().replace(/[:.]/g, '-')
       const filePath = path.join(backupsDir, `kiseki_backup_${timestamp}.kvault`)
       
-      fs.writeFileSync(filePath, content)
-      return { success: true, filePath }
+      return new Promise((resolve) => {
+        zip
+          .generateNodeStream({ type: 'nodebuffer', streamFiles: true, compression: 'DEFLATE' })
+          .pipe(fs.createWriteStream(filePath))
+          .on('finish', () => resolve({ success: true, filePath }))
+          .on('error', (err: any) => {
+            console.error(err)
+            resolve({ success: false, error: err.message })
+          })
+      })
     } catch (err: any) {
       console.error(err)
       return { success: false, error: err.message }
@@ -101,7 +111,8 @@ export function setupVaultHandlers() {
                 const patchLine = (line: string) => {
                   try {
                     const obj = JSON.parse(line)
-                    if (obj && !obj.$$indexCreated && obj.profile === undefined) {
+                    if (obj && !obj.$$indexCreated) {
+                      // Force everything imported to go into the private profile
                       obj.profile = 'private'
                     }
                     return JSON.stringify(obj)

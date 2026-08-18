@@ -1,16 +1,20 @@
 import { useState, useEffect, useRef } from 'react'
-import { Target, Plus, Trash2, Edit2, X, ChevronDown, Search, ArrowDownUp, CheckSquare, Square, Star, Archive as ArchiveIcon, ArchiveRestore } from 'lucide-react'
-import { Goal } from '../../types'
+import { Target, Plus, Trash2, Edit2, X, ChevronDown, ChevronUp, Search, ArrowDownUp, CheckSquare, Square, Star, Archive as ArchiveIcon, ArchiveRestore, ListTodo, CheckCircle2, LayoutGrid, List, Download, Upload, MoreVertical } from 'lucide-react'
+import { Goal, SubGoal, ProjectRecord } from '../../types'
 import GoalsStatistics from '../../components/career/GoalsStatistics'
 import { NotificationEngine } from '../../lib/NotificationEngine'
 import { ShootingStars } from '../../components/ShootingStars'
+import { Tooltip, TooltipContent, TooltipTrigger } from '../../components/ui/tooltip'
 
 export default function Goals() {
   const [goals, setGoals] = useState<Goal[]>([])
+  const [projects, setProjects] = useState<ProjectRecord[]>([])
+  const [selectedProjectId, setSelectedProjectId] = useState<string | null>('all_goals')
   const [isAdding, setIsAdding] = useState(false)
   const [editingId, setEditingId] = useState<string | null>(null)
   const [showCelebration, setShowCelebration] = useState(false)
   const [expandedNotesId, setExpandedNotesId] = useState<string | null>(null)
+  const [expandedSubGoalsId, setExpandedSubGoalsId] = useState<string | null>(null)
   const [isDragging, setIsDragging] = useState(false)
   const [dragStartY, setDragStartY] = useState(0)
   const [scrollTop, setScrollTop] = useState(0)
@@ -21,9 +25,14 @@ export default function Goals() {
   const [sortBy, setSortBy] = useState('newest')
   const [isSelectionMode, setIsSelectionMode] = useState(false)
   const [selectedIds, setSelectedIds] = useState<Set<string>>(new Set())
+  const [viewMode, setViewMode] = useState<'list' | 'grid'>('grid')
+  const [isMenuOpen, setIsMenuOpen] = useState(false)
+  const [importConflicts, setImportConflicts] = useState<{imported: Goal, existing: Goal}[]>([])
+  const [currentConflictIndex, setCurrentConflictIndex] = useState(0)
+  const [pendingImports, setPendingImports] = useState<{toInsert: Goal[], toReplace: Goal[]}>({ toInsert: [], toReplace: [] })
 
   const [form, setForm] = useState<Partial<Goal>>({
-    title: '', description: '', category: 'Career', priority: 'medium', startDate: new Date().toISOString().split('T')[0], targetDate: '', progress: 0, status: 'Active', notes: ''
+    title: '', description: '', category: 'Career', priority: 'medium', startDate: new Date().toISOString().split('T')[0], targetDate: '', progress: 0, status: 'Active', notes: '', subGoals: []
   })
   const [currentBackground, setCurrentBackground] = useState('Default')
   const [transitionStage, setTransitionStage] = useState('idle')
@@ -75,9 +84,12 @@ export default function Goals() {
 
   // Handle progress change with auto-status update
   const handleProgressChange = (value: number) => {
+    if (form.subGoals && form.subGoals.length > 0) return; // Prevent manual change if subgoals exist
     setForm({...form, progress: value})
-    if (value === 100) {
+    if (value === 100 && form.status !== 'Completed') {
       setForm(prev => ({...prev, status: 'Completed'}))
+    } else if (value < 100 && form.status === 'Completed') {
+      setForm(prev => ({...prev, status: 'Active'}))
     }
   }
 
@@ -85,9 +97,30 @@ export default function Goals() {
   const handleStatusChange = (value: string) => {
     setForm({...form, status: value as any})
     if (value === 'Completed') {
-      setForm(prev => ({...prev, progress: 100}))
+      if (!form.subGoals || form.subGoals.length === 0) {
+        setForm(prev => ({...prev, progress: 100}))
+      }
     }
   }
+
+  const updateSubGoals = (newSubGoals: SubGoal[]) => {
+    if (newSubGoals.length === 0) {
+      setForm(prev => ({ ...prev, subGoals: newSubGoals }))
+      return;
+    }
+    
+    const completedCount = newSubGoals.filter(sg => sg.completed).length;
+    const progress = Math.round((completedCount / newSubGoals.length) * 100);
+    
+    setForm(prev => {
+      const newStatus = progress === 100 ? 'Completed' : (prev.status === 'Completed' ? 'Active' : prev.status);
+      return { ...prev, subGoals: newSubGoals, progress, status: newStatus as any };
+    });
+  }
+
+  const [subGoalForm, setSubGoalForm] = useState<Partial<SubGoal>>({ title: '', description: '', completed: false })
+  const [isAddingSubGoal, setIsAddingSubGoal] = useState(false)
+  const [editingSubGoalId, setEditingSubGoalId] = useState<string | null>(null)
 
   const loadData = async () => {
     try {
@@ -95,12 +128,154 @@ export default function Goals() {
       const data = await window.api.db.find('goals', {})
       const careerGoals = data.filter((g: any) => ['Career', 'Education', 'Professional'].includes(g.category))
       setGoals(careerGoals)
+
+      // @ts-ignore
+      const projData = await window.api.db.find('projects', {})
+      setProjects(projData)
     } catch (err) { console.error(err) }
   }
 
   useEffect(() => { loadData() }, [])
 
-  const filteredGoals = goals.filter(g => {
+  const handleExportSelected = () => {
+    const dataToExport = goals.filter(g => selectedIds.has(g._id!))
+    const dataStr = "data:text/json;charset=utf-8," + encodeURIComponent(JSON.stringify(dataToExport, null, 2))
+    const downloadAnchorNode = document.createElement('a')
+    downloadAnchorNode.setAttribute("href", dataStr)
+    downloadAnchorNode.setAttribute("download", "selected_goals.json")
+    document.body.appendChild(downloadAnchorNode)
+    downloadAnchorNode.click()
+    downloadAnchorNode.remove()
+    setIsSelectionMode(false)
+    setSelectedIds(new Set())
+  }
+
+  const handleExportAll = () => {
+    const dataStr = "data:text/json;charset=utf-8," + encodeURIComponent(JSON.stringify(goals, null, 2))
+    const downloadAnchorNode = document.createElement('a')
+    downloadAnchorNode.setAttribute("href", dataStr)
+    downloadAnchorNode.setAttribute("download", "all_goals.json")
+    document.body.appendChild(downloadAnchorNode)
+    downloadAnchorNode.click()
+    downloadAnchorNode.remove()
+    setIsMenuOpen(false)
+  }
+
+  const executeImports = async (toInsert: Goal[], toReplace: Goal[]) => {
+    try {
+      for (const goal of toInsert) {
+        const { _id, ...goalData } = goal
+        // @ts-ignore
+        await window.api.db.insert('goals', goalData)
+      }
+      for (const goal of toReplace) {
+        const { _id, ...goalData } = goal
+        // @ts-ignore
+        await window.api.db.update('goals', { _id }, { $set: goalData }, {})
+      }
+      loadData()
+      NotificationEngine.notify('success', 'Import Complete', `Imported ${toInsert.length + toReplace.length} goals.`, 'Goals')
+    } catch (err) {
+      console.error("Error executing imports", err)
+    }
+  }
+
+  const processConflict = async (action: 'replace' | 'skip' | 'replace_all' | 'skip_all') => {
+    let { toInsert, toReplace } = pendingImports
+    const remainingConflicts = importConflicts.slice(currentConflictIndex)
+    
+    if (action === 'replace_all') {
+      remainingConflicts.forEach(c => toReplace.push({...c.imported, _id: c.existing._id}))
+      setImportConflicts([])
+    } else if (action === 'skip_all') {
+      setImportConflicts([])
+    } else if (action === 'replace') {
+      const current = importConflicts[currentConflictIndex]
+      toReplace.push({...current.imported, _id: current.existing._id})
+      if (currentConflictIndex + 1 < importConflicts.length) {
+        setCurrentConflictIndex(currentConflictIndex + 1)
+        setPendingImports({ toInsert, toReplace })
+        return
+      } else {
+        setImportConflicts([])
+      }
+    } else if (action === 'skip') {
+      if (currentConflictIndex + 1 < importConflicts.length) {
+        setCurrentConflictIndex(currentConflictIndex + 1)
+        return
+      } else {
+        setImportConflicts([])
+      }
+    }
+
+    await executeImports(toInsert, toReplace)
+  }
+
+  const handleImport = () => {
+    const input = document.createElement('input')
+    input.type = 'file'
+    input.accept = '.json'
+    input.onchange = async (e: any) => {
+      const file = e.target.files[0]
+      if (!file) return
+      const reader = new FileReader()
+      reader.onload = async (event) => {
+        try {
+          const importedGoals = JSON.parse(event.target?.result as string)
+          if (Array.isArray(importedGoals)) {
+            const toInsert: Goal[] = []
+            const toReplace: Goal[] = []
+            const conflicts: {imported: Goal, existing: Goal}[] = []
+
+            for (const importedGoal of importedGoals) {
+              let existingGoal = goals.find(g => g._id === importedGoal._id)
+              if (!existingGoal) existingGoal = goals.find(g => g.title === importedGoal.title)
+
+              if (!existingGoal) {
+                toInsert.push(importedGoal)
+              } else {
+                const importedTime = importedGoal.updatedAt || importedGoal.createdAt || 0
+                const existingTime = existingGoal.updatedAt || existingGoal.createdAt || 0
+                
+                if (importedTime > existingTime) {
+                  toReplace.push({...importedGoal, _id: existingGoal._id})
+                } else if (importedTime < existingTime) {
+                  conflicts.push({ imported: importedGoal, existing: existingGoal })
+                } else if (importedTime === 0 && existingTime === 0) {
+                  // Both are legacy goals without timestamps. We don't know which is newer, so ask the user.
+                  conflicts.push({ imported: importedGoal, existing: existingGoal })
+                }
+                // If importedTime === existingTime && importedTime > 0, they are the exact same version, so we silently skip.
+              }
+            }
+
+            if (conflicts.length > 0) {
+              setPendingImports({ toInsert, toReplace })
+              setImportConflicts(conflicts)
+              setCurrentConflictIndex(0)
+              setIsMenuOpen(false)
+            } else {
+              await executeImports(toInsert, toReplace)
+            }
+          }
+        } catch (error) {
+          console.error("Error importing goals", error)
+        }
+      }
+      reader.readAsText(file)
+    }
+    input.click()
+    setIsMenuOpen(false)
+  }
+
+  const projectGoals = goals.filter(g => {
+    if (selectedProjectId === 'all_goals') return true;
+    if (selectedProjectId === 'all') return !!g.projectId;
+    if (selectedProjectId === 'none') return !g.projectId;
+    return g.projectId === selectedProjectId;
+  });
+
+  const filteredGoals = projectGoals.filter(g => {
     if (filters.status !== 'all' && g.status !== filters.status) return false
     if (filters.isFavorite && !g.isFavorite) return false
     if (filters.isArchived && !g.isArchived) return false
@@ -131,7 +306,7 @@ export default function Goals() {
                            : action === 'archive' ? { isArchived: true }
                            : { isArchived: false }
           // @ts-ignore
-          await window.api.db.update('goals', { _id: id }, { $set: updateData }, {})
+          await window.api.db.update('goals', { _id: id }, { $set: { ...updateData, updatedAt: Date.now() } }, {})
         }
       }
       setSelectedIds(new Set())
@@ -143,7 +318,7 @@ export default function Goals() {
   const toggleFavorite = async (id: string, current: boolean) => {
     try {
       // @ts-ignore
-      await window.api.db.update('goals', { _id: id }, { $set: { isFavorite: !current } }, {})
+      await window.api.db.update('goals', { _id: id }, { $set: { isFavorite: !current, updatedAt: Date.now() } }, {})
       loadData()
     } catch (err) { console.error(err) }
   }
@@ -151,7 +326,7 @@ export default function Goals() {
   const toggleArchive = async (id: string, current: boolean) => {
     try {
       // @ts-ignore
-      await window.api.db.update('goals', { _id: id }, { $set: { isArchived: !current } }, {})
+      await window.api.db.update('goals', { _id: id }, { $set: { isArchived: !current, updatedAt: Date.now() } }, {})
       loadData()
     } catch (err) { console.error(err) }
   }
@@ -187,13 +362,14 @@ export default function Goals() {
 
   const handleSave = async () => {
     try {
+      const now = Date.now()
       if (editingId) {
         // @ts-ignore
-        await window.api.db.update('goals', { _id: editingId }, { $set: { ...form } }, {})
+        await window.api.db.update('goals', { _id: editingId }, { $set: { ...form, updatedAt: now } }, {})
         NotificationEngine.notify('info', 'Goal Updated', `"${form.title}" was updated.`, 'Goals')
       } else {
         // @ts-ignore
-        await window.api.db.insert('goals', { ...form, category: 'Career' })
+        await window.api.db.insert('goals', { ...form, category: 'Career', createdAt: now, updatedAt: now })
         NotificationEngine.notify('success', 'Goal Created', `"${form.title}" was saved.`, 'Goals')
       }
 
@@ -209,6 +385,19 @@ export default function Goals() {
       loadData()
     } catch (err) { console.error(err) }
   }
+
+  useEffect(() => {
+    const down = (e: KeyboardEvent) => {
+      if (e.ctrlKey && e.key.toLowerCase() === 's') {
+        if (isAdding) {
+          e.preventDefault()
+          handleSave()
+        }
+      }
+    }
+    window.addEventListener('keydown', down)
+    return () => window.removeEventListener('keydown', down)
+  }, [isAdding, form, editingId])
 
   const handleDelete = async (id: string) => {
     if (confirm('Delete this goal?')) {
@@ -1100,6 +1289,18 @@ export default function Goals() {
               className="pl-9 pr-4 py-1.5 w-64 text-sm rounded-xl border border-border bg-background focus:ring-2 focus:ring-red-500 outline-none transition-shadow"
             />
           </div>
+          
+          <div className="flex border border-border rounded-xl bg-background overflow-hidden" title="Filter goals by project">
+            <div className="flex items-center px-2 border-r border-border bg-accent/30"><LayoutGrid size={14} className="text-muted-foreground"/></div>
+            <select value={selectedProjectId || 'all_goals'} onChange={e=>setSelectedProjectId(e.target.value)} className="bg-transparent text-sm font-medium px-2 py-1 outline-none cursor-pointer max-w-[150px] truncate">
+              <option value="all_goals">All Goals</option>
+              <option value="none">No Project</option>
+              <option value="all">All Projects</option>
+              {projects.map(p => (
+                <option key={p._id} value={p._id}>{p.title}</option>
+              ))}
+            </select>
+          </div>
         </div>
 
         <div className="flex items-center gap-3">
@@ -1113,6 +1314,23 @@ export default function Goals() {
             </select>
           </div>
           
+          <div className="flex bg-accent/50 p-1 rounded-full border border-border items-center">
+            <button 
+              onClick={() => setViewMode('grid')}
+              className={`p-1.5 rounded-full transition-all ${viewMode === 'grid' ? 'bg-blue-100 text-blue-600 shadow-sm dark:bg-blue-500/20 dark:text-blue-400' : 'text-muted-foreground hover:text-foreground'}`}
+              title="Grid View"
+            >
+              <LayoutGrid size={16} />
+            </button>
+            <button 
+              onClick={() => setViewMode('list')}
+              className={`p-1.5 rounded-full transition-all ${viewMode === 'list' ? 'bg-blue-100 text-blue-600 shadow-sm dark:bg-blue-500/20 dark:text-blue-400' : 'text-muted-foreground hover:text-foreground'}`}
+              title="List View"
+            >
+              <List size={16} />
+            </button>
+          </div>
+
           <button 
             onClick={() => setIsSelectionMode(!isSelectionMode)}
             className={`flex items-center gap-2 px-3 py-1.5 rounded-xl text-sm font-bold transition-colors ${isSelectionMode ? 'bg-red-500 text-white shadow-md' : 'bg-background border border-border hover:bg-accent text-foreground'}`}
@@ -1126,6 +1344,30 @@ export default function Goals() {
               <Plus size={16}/> New Goal
             </button>
           )}
+
+          <div className="relative">
+            <button 
+              onClick={() => setIsMenuOpen(!isMenuOpen)}
+              className="p-1.5 rounded-xl transition-colors hover:bg-accent text-muted-foreground"
+            >
+              <MoreVertical size={18} />
+            </button>
+            {isMenuOpen && (
+              <>
+                <div className="fixed inset-0 z-40" onClick={() => setIsMenuOpen(false)}></div>
+                <div className="absolute right-0 top-full mt-2 w-56 bg-card border border-border rounded-xl shadow-lg z-50 p-2 overflow-hidden animate-in slide-in-from-top-2">
+                  <div className="space-y-1">
+                    <button onClick={handleImport} className="w-full text-left px-3 py-2.5 bg-background hover:bg-accent border border-border rounded-lg flex items-center gap-2.5 text-sm font-bold transition-colors">
+                      <Upload size={16} className="text-blue-500" /> Import Goals
+                    </button>
+                    <button onClick={handleExportAll} className="w-full text-left px-3 py-2.5 bg-background hover:bg-accent border border-border rounded-lg flex items-center gap-2.5 text-sm font-bold transition-colors">
+                      <Download size={16} className="text-green-500" /> Export All Goals
+                    </button>
+                  </div>
+                </div>
+              </>
+            )}
+          </div>
         </div>
       </div>
 
@@ -1144,10 +1386,11 @@ export default function Goals() {
               <CheckSquare size={14}/> {selectedIds.size === filteredGoals.length && filteredGoals.length > 0 ? 'Deselect All' : 'Select All'}
             </button>
           </div>
-          <div className="flex items-center gap-2">
+            <div className="flex items-center gap-2">
             <button onClick={() => bulkAction('favorite')} disabled={selectedIds.size===0} className="flex items-center gap-1.5 px-3 py-1.5 bg-background border border-border rounded-xl text-sm font-bold hover:bg-card disabled:opacity-50"><Star size={14}/> Favorite</button>
             {!filters.isArchived && <button onClick={() => bulkAction('archive')} disabled={selectedIds.size===0} className="flex items-center gap-1.5 px-3 py-1.5 bg-background border border-border rounded-xl text-sm font-bold hover:bg-card disabled:opacity-50"><ArchiveIcon size={14}/> Archive</button>}
             {filters.isArchived && <button onClick={() => bulkAction('unarchive')} disabled={selectedIds.size===0} className="flex items-center gap-1.5 px-3 py-1.5 bg-background border border-border rounded-xl text-sm font-bold hover:bg-card disabled:opacity-50"><ArchiveRestore size={14}/> Unarchive</button>}
+            <button onClick={handleExportSelected} disabled={selectedIds.size===0} className="flex items-center gap-1.5 px-3 py-1.5 bg-blue-500/10 text-blue-500 rounded-xl text-sm font-bold hover:bg-blue-500/20 disabled:opacity-50"><Download size={14}/> Export</button>
             <button onClick={() => bulkAction('delete')} disabled={selectedIds.size===0} className="flex items-center gap-1.5 px-3 py-1.5 bg-red-500/10 text-red-500 rounded-xl text-sm font-bold hover:bg-red-500/20 disabled:opacity-50"><Trash2 size={14}/> Delete</button>
           </div>
         </div>
@@ -1164,10 +1407,10 @@ export default function Goals() {
         onKeyDown={handleKeyDown}
         tabIndex={0}
       >
-        <GoalsStatistics goals={goals} setFilters={setFilters} />
+        <GoalsStatistics goals={projectGoals} setFilters={setFilters} />
 
       {isAdding ? (
-        <div className="bg-card/70 backdrop-blur-md border border-border rounded-xl p-6 shadow-sm mb-8 animate-in slide-in-from-top-4">
+        <div className="bg-slate-50/80 dark:bg-slate-900/50 backdrop-blur-md border border-border rounded-xl p-6 shadow-sm mb-8 animate-in slide-in-from-top-4">
           <div className="flex justify-between items-center mb-6">
             <h2 className="text-xl font-bold">{editingId ? 'Edit Goal' : 'Add Goal'}</h2>
             <button onClick={() => setIsAdding(false)} className="p-2 hover:bg-accent rounded-md"><X size={20}/></button>
@@ -1178,10 +1421,29 @@ export default function Goals() {
               <label className="block text-sm font-medium mb-1">Goal Title</label>
               <input autoFocus type="text" value={form.title} onChange={e => setForm({...form, title: e.target.value})} className="w-full p-2 bg-background border border-border rounded-md" placeholder="e.g. Learn React, Get Internship" />
             </div>
+
+            <div className="md:col-span-2">
+              <label className="block text-sm font-medium mb-1">Project</label>
+              <select value={form.projectId || 'none'} onChange={e => setForm({...form, projectId: e.target.value === 'none' ? null : e.target.value})} className="w-full p-2 bg-background border border-border rounded-md">
+                <option value="none">None</option>
+                {projects.map(p => (
+                  <option key={p._id} value={p._id}>{p.title}</option>
+                ))}
+              </select>
+            </div>
             
             <div>
               <label className="block text-sm font-medium mb-1">Progress ({form.progress}%)</label>
-              <input type="range" min="0" max="100" value={form.progress} onChange={e => handleProgressChange(Number(e.target.value))} className="w-full accent-red-500" />
+              {form.subGoals && form.subGoals.length > 0 ? (
+                <div className="w-full p-2 bg-accent/50 border border-border rounded-md text-sm text-muted-foreground flex items-center gap-2">
+                  <div className="flex-1 bg-background rounded-full h-2 overflow-hidden">
+                    <div className="bg-red-500 h-full transition-all" style={{width: `${form.progress}%`}}></div>
+                  </div>
+                  <span>Calculated from {form.subGoals.filter(s=>s.completed).length} of {form.subGoals.length} completed sub-goals</span>
+                </div>
+              ) : (
+                <input type="range" min="0" max="100" value={form.progress} onChange={e => handleProgressChange(Number(e.target.value))} className="w-full accent-red-500" />
+              )}
             </div>
             <div>
               <label className="block text-sm font-medium mb-1">Status</label>
@@ -1205,23 +1467,123 @@ export default function Goals() {
               <label className="block text-sm font-medium mb-1">Notes / Content</label>
               <textarea value={form.notes} onChange={e => setForm({...form, notes: e.target.value})} className="w-full p-2 bg-background border border-border rounded-md min-h-[100px] resize-y" placeholder="Add any additional notes, details, or content related to this goal..." />
             </div>
+
+            <div className="md:col-span-2 mt-4">
+              <div className="flex items-center justify-between mb-4 border-b border-border pb-2">
+                <h3 className="text-lg font-bold flex items-center gap-2"><ListTodo size={18} /> Sub-Goals</h3>
+                <button 
+                  onClick={() => { setSubGoalForm({ title: '', description: '', completed: false, order: (form.subGoals?.length || 0) }); setEditingSubGoalId(null); setIsAddingSubGoal(true) }}
+                  className="text-sm font-bold flex items-center gap-1 text-red-500 hover:text-red-600"
+                >
+                  <Plus size={14}/> Add Sub-Goal
+                </button>
+              </div>
+
+              {!form.subGoals?.length && !isAddingSubGoal && (
+                <div className="text-center p-6 border border-dashed border-border rounded-xl text-muted-foreground bg-background/50">
+                  <p className="font-medium mb-1">No sub-goals yet</p>
+                  <p className="text-xs opacity-70 mb-3">Break this goal into smaller steps to make progress easier to track.</p>
+                  <button onClick={() => { setSubGoalForm({ title: '', description: '', completed: false, order: 0 }); setEditingSubGoalId(null); setIsAddingSubGoal(true) }} className="px-3 py-1.5 bg-accent hover:bg-accent/80 rounded-md text-sm font-medium">
+                    + Add Sub-Goal
+                  </button>
+                </div>
+              )}
+
+              {isAddingSubGoal && (
+                <div className="bg-background border border-border p-4 rounded-xl mb-4 space-y-3 relative">
+                  <h4 className="font-bold text-sm mb-2">{editingSubGoalId ? 'Edit Sub-Goal' : 'New Sub-Goal'}</h4>
+                  <input autoFocus type="text" value={subGoalForm.title} onChange={e=>setSubGoalForm({...subGoalForm, title: e.target.value})} placeholder="Sub-Goal Title" className="w-full p-2 bg-accent/30 border border-border rounded-md text-sm" />
+                  <textarea value={subGoalForm.description} onChange={e=>setSubGoalForm({...subGoalForm, description: e.target.value})} placeholder="Optional description..." className="w-full p-2 bg-accent/30 border border-border rounded-md text-sm min-h-[60px]" />
+                  <div className="flex justify-end gap-2">
+                    <button onClick={() => setIsAddingSubGoal(false)} className="px-3 py-1 bg-accent hover:bg-accent/80 rounded-md text-xs font-bold">Cancel</button>
+                    <button 
+                      onClick={() => {
+                        if (!subGoalForm.title?.trim()) return;
+                        const currentList = [...(form.subGoals || [])];
+                        if (editingSubGoalId) {
+                          const idx = currentList.findIndex(s => s.id === editingSubGoalId);
+                          if (idx !== -1) currentList[idx] = { ...currentList[idx], ...subGoalForm } as SubGoal;
+                        } else {
+                          currentList.push({ ...subGoalForm, id: Math.random().toString(36).substring(7), completed: false, startDate: new Date().toISOString().split('T')[0] } as SubGoal);
+                        }
+                        updateSubGoals(currentList.sort((a,b)=>a.order - b.order));
+                        setIsAddingSubGoal(false);
+                      }} 
+                      className="px-3 py-1 bg-red-500 text-white hover:bg-red-600 rounded-md text-xs font-bold"
+                    >
+                      {editingSubGoalId ? 'Save' : 'Add'}
+                    </button>
+                  </div>
+                </div>
+              )}
+
+              {form.subGoals && form.subGoals.length > 0 && (
+                <div className="space-y-2">
+                  {form.subGoals.map((sg, index) => (
+                    <div key={sg.id} className="flex items-start gap-3 p-3 bg-background border border-border rounded-xl group relative">
+                      <button 
+                        onClick={() => {
+                          const currentList = [...(form.subGoals || [])];
+                          const idx = currentList.findIndex(s => s.id === sg.id);
+                          if (idx !== -1) {
+                            currentList[idx].completed = !currentList[idx].completed;
+                            currentList[idx].completedAt = currentList[idx].completed ? new Date().toISOString().split('T')[0] : undefined;
+                          }
+                          updateSubGoals(currentList);
+                        }}
+                        className="mt-0.5 flex-shrink-0"
+                      >
+                        {sg.completed ? <CheckSquare size={18} className="text-green-500" /> : <Square size={18} className="text-muted-foreground" />}
+                      </button>
+                      <div className="flex-1 min-w-0">
+                        <p className={`text-sm font-bold ${sg.completed ? 'line-through text-muted-foreground opacity-70' : ''}`}>{sg.title}</p>
+                        <div className="flex gap-3 text-xs text-muted-foreground mt-0.5">
+                          {sg.startDate && <span>Started: {new Date(sg.startDate).toLocaleDateString()}</span>}
+                          {sg.completedAt && <span className="text-green-500">Completed: {new Date(sg.completedAt).toLocaleDateString()}</span>}
+                        </div>
+                        {sg.description && <p className="text-xs text-muted-foreground mt-1">{sg.description}</p>}
+                      </div>
+                      <div className="flex items-center gap-1 opacity-0 group-hover:opacity-100 transition-opacity">
+                        <button disabled={index === 0} onClick={() => {
+                          const currentList = [...(form.subGoals || [])];
+                          [currentList[index].order, currentList[index-1].order] = [currentList[index-1].order, currentList[index].order];
+                          updateSubGoals(currentList.sort((a,b)=>a.order - b.order));
+                        }} className="p-1 hover:bg-accent rounded text-muted-foreground disabled:opacity-30"><ChevronUp size={14}/></button>
+                        <button disabled={index === form.subGoals!.length - 1} onClick={() => {
+                          const currentList = [...(form.subGoals || [])];
+                          [currentList[index].order, currentList[index+1].order] = [currentList[index+1].order, currentList[index].order];
+                          updateSubGoals(currentList.sort((a,b)=>a.order - b.order));
+                        }} className="p-1 hover:bg-accent rounded text-muted-foreground disabled:opacity-30"><ChevronDown size={14}/></button>
+                        <button onClick={() => {
+                          setSubGoalForm(sg); setEditingSubGoalId(sg.id); setIsAddingSubGoal(true);
+                        }} className="p-1 hover:bg-accent rounded text-muted-foreground ml-1"><Edit2 size={14}/></button>
+                        <button onClick={() => {
+                          const currentList = form.subGoals!.filter(s => s.id !== sg.id);
+                          updateSubGoals(currentList);
+                        }} className="p-1 hover:bg-destructive/10 text-destructive rounded"><Trash2 size={14}/></button>
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              )}
+            </div>
           </div>
 
-          <div className="flex justify-end gap-3">
+          <div className="flex justify-end gap-3 border-t border-border pt-4 mt-2">
             <button onClick={() => setIsAdding(false)} className="px-4 py-2 bg-accent rounded-md hover:bg-accent/80 font-medium">Cancel</button>
             <button onClick={handleSave} className="px-4 py-2 bg-red-500 text-white rounded-md hover:bg-red-600 font-medium">Save Goal</button>
           </div>
         </div>
       ) : null}
 
-      <div className="space-y-4">
+      <div className={viewMode === 'grid' ? "grid grid-cols-1 xl:grid-cols-2 gap-4" : "space-y-4"}>
         {filteredGoals.map(record => {
           const daysSinceStart = record.status === 'Active' && record.startDate 
             ? Math.floor((new Date().getTime() - new Date(record.startDate).getTime()) / (1000 * 60 * 60 * 24))
             : null;
           
           return (
-            <div key={record._id} className="bg-card/70 backdrop-blur-md border border-border p-6 rounded-2xl shadow-sm relative group hover:border-red-500/50 transition-colors">
+            <div key={record._id} className="bg-slate-50/80 dark:bg-slate-900/50 hover:bg-white dark:hover:bg-slate-800/80 backdrop-blur-md border border-border p-6 rounded-2xl shadow-sm hover:shadow-md relative group hover:border-red-500/50 transition-all">
               <div className="flex items-start gap-4">
                 {isSelectionMode && (
                   <button 
@@ -1269,7 +1631,7 @@ export default function Goals() {
                   <button onClick={() => toggleArchive(record._id!, !!record.isArchived)} className={`p-1.5 bg-background border border-border rounded-md hover:bg-gray-500/20 hover:text-gray-500 hover:border-gray-500/50 transition-colors ${record.isArchived ? 'text-gray-500 bg-gray-500/10 border-gray-500/30' : 'text-foreground'}`} title={record.isArchived ? "Unarchive" : "Archive"}><ArchiveIcon size={16}/></button>
                   <button onClick={() => openEdit(record)} className="p-1.5 bg-background border border-border rounded-md hover:bg-accent text-foreground" title="Edit"><Edit2 size={16}/></button>
                   <button onClick={() => handleDelete(record._id!)} className="p-1.5 bg-background border border-border text-destructive rounded-md hover:bg-destructive/10" title="Delete"><Trash2 size={16}/></button>
-                  {record.notes && record._id && (
+                  {(record.notes || (record.subGoals && record.subGoals.length > 0)) && record._id && (
                     <button 
                       onClick={() => setExpandedNotesId(expandedNotesId === record._id ? null : record._id!)}
                       className="p-1.5 bg-background border border-border rounded-md hover:bg-accent text-foreground"
@@ -1279,6 +1641,73 @@ export default function Goals() {
                   )}
                 </div>
               </div>
+
+              {record.subGoals && record.subGoals.length > 0 && (
+                <div className="mt-4 flex items-center gap-2">
+                  <span className="text-xs font-bold text-muted-foreground bg-accent px-2 py-1 rounded-md">
+                    {record.subGoals.filter(s=>s.completed).length} / {record.subGoals.length} Sub-Goals
+                  </span>
+                  <button 
+                    onClick={() => setExpandedSubGoalsId(expandedSubGoalsId === record._id ? null : record._id!)}
+                    className="text-xs font-bold text-red-500 hover:underline flex items-center gap-1"
+                  >
+                    {expandedSubGoalsId === record._id ? 'Hide Sub-Goals' : '▼ View Sub-Goals'}
+                  </button>
+                </div>
+              )}
+
+              {expandedSubGoalsId === record._id && record.subGoals && record.subGoals.length > 0 && (
+                <div className="mt-4 p-4 bg-accent/30 rounded-xl border border-border space-y-2 animate-in slide-in-from-top-2">
+                  {record.subGoals.map(sg => (
+                    <div key={sg.id} className="flex items-start gap-3">
+                      <button 
+                        onClick={async () => {
+                          const currentList = [...record.subGoals!];
+                          const idx = currentList.findIndex(s => s.id === sg.id);
+                          if (idx !== -1) {
+                            currentList[idx].completed = !currentList[idx].completed;
+                            currentList[idx].completedAt = currentList[idx].completed ? new Date().toISOString().split('T')[0] : undefined;
+                            
+                            const completedCount = currentList.filter(s => s.completed).length;
+                            const progress = Math.round((completedCount / currentList.length) * 100);
+                            const newStatus = progress === 100 ? 'Completed' : (record.status === 'Completed' ? 'Active' : record.status);
+                            
+                            try {
+                              // @ts-ignore
+                              await window.api.db.update('goals', { _id: record._id }, { $set: { subGoals: currentList, progress, status: newStatus, updatedAt: Date.now() } }, {})
+                              if (newStatus === 'Completed' && record.status !== 'Completed') {
+                                triggerCinematicTransition('Completed');
+                              }
+                              loadData()
+                            } catch (err) { console.error(err) }
+                          }
+                        }}
+                        className="mt-0.5"
+                      >
+                        {sg.completed ? <CheckCircle2 size={16} className="text-green-500" /> : <div className="w-4 h-4 rounded-full border-2 border-muted-foreground/50"></div>}
+                      </button>
+                      <div>
+                        {sg.description ? (
+                          <Tooltip>
+                            <TooltipTrigger asChild>
+                              <p className={`text-sm font-medium cursor-help decoration-muted-foreground/50 underline-offset-2 ${sg.completed ? 'line-through text-muted-foreground opacity-70' : 'underline'}`}>{sg.title}</p>
+                            </TooltipTrigger>
+                            <TooltipContent side="top" className="max-w-xs whitespace-pre-wrap">
+                              {sg.description}
+                            </TooltipContent>
+                          </Tooltip>
+                        ) : (
+                          <p className={`text-sm font-medium ${sg.completed ? 'line-through text-muted-foreground opacity-70' : ''}`}>{sg.title}</p>
+                        )}
+                        <div className="flex gap-3 text-[10px] text-muted-foreground mt-0.5">
+                          {sg.startDate && <span>Started: {new Date(sg.startDate).toLocaleDateString()}</span>}
+                          {sg.completedAt && <span className="text-green-500 font-medium">Completed: {new Date(sg.completedAt).toLocaleDateString()}</span>}
+                        </div>
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              )}
 
               {expandedNotesId === record._id && record.notes && (
                 <div className="mt-4 p-4 bg-accent/50 rounded-lg border border-border animate-in slide-in-from-top-2">
@@ -1295,6 +1724,50 @@ export default function Goals() {
         </div>
       )}
       </div>
+
+      {showCelebration && (
+        <ShootingStars />
+      )}
+
+      {importConflicts.length > 0 && currentConflictIndex < importConflicts.length && (
+        <div className="fixed inset-0 bg-background/80 backdrop-blur-sm z-50 flex items-center justify-center p-4">
+          <div className="bg-card border border-border w-full max-w-lg rounded-2xl shadow-2xl overflow-hidden animate-in zoom-in-95 duration-200">
+            <div className="p-6 border-b border-border bg-amber-500/10">
+              <h2 className="text-xl font-bold flex items-center gap-2 text-amber-500">
+                Conflict Detected ({currentConflictIndex + 1} of {importConflicts.length})
+              </h2>
+              <p className="text-sm text-muted-foreground mt-2">
+                The imported goal <strong>"{importConflicts[currentConflictIndex].imported.title}"</strong> is older than your current version in the app.
+              </p>
+            </div>
+            <div className="p-6 space-y-4">
+              <div className="grid grid-cols-2 gap-4">
+                <div className="p-4 bg-accent/50 rounded-xl border border-border">
+                  <h3 className="text-sm font-bold mb-1">App Version (Keep)</h3>
+                  <p className="text-xs text-muted-foreground">Updated: {new Date(importConflicts[currentConflictIndex].existing.updatedAt || importConflicts[currentConflictIndex].existing.createdAt || 0).toLocaleString()}</p>
+                </div>
+                <div className="p-4 bg-background rounded-xl border border-border">
+                  <h3 className="text-sm font-bold mb-1">Import Version</h3>
+                  <p className="text-xs text-muted-foreground">Updated: {new Date(importConflicts[currentConflictIndex].imported.updatedAt || importConflicts[currentConflictIndex].imported.createdAt || 0).toLocaleString()}</p>
+                </div>
+              </div>
+            </div>
+            <div className="p-6 border-t border-border bg-accent/30 flex flex-col gap-3">
+              <div className="grid grid-cols-2 gap-3">
+                <button onClick={() => processConflict('replace')} className="w-full px-4 py-2 bg-amber-500 hover:bg-amber-600 text-white font-bold rounded-xl transition-colors">Replace</button>
+                <button onClick={() => processConflict('skip')} className="w-full px-4 py-2 bg-background border border-border hover:bg-accent font-bold rounded-xl transition-colors">Skip</button>
+              </div>
+              {importConflicts.length > 1 && (
+                <div className="grid grid-cols-2 gap-3">
+                  <button onClick={() => processConflict('replace_all')} className="w-full px-4 py-2 bg-red-500 hover:bg-red-600 text-white font-bold rounded-xl transition-colors">Replace All</button>
+                  <button onClick={() => processConflict('skip_all')} className="w-full px-4 py-2 bg-background border border-border hover:bg-accent font-bold rounded-xl transition-colors">Skip All</button>
+                </div>
+              )}
+            </div>
+          </div>
+        </div>
+      )}
+
     </div>
   )
 }

@@ -267,8 +267,12 @@ export function buildKnowledgeGraph(data: any) {
   nodes.forEach(n => {
     if (n.category === 'Record' || n.category === 'Journal' || n.category === 'Habit') {
       let dStr = ''
-      if (n.category === 'Record') dStr = n.originalData.date?.substring(0, 10)
-      if (n.category === 'Journal') dStr = n.originalData.date?.substring(0, 10)
+      const dateValue = n.originalData.date
+      if (dateValue) {
+        // Convert date to string if it's a Date object, otherwise use as-is
+        const dateStr = typeof dateValue === 'string' ? dateValue : new Date(dateValue).toISOString()
+        dStr = dateStr.substring(0, 10)
+      }
       if (dStr) {
         if (!dateMap.has(dStr)) dateMap.set(dStr, [])
         dateMap.get(dStr)!.push(n.id)

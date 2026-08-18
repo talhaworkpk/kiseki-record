@@ -1,4 +1,4 @@
-import { useState, useEffect, useMemo, useCallback, useRef } from 'react'
+import { useState, useEffect, useMemo, useRef } from 'react'
 import { useLocation } from 'react-router-dom'
 import { RecordItem, Person } from '../types'
 import { Search, LayoutGrid, List, Filter, FileText, CheckSquare, Square, Trash2, Download, Copy, Archive, ArrowDownUp, X, ArchiveRestore } from 'lucide-react'
@@ -53,6 +53,8 @@ export default function Records() {
       setRecords(data)
       // @ts-ignore
       const relData = await window.api.db.find('relationships', {})
+      console.log('Records page: Loaded', relData.length, 'relationships')
+      console.log('Records page: All relationship IDs:', relData.map(r => ({ id: r._id, name: r.name })))
       setRelationships(relData)
     } catch (err) {
       console.error(err)
@@ -65,16 +67,28 @@ export default function Records() {
 
   const location = useLocation()
   useEffect(() => {
-    const highlightId = new URLSearchParams(location.search).get('highlight')
-    if (highlightId && !loading && records.length > 0) {
-      setTimeout(() => {
-        const el = document.getElementById(`record-${highlightId}`)
-        if (el) {
-          el.scrollIntoView({ behavior: 'smooth', block: 'center' })
-          el.classList.add('ring-4', 'ring-primary', 'shadow-2xl', 'shadow-primary/40', 'animate-[pulse_2s_ease-in-out_3]', 'z-50')
-          setTimeout(() => el.classList.remove('ring-4', 'ring-primary', 'shadow-2xl', 'shadow-primary/40', 'animate-[pulse_2s_ease-in-out_3]', 'z-50'), 4000)
+    const params = new URLSearchParams(location.search)
+    const highlightId = params.get('highlight')
+    const editId = params.get('edit')
+
+    if (!loading && records.length > 0) {
+      if (editId) {
+        const targetRecord = records.find(r => r._id === editId)
+        if (targetRecord) {
+          setEditForm(targetRecord)
+          setTagsText(targetRecord.tags?.join(', ') || '')
+          setIsEditing(true)
         }
-      }, 500)
+      } else if (highlightId) {
+        setTimeout(() => {
+          const el = document.getElementById(`record-${highlightId}`)
+          if (el) {
+            el.scrollIntoView({ behavior: 'smooth', block: 'center' })
+            el.classList.add('ring-4', 'ring-primary', 'shadow-2xl', 'shadow-primary/40', 'animate-[pulse_2s_ease-in-out_3]', 'z-50')
+            setTimeout(() => el.classList.remove('ring-4', 'ring-primary', 'shadow-2xl', 'shadow-primary/40', 'animate-[pulse_2s_ease-in-out_3]', 'z-50'), 4000)
+          }
+        }, 500)
+      }
     }
   }, [location.search, loading, records.length])
 
@@ -416,6 +430,19 @@ export default function Records() {
       NotificationEngine.notify('error', 'Error Saving Record', 'There was a problem saving your record.', 'Records')
     }
   }
+
+  useEffect(() => {
+    const down = (e: KeyboardEvent) => {
+      if (e.ctrlKey && e.key.toLowerCase() === 's') {
+        if (isEditing) {
+          e.preventDefault()
+          saveRecord(e as unknown as React.FormEvent)
+        }
+      }
+    }
+    window.addEventListener('keydown', down)
+    return () => window.removeEventListener('keydown', down)
+  }, [isEditing, editForm])
 
   return (
     <div className="flex flex-col h-full bg-background animate-in fade-in duration-500 relative overflow-hidden">

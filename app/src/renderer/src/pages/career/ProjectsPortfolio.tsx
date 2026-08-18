@@ -1,20 +1,72 @@
 import { useState, useEffect, useRef } from 'react'
+import { createPortal } from 'react-dom'
 import { useLocation } from 'react-router-dom'
-import { FolderGit2, Plus, Trash2, Edit2, X, Github, ExternalLink, Image as ImageIcon } from 'lucide-react'
+import { FolderGit2, Plus, Trash2, Edit2, X, Github, ExternalLink, Image as ImageIcon, Eye, PlayCircle, Target, CheckCircle2, ListTodo, Circle } from 'lucide-react'
 import { NotificationEngine } from '../../lib/NotificationEngine'
-import { ProjectRecord } from '../../types'
+import { ProjectRecord, Goal } from '../../types'
 import { normalizeUrl } from '../../lib/utils'
 
 export default function ProjectsPortfolio() {
   const [projects, setProjects] = useState<ProjectRecord[]>([])
+  const [goals, setGoals] = useState<Goal[]>([])
   const [loading, setLoading] = useState(true)
   const [isAdding, setIsAdding] = useState(false)
   const [editingId, setEditingId] = useState<string | null>(null)
+  const [viewingProject, setViewingProject] = useState<ProjectRecord | null>(null)
   const [isDragging, setIsDragging] = useState(false)
   const [dragStartY, setDragStartY] = useState(0)
   const [scrollTop, setScrollTop] = useState(0)
   const [showSuccessOverlay, setShowSuccessOverlay] = useState(false)
   const scrollContainerRef = useRef<HTMLDivElement>(null)
+
+  const [slideshowActive, setSlideshowActive] = useState(false)
+  const [slideIndex, setSlideIndex] = useState(0)
+  const [isSlideshowPaused, setIsSlideshowPaused] = useState(false)
+
+  // Auto-advance slideshow
+  useEffect(() => {
+    let interval: any
+    const allMedia = viewingProject?.screenshots || []
+    if (slideshowActive && allMedia.length > 0 && !isSlideshowPaused) {
+      interval = setInterval(() => {
+        setSlideIndex((prev) => (prev + 1) % allMedia.length)
+      }, 3000)
+    }
+    return () => clearInterval(interval)
+  }, [slideshowActive, viewingProject, isSlideshowPaused])
+
+  // Escape key to close and space key to pause slideshow
+  useEffect(() => {
+    const handleKeyDown = (e: KeyboardEvent) => {
+      if (!slideshowActive) return
+
+      const tag = document.activeElement?.tagName.toLowerCase()
+      const isInput = tag === 'input' || tag === 'textarea' || document.activeElement?.getAttribute('contenteditable') === 'true'
+      if (isInput) return
+
+      if (e.key === 'Escape') {
+        setSlideshowActive(false)
+      }
+
+      if (e.key === ' ') {
+        e.preventDefault()
+        setIsSlideshowPaused(true)
+      }
+    }
+
+    const handleKeyUp = (e: KeyboardEvent) => {
+      if (e.key === ' ' && slideshowActive) {
+        setIsSlideshowPaused(false)
+      }
+    }
+
+    window.addEventListener('keydown', handleKeyDown)
+    window.addEventListener('keyup', handleKeyUp)
+    return () => {
+      window.removeEventListener('keydown', handleKeyDown)
+      window.removeEventListener('keyup', handleKeyUp)
+    }
+  }, [slideshowActive])
 
   const defaultForm: Partial<ProjectRecord> = {
     title: '', description: '', status: 'Active', startDate: '', endDate: '', technologies: [], gitUrl: '', websiteUrl: '', screenshots: [], attachments: [], relatedSkills: []
@@ -33,8 +85,33 @@ export default function ProjectsPortfolio() {
         return (isNaN(timeB) ? 0 : timeB) - (isNaN(timeA) ? 0 : timeA);
       })
       setProjects(sorted)
+
+      // @ts-ignore
+      const goalsData = await window.api.db.find('goals', {})
+      setGoals(goalsData)
     } catch (err) { console.error(err) }
     finally { setLoading(false) }
+  }
+
+  const getProjectStats = (projectId: string, originalStatus: string) => {
+    const linkedGoals = goals.filter(g => g.projectId === projectId);
+    if (linkedGoals.length === 0) return { progress: null, status: originalStatus, goals: [] };
+
+    const completedGoals = linkedGoals.filter(g => {
+      if (g.status !== 'Completed') return false;
+      if (g.subGoals && g.subGoals.length > 0) {
+        return g.subGoals.every(sg => sg.completed);
+      }
+      return true;
+    });
+
+    const progress = Math.round((completedGoals.length / linkedGoals.length) * 100);
+    const isCompleted = completedGoals.length === linkedGoals.length;
+    
+    // Automatically determine status
+    const effectiveStatus = isCompleted ? 'Completed' : (originalStatus === 'Completed' ? 'Active' : originalStatus);
+
+    return { progress, status: effectiveStatus, goals: linkedGoals };
   }
 
   useEffect(() => { loadData() }, [])
@@ -73,12 +150,32 @@ export default function ProjectsPortfolio() {
     } catch (err) { console.error(err) }
   }
 
+  useEffect(() => {
+    const down = (e: KeyboardEvent) => {
+      if (e.ctrlKey && e.key.toLowerCase() === 's') {
+        if (isAdding) {
+          e.preventDefault()
+          handleSave()
+        }
+      }
+    }
+    window.addEventListener('keydown', down)
+    return () => window.removeEventListener('keydown', down)
+  }, [isAdding, form, editingId])
+
   const handleDelete = async (id: string, title: string) => {
     if (!confirm('Delete this project?')) return
     try {
+      // Find all linked goals
+      const linkedGoals = goals.filter(g => g.projectId === id)
+      for (const goal of linkedGoals) {
+        // @ts-ignore
+        await window.api.db.update('goals', { _id: goal._id }, { $set: { projectId: null, updatedAt: Date.now() } }, {})
+      }
+
       // @ts-ignore
       await window.api.db.remove('projects', { _id: id }, {})
-      NotificationEngine.notify('info', 'Project Deleted', `"${title}" was removed.`, 'Career')
+      NotificationEngine.notify('info', 'Project Deleted', `"${title}" was removed and ${linkedGoals.length} goals were unlinked.`, 'Career')
       loadData()
     } catch (err) { console.error(err) }
   }
@@ -249,58 +346,72 @@ export default function ProjectsPortfolio() {
         ) : null}
 
         <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-          {projects.map(record => (
-            <div key={record._id} id={`project-${record._id}`} className="bg-card border border-border rounded-2xl shadow-sm relative group hover:border-pink-500/50 transition-all duration-1000 flex flex-col overflow-hidden">
+          {projects.map(record => {
+            const stats = getProjectStats(record._id!, record.status)
+            const displayStatus = stats.status
+            const hasGoals = stats.goals.length > 0
 
-              {record.screenshots && record.screenshots.length > 0 && (
-                <div className="h-48 w-full border-b border-border bg-accent/30 relative">
-                  <img src={normalizeUrl(record.screenshots[0])} alt={record.title} className="w-full h-full object-cover" />
-                </div>
-              )}
+            return (
+              <div key={record._id} id={`project-${record._id}`} className="bg-card border border-border rounded-2xl shadow-sm relative group hover:border-pink-500/50 transition-all duration-1000 flex flex-col overflow-hidden">
 
-              <div className="p-6 flex-1 flex flex-col">
-                <div className="absolute top-4 right-4 opacity-0 group-hover:opacity-100 transition-opacity flex items-center gap-1 z-10 bg-background/80 backdrop-blur-sm p-1 rounded-lg border border-border">
-                  <button onClick={() => openEdit(record)} className="p-1.5 rounded-md hover:bg-accent text-foreground"><Edit2 size={14} /></button>
-                  <button onClick={() => handleDelete(record._id!, record.title!)} className="p-1.5 rounded-md hover:bg-destructive/10 text-destructive"><Trash2 size={14} /></button>
-                </div>
-
-                <div className="flex justify-between items-start mb-2 pr-16">
-                  <h3 className="text-xl font-bold">{record.title}</h3>
-                  <span className={`px-2 py-0.5 rounded-full text-xs font-medium ${record.status === 'Completed' ? 'bg-green-500/10 text-green-500' : record.status === 'Active' ? 'bg-blue-500/10 text-blue-500' : 'bg-muted text-muted-foreground'}`}>
-                    {record.status}
-                  </span>
-                </div>
-
-                <div className="text-sm text-muted-foreground mb-4">
-                  {new Date(record.startDate).toLocaleDateString([], { month: 'short', year: 'numeric' })}
-                  {record.endDate && ` - ${new Date(record.endDate).toLocaleDateString([], { month: 'short', year: 'numeric' })}`}
-                </div>
-
-                {record.description && <p className="text-sm text-foreground/90 mb-4 line-clamp-3 flex-1">{record.description}</p>}
-
-                {record.technologies && record.technologies.length > 0 && (
-                  <div className="flex flex-wrap gap-1.5 mb-6">
-                    {record.technologies.map(t => (
-                      <span key={t} className="bg-pink-500/10 text-pink-500 px-2 py-0.5 rounded border border-pink-500/20 text-xs font-medium">{t}</span>
-                    ))}
+                {record.screenshots && record.screenshots.length > 0 && (
+                  <div className="h-48 w-full border-b border-border bg-accent/30 relative">
+                    <img src={normalizeUrl(record.screenshots[0])} alt={record.title} className="w-full h-full object-cover" />
                   </div>
                 )}
 
-                <div className="flex gap-3 pt-4 border-t border-border mt-auto">
-                  {record.gitUrl && (
-                    <a href={record.gitUrl} target="_blank" rel="noreferrer" className="flex items-center gap-1.5 text-sm font-medium text-muted-foreground hover:text-foreground transition-colors">
-                      <Github size={16} /> Repository
-                    </a>
+                <div className="p-6 flex-1 flex flex-col">
+                  <div className="absolute top-4 right-4 opacity-0 group-hover:opacity-100 transition-opacity flex items-center gap-1 z-10 bg-background/80 backdrop-blur-sm p-1 rounded-lg border border-border">
+                    <button onClick={() => setViewingProject(record)} className="p-1.5 rounded-md hover:bg-accent text-foreground" title="View Details"><Eye size={14} /></button>
+                    <button onClick={() => openEdit(record)} className="p-1.5 rounded-md hover:bg-accent text-foreground" title="Edit"><Edit2 size={14} /></button>
+                    <button onClick={() => handleDelete(record._id!, record.title!)} className="p-1.5 rounded-md hover:bg-destructive/10 text-destructive" title="Delete"><Trash2 size={14} /></button>
+                  </div>
+
+                  <div className="flex justify-between items-start mb-2 pr-24">
+                    <h3 onClick={() => setViewingProject(record)} className="text-xl font-bold cursor-pointer hover:text-pink-500 transition-colors decoration-pink-500/30 hover:underline underline-offset-4">{record.title}</h3>
+                    <span className={`px-2 py-0.5 rounded-full text-xs font-medium ${displayStatus === 'Completed' ? 'bg-green-500/10 text-green-500' : displayStatus === 'Active' ? 'bg-blue-500/10 text-blue-500' : 'bg-muted text-muted-foreground'}`}>
+                      {displayStatus}
+                    </span>
+                  </div>
+
+                  {hasGoals && stats.progress !== null && (
+                    <div className="mb-4">
+                      <div className="flex justify-between text-xs font-bold text-muted-foreground mb-1">
+                        <span className="flex items-center gap-1"><Target size={12}/> Goals Progress</span>
+                        <span>{stats.progress}%</span>
+                      </div>
+                      <div className="w-full bg-accent rounded-full h-1.5 overflow-hidden">
+                        <div className={`h-full transition-all duration-500 ${stats.progress === 100 ? 'bg-green-500' : 'bg-pink-500'}`} style={{ width: `${stats.progress}%` }}></div>
+                      </div>
+                    </div>
                   )}
-                  {record.websiteUrl && (
-                    <a href={record.websiteUrl} target="_blank" rel="noreferrer" className="flex items-center gap-1.5 text-sm font-medium text-muted-foreground hover:text-foreground transition-colors">
-                      <ExternalLink size={16} /> Live App
-                    </a>
+
+                  <p className="text-muted-foreground text-sm line-clamp-2 mb-4 leading-relaxed">{record.description}</p>
+                  
+                  {record.technologies && record.technologies.length > 0 && (
+                    <div className="flex flex-wrap gap-1.5 mb-6">
+                      {record.technologies.map(t => (
+                        <span key={t} className="bg-pink-500/10 text-pink-500 px-2 py-0.5 rounded border border-pink-500/20 text-xs font-medium">{t}</span>
+                      ))}
+                    </div>
                   )}
+
+                  <div className="flex gap-3 pt-4 border-t border-border mt-auto">
+                    {record.gitUrl && (
+                      <a href={record.gitUrl} target="_blank" rel="noreferrer" className="flex items-center gap-1.5 text-sm font-medium text-muted-foreground hover:text-foreground transition-colors">
+                        <Github size={16} /> Repository
+                      </a>
+                    )}
+                    {record.websiteUrl && (
+                      <a href={record.websiteUrl} target="_blank" rel="noreferrer" className="flex items-center gap-1.5 text-sm font-medium text-muted-foreground hover:text-foreground transition-colors">
+                        <ExternalLink size={16} /> Live App
+                      </a>
+                    )}
+                  </div>
                 </div>
               </div>
-            </div>
-          ))}
+            )
+          })}
         </div>
         {projects.length === 0 && !isAdding && (
           <div className="text-center p-12 border border-dashed border-border rounded-xl text-muted-foreground">
@@ -309,9 +420,171 @@ export default function ProjectsPortfolio() {
         )}
       </div>
 
+      {/* Project Details Modal */}
+      {viewingProject && (
+        <div className="fixed inset-0 z-[100] flex items-center justify-center p-4 sm:p-6 md:p-12">
+          <div className="absolute inset-0 bg-background/80 backdrop-blur-sm animate-in fade-in duration-200" onClick={() => setViewingProject(null)}></div>
+          <div className="relative bg-card border border-border w-full max-w-4xl max-h-full rounded-2xl shadow-2xl flex flex-col overflow-hidden animate-in zoom-in-95 duration-200">
+            {viewingProject.screenshots && viewingProject.screenshots.length > 0 && (
+              <div 
+                className="h-64 w-full border-b border-border bg-accent/30 shrink-0 cursor-pointer group relative"
+                onClick={() => { setSlideIndex(0); setSlideshowActive(true); }}
+              >
+                <img src={normalizeUrl(viewingProject.screenshots[0])} alt={viewingProject.title} className="w-full h-full object-cover group-hover:scale-[1.02] transition-transform duration-700" />
+                <div className="absolute inset-0 bg-black/0 group-hover:bg-black/10 transition-colors flex items-center justify-center opacity-0 group-hover:opacity-100">
+                  <PlayCircle size={48} className="text-white/80 drop-shadow-lg" />
+                </div>
+              </div>
+            )}
+            
+            <button onClick={() => setViewingProject(null)} className="absolute top-4 right-4 p-2 bg-background/50 backdrop-blur rounded-full hover:bg-background/80 transition-colors z-10 text-foreground border border-border">
+              <X size={20} />
+            </button>
+
+            <div 
+              className={`p-6 md:p-10 overflow-y-auto scrollbar-thin ${isDragging ? 'cursor-grabbing' : 'cursor-grab'}`}
+              ref={(el) => {
+                // We can reuse the main scroll logic by overriding the ref during modal open
+                // But a safer approach is inline handlers that use the element directly
+                if (el && !el.onmousedown) {
+                  let isDown = false;
+                  let startY = 0;
+                  let scrollTop = 0;
+                  
+                  el.onmousedown = (e) => {
+                    isDown = true;
+                    startY = e.pageY - el.offsetTop;
+                    scrollTop = el.scrollTop;
+                    el.classList.add('cursor-grabbing');
+                    el.classList.remove('cursor-grab');
+                  };
+                  el.onmouseleave = () => {
+                    isDown = false;
+                    el.classList.remove('cursor-grabbing');
+                    el.classList.add('cursor-grab');
+                  };
+                  el.onmouseup = () => {
+                    isDown = false;
+                    el.classList.remove('cursor-grabbing');
+                    el.classList.add('cursor-grab');
+                  };
+                  el.onmousemove = (e) => {
+                    if (!isDown) return;
+                    e.preventDefault();
+                    const y = e.pageY - el.offsetTop;
+                    const walk = (y - startY) * 1.5;
+                    el.scrollTop = scrollTop - walk;
+                  };
+                }
+              }}
+            >
+              <div className="flex justify-between items-start mb-4 pr-12">
+                <h2 className="text-3xl font-extrabold">{viewingProject.title}</h2>
+                <div className="flex items-center gap-3">
+                  <span className={`px-3 py-1 rounded-full text-sm font-bold ${getProjectStats(viewingProject._id!, viewingProject.status).status === 'Completed' ? 'bg-green-500/10 text-green-500 border border-green-500/20' : getProjectStats(viewingProject._id!, viewingProject.status).status === 'Active' ? 'bg-blue-500/10 text-blue-500 border border-blue-500/20' : 'bg-muted text-muted-foreground border border-border'}`}>
+                    {getProjectStats(viewingProject._id!, viewingProject.status).status}
+                  </span>
+                  {viewingProject.screenshots && viewingProject.screenshots.length > 0 && (
+                    <button onClick={() => { setSlideIndex(0); setSlideshowActive(true) }} className="px-4 py-2 bg-primary text-primary-foreground font-bold rounded-xl hover:scale-105 transition-transform flex items-center gap-2 shadow-lg shadow-primary/20">
+                      <PlayCircle size={18} /> Slideshow
+                    </button>
+                  )}
+                </div>
+              </div>
+
+              <div className="flex items-center gap-4 text-sm font-medium text-muted-foreground mb-8">
+                <span>{new Date(viewingProject.startDate).toLocaleDateString([], { month: 'long', year: 'numeric' })}</span>
+                {viewingProject.endDate && (
+                  <>
+                    <span>—</span>
+                    <span>{new Date(viewingProject.endDate).toLocaleDateString([], { month: 'long', year: 'numeric' })}</span>
+                  </>
+                )}
+              </div>
+
+              {viewingProject.technologies && viewingProject.technologies.length > 0 && (
+                <div className="mb-8">
+                  <h4 className="text-sm font-bold text-muted-foreground uppercase tracking-wider mb-3">Technologies</h4>
+                  <div className="flex flex-wrap gap-2">
+                    {viewingProject.technologies.map(t => (
+                      <span key={t} className="bg-pink-500/10 text-pink-500 px-3 py-1 rounded-md border border-pink-500/20 text-sm font-bold shadow-sm">{t}</span>
+                    ))}
+                  </div>
+                </div>
+              )}
+
+              <div className="mb-8">
+                <h4 className="text-sm font-bold text-muted-foreground uppercase tracking-wider mb-3">About this project</h4>
+                <div className="prose prose-sm dark:prose-invert max-w-none prose-p:leading-relaxed prose-a:text-pink-500 hover:prose-a:text-pink-600 whitespace-pre-wrap">
+                  {viewingProject.description || <span className="text-muted-foreground italic">No description provided.</span>}
+                </div>
+              </div>
+
+              {(() => {
+                const stats = getProjectStats(viewingProject._id!, viewingProject.status);
+                if (stats.goals.length === 0) return null;
+                return (
+                  <div className="mb-8">
+                    <div className="flex justify-between items-center mb-3">
+                      <h4 className="text-sm font-bold text-muted-foreground uppercase tracking-wider">Linked Goals</h4>
+                      <span className="text-xs font-bold bg-accent px-2 py-0.5 rounded-full">{stats.progress}% Completed</span>
+                    </div>
+                    <div className="space-y-2">
+                      {stats.goals.map(g => {
+                        const isCompleted = g.status === 'Completed' && (!g.subGoals || g.subGoals.every(sg => sg.completed));
+                        return (
+                          <div key={g._id} className="flex items-center gap-3 p-3 bg-background border border-border rounded-xl">
+                            {isCompleted ? <CheckCircle2 size={16} className="text-green-500 shrink-0" /> : <Circle size={16} className="text-muted-foreground shrink-0" />}
+                            <span className={`text-sm font-medium flex-1 ${isCompleted ? 'text-muted-foreground line-through' : ''}`}>{g.title}</span>
+                            <span className="text-xs px-2 py-0.5 rounded-full bg-accent text-muted-foreground">{g.status}</span>
+                          </div>
+                        );
+                      })}
+                    </div>
+                  </div>
+                );
+              })()}
+
+              {viewingProject.screenshots && viewingProject.screenshots.length > 0 && (
+                <div className="mb-8">
+                  <h4 className="text-sm font-bold text-muted-foreground uppercase tracking-wider mb-3">Gallery</h4>
+                  <div className="grid grid-cols-2 md:grid-cols-3 gap-4">
+                    {viewingProject.screenshots.map((img, i) => (
+                      <div 
+                        key={i} 
+                        className="aspect-video rounded-xl overflow-hidden border border-border shadow-sm group relative cursor-pointer"
+                        onClick={() => { setSlideIndex(i); setSlideshowActive(true); }}
+                      >
+                        <img src={normalizeUrl(img)} alt={`Screenshot ${i + 1}`} className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-500" />
+                        <div className="absolute inset-0 bg-black/0 group-hover:bg-black/20 transition-colors flex items-center justify-center opacity-0 group-hover:opacity-100">
+                          <Eye size={32} className="text-white drop-shadow-md" />
+                        </div>
+                      </div>
+                    ))}
+                  </div>
+                </div>
+              )}
+
+              <div className="flex gap-4 pt-6 border-t border-border mt-auto">
+                {viewingProject.gitUrl && (
+                  <a href={viewingProject.gitUrl} target="_blank" rel="noreferrer" className="flex items-center gap-2 px-4 py-2 rounded-xl bg-accent hover:bg-accent/80 text-sm font-bold transition-colors border border-border shadow-sm">
+                    <Github size={18} /> Source Code
+                  </a>
+                )}
+                {viewingProject.websiteUrl && (
+                  <a href={viewingProject.websiteUrl} target="_blank" rel="noreferrer" className="flex items-center gap-2 px-4 py-2 rounded-xl bg-pink-500 hover:bg-pink-600 text-white text-sm font-bold transition-colors shadow-sm">
+                    <ExternalLink size={18} /> Visit Project
+                  </a>
+                )}
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
+
       {/* 3D Success Overlay */}
       {showSuccessOverlay && (
-        <div className="absolute inset-0 z-50 flex items-center justify-center bg-[radial-gradient(ellipse_at_center,_var(--tw-gradient-stops))] from-pink-500/30 via-background/80 to-background/95 backdrop-blur-sm animate-in fade-in duration-300">
+        <div className="fixed inset-0 z-[200] flex items-center justify-center bg-[radial-gradient(ellipse_at_center,_var(--tw-gradient-stops))] from-pink-500/30 via-background/80 to-background/95 backdrop-blur-sm animate-in fade-in duration-300">
           <style>{`
             @keyframes popAndRotateRocket {
               0% { transform: scale(0) rotate(-45deg); opacity: 0; }
@@ -397,6 +670,36 @@ export default function ProjectsPortfolio() {
           </div>
         </div>
       )}
+
+      {/* Slideshow Overlay */}
+      {slideshowActive && viewingProject && viewingProject.screenshots && viewingProject.screenshots.length > 0 && createPortal(
+        <div
+          className="fixed inset-0 bg-black z-[9999] flex flex-col items-center justify-center animate-in fade-in duration-1000"
+          onMouseDown={() => setIsSlideshowPaused(true)}
+          onMouseUp={() => setIsSlideshowPaused(false)}
+          onMouseLeave={() => setIsSlideshowPaused(false)}
+        >
+          <button onClick={() => setSlideshowActive(false)} className="absolute top-6 right-6 p-3 bg-white/10 hover:bg-white/30 text-white rounded-full backdrop-blur-sm transition-colors z-10">
+            <X size={32} />
+          </button>
+          <div className="absolute top-6 left-6 text-white text-xl font-black drop-shadow-md z-10 opacity-70">
+            {slideIndex + 1} / {viewingProject.screenshots.length}
+          </div>
+
+          <div className="w-full h-full flex items-center justify-center relative p-12">
+            <img 
+              key={viewingProject.screenshots[slideIndex]} 
+              src={normalizeUrl(viewingProject.screenshots[slideIndex])} 
+              className="max-w-full max-h-full object-contain shadow-2xl rounded-lg animate-in zoom-in-95 duration-700" 
+            />
+            <div className="absolute bottom-12 left-1/2 -translate-x-1/2 bg-black/50 backdrop-blur-md px-6 py-3 rounded-full text-white text-lg font-medium shadow-2xl">
+              {viewingProject.title}
+            </div>
+          </div>
+        </div>,
+        document.body
+      )}
+
     </div>
   )
 }

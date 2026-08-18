@@ -1,6 +1,6 @@
 import { useState, useEffect, useRef } from 'react'
 import { useLocation } from 'react-router-dom'
-import { Trash2, Search, Filter, Plus, Edit2, X, Star, Archive, MoreVertical, BrainCircuit, TrendingUp, Award, ImageIcon, Sparkles, FolderDown, ArrowDownUp, CheckSquare, Square, Archive as ArchiveIcon, ArchiveRestore } from 'lucide-react'
+import { Trash2, Search, Filter, Plus, Edit2, X, Star, Archive, MoreVertical, BrainCircuit, TrendingUp, Award, ImageIcon, Sparkles, FolderDown, ArrowDownUp, CheckSquare, Square, Archive as ArchiveIcon, ArchiveRestore, Download, Upload } from 'lucide-react'
 import { NotificationEngine } from '../../lib/NotificationEngine'
 import { SkillRecord } from '../../types'
 import { normalizeUrl } from '../../lib/utils'
@@ -39,6 +39,11 @@ export default function SkillsTracker() {
   const [sortBy, setSortBy] = useState('highest')
   const [isSelectionMode, setIsSelectionMode] = useState(false)
   const [selectedIds, setSelectedIds] = useState<Set<string>>(new Set())
+  const [isMenuOpen, setIsMenuOpen] = useState(false)
+
+  const [importConflicts, setImportConflicts] = useState<{imported: SkillRecord, existing: SkillRecord}[]>([])
+  const [currentConflictIndex, setCurrentConflictIndex] = useState(0)
+  const [pendingImports, setPendingImports] = useState<{toInsert: SkillRecord[], toReplace: SkillRecord[]}>({ toInsert: [], toReplace: [] })
 
   const [form, setForm] = useState<Partial<SkillRecord>>({
     name: '', level: 50, yearsOfExperience: 0, lastUsed: '', notes: '', backgroundImage: '', imageOpacity: 10
@@ -55,6 +60,135 @@ export default function SkillsTracker() {
   useEffect(() => {
     loadData()
   }, [])
+
+  const handleExportSelected = () => {
+    const dataToExport = skills.filter(s => selectedIds.has(s._id!))
+    const dataStr = "data:text/json;charset=utf-8," + encodeURIComponent(JSON.stringify(dataToExport, null, 2))
+    const downloadAnchorNode = document.createElement('a')
+    downloadAnchorNode.setAttribute("href", dataStr)
+    downloadAnchorNode.setAttribute("download", "selected_skills.json")
+    document.body.appendChild(downloadAnchorNode)
+    downloadAnchorNode.click()
+    downloadAnchorNode.remove()
+    setIsSelectionMode(false)
+    setSelectedIds(new Set())
+  }
+
+  const handleExportAll = () => {
+    const dataStr = "data:text/json;charset=utf-8," + encodeURIComponent(JSON.stringify(skills, null, 2))
+    const downloadAnchorNode = document.createElement('a')
+    downloadAnchorNode.setAttribute("href", dataStr)
+    downloadAnchorNode.setAttribute("download", "all_skills.json")
+    document.body.appendChild(downloadAnchorNode)
+    downloadAnchorNode.click()
+    downloadAnchorNode.remove()
+    setIsMenuOpen(false)
+  }
+
+  const executeImports = async (toInsert: SkillRecord[], toReplace: SkillRecord[]) => {
+    try {
+      for (const skill of toInsert) {
+        const { _id, ...skillData } = skill
+        // @ts-ignore
+        await window.api.db.insert('skills', skillData)
+      }
+      for (const skill of toReplace) {
+        const { _id, ...skillData } = skill
+        // @ts-ignore
+        await window.api.db.update('skills', { _id }, { $set: skillData }, {})
+      }
+      loadData()
+      NotificationEngine.notify('success', 'Import Complete', `Imported ${toInsert.length + toReplace.length} skills.`, 'Skills')
+    } catch (err) {
+      console.error("Error executing imports", err)
+    }
+  }
+
+  const processConflict = async (action: 'replace' | 'skip' | 'replace_all' | 'skip_all') => {
+    let { toInsert, toReplace } = pendingImports
+    const remainingConflicts = importConflicts.slice(currentConflictIndex)
+    
+    if (action === 'replace_all') {
+      remainingConflicts.forEach(c => toReplace.push({...c.imported, _id: c.existing._id}))
+      setImportConflicts([])
+    } else if (action === 'skip_all') {
+      setImportConflicts([])
+    } else if (action === 'replace') {
+      const current = importConflicts[currentConflictIndex]
+      toReplace.push({...current.imported, _id: current.existing._id})
+      if (currentConflictIndex + 1 < importConflicts.length) {
+        setCurrentConflictIndex(currentConflictIndex + 1)
+        setPendingImports({ toInsert, toReplace })
+        return
+      } else {
+        setImportConflicts([])
+      }
+    } else if (action === 'skip') {
+      if (currentConflictIndex + 1 < importConflicts.length) {
+        setCurrentConflictIndex(currentConflictIndex + 1)
+        return
+      } else {
+        setImportConflicts([])
+      }
+    }
+
+    await executeImports(toInsert, toReplace)
+  }
+
+  const handleImport = () => {
+    const input = document.createElement('input')
+    input.type = 'file'
+    input.accept = '.json'
+    input.onchange = async (e: any) => {
+      const file = e.target.files[0]
+      if (!file) return
+      const reader = new FileReader()
+      reader.onload = async (event) => {
+        try {
+          const importedSkills = JSON.parse(event.target?.result as string)
+          if (Array.isArray(importedSkills)) {
+            const toInsert: SkillRecord[] = []
+            const toReplace: SkillRecord[] = []
+            const conflicts: {imported: SkillRecord, existing: SkillRecord}[] = []
+
+            for (const importedSkill of importedSkills) {
+              let existingSkill = skills.find(s => s._id === importedSkill._id)
+              if (!existingSkill) existingSkill = skills.find(s => s.name === importedSkill.name)
+
+              if (!existingSkill) {
+                toInsert.push(importedSkill)
+              } else {
+                const importedTime = importedSkill.updatedAt || importedSkill.createdAt || 0
+                const existingTime = existingSkill.updatedAt || existingSkill.createdAt || 0
+                
+                if (importedTime > existingTime) {
+                  toReplace.push({...importedSkill, _id: existingSkill._id})
+                } else if (importedTime < existingTime) {
+                  conflicts.push({ imported: importedSkill, existing: existingSkill })
+                } else if (importedTime === 0 && existingTime === 0) {
+                  conflicts.push({ imported: importedSkill, existing: existingSkill })
+                }
+              }
+            }
+
+            if (conflicts.length > 0) {
+              setPendingImports({ toInsert, toReplace })
+              setImportConflicts(conflicts)
+              setCurrentConflictIndex(0)
+              setIsMenuOpen(false)
+            } else {
+              await executeImports(toInsert, toReplace)
+            }
+          }
+        } catch (error) {
+          console.error("Error importing skills", error)
+        }
+      }
+      reader.readAsText(file)
+    }
+    input.click()
+    setIsMenuOpen(false)
+  }
 
   const location = useLocation()
   useEffect(() => {
@@ -106,7 +240,7 @@ export default function SkillsTracker() {
                            : action === 'archive' ? { isArchived: true }
                            : { isArchived: false }
           // @ts-ignore
-          await window.api.db.update('skills', { _id: id }, { $set: updateData }, {})
+          await window.api.db.update('skills', { _id: id }, { $set: { ...updateData, updatedAt: Date.now() } }, {})
         }
       }
       setSelectedIds(new Set())
@@ -118,7 +252,7 @@ export default function SkillsTracker() {
   const toggleFavorite = async (id: string, current: boolean) => {
     try {
       // @ts-ignore
-      await window.api.db.update('skills', { _id: id }, { $set: { isFavorite: !current } }, {})
+      await window.api.db.update('skills', { _id: id }, { $set: { isFavorite: !current, updatedAt: Date.now() } }, {})
       loadData()
     } catch (err) { console.error(err) }
   }
@@ -126,7 +260,7 @@ export default function SkillsTracker() {
   const toggleArchive = async (id: string, current: boolean) => {
     try {
       // @ts-ignore
-      await window.api.db.update('skills', { _id: id }, { $set: { isArchived: !current } }, {})
+      await window.api.db.update('skills', { _id: id }, { $set: { isArchived: !current, updatedAt: Date.now() } }, {})
       loadData()
     } catch (err) { console.error(err) }
   }
@@ -159,6 +293,19 @@ export default function SkillsTracker() {
       loadData()
     } catch (err) { console.error(err) }
   }
+
+  useEffect(() => {
+    const down = (e: KeyboardEvent) => {
+      if (e.ctrlKey && e.key.toLowerCase() === 's') {
+        if (isAdding) {
+          e.preventDefault()
+          handleSave()
+        }
+      }
+    }
+    window.addEventListener('keydown', down)
+    return () => window.removeEventListener('keydown', down)
+  }, [isAdding, form, editingId])
 
   const handleDelete = async (id: string, e: React.MouseEvent) => {
     e.stopPropagation()
@@ -375,6 +522,28 @@ export default function SkillsTracker() {
               <Plus size={16}/> New Skill
             </button>
           )}
+
+          <div className="relative">
+            <button 
+              onClick={() => setIsMenuOpen(!isMenuOpen)}
+              className="p-1.5 rounded-xl transition-colors hover:bg-accent text-muted-foreground"
+            >
+              <MoreVertical size={18} />
+            </button>
+            {isMenuOpen && (
+              <>
+                <div className="fixed inset-0 z-40" onClick={() => setIsMenuOpen(false)}></div>
+                <div className="absolute right-0 top-full mt-2 w-48 bg-card border border-border rounded-xl shadow-lg z-50 overflow-hidden animate-in slide-in-from-top-2">
+                  <button onClick={handleImport} className="w-full text-left px-4 py-3 hover:bg-accent flex items-center gap-2 text-sm font-medium transition-colors">
+                    <Upload size={16} /> Import Skills
+                  </button>
+                  <button onClick={handleExportAll} className="w-full text-left px-4 py-3 hover:bg-accent flex items-center gap-2 text-sm font-medium transition-colors border-t border-border">
+                    <Download size={16} /> Export All Skills
+                  </button>
+                </div>
+              </>
+            )}
+          </div>
         </div>
       </div>
 
@@ -397,6 +566,7 @@ export default function SkillsTracker() {
             <button onClick={() => bulkAction('favorite')} disabled={selectedIds.size===0} className="flex items-center gap-1.5 px-3 py-1.5 bg-background border border-border rounded-xl text-sm font-bold hover:bg-card disabled:opacity-50"><Star size={14}/> Favorite</button>
             {!filters.isArchived && <button onClick={() => bulkAction('archive')} disabled={selectedIds.size===0} className="flex items-center gap-1.5 px-3 py-1.5 bg-background border border-border rounded-xl text-sm font-bold hover:bg-card disabled:opacity-50"><ArchiveIcon size={14}/> Archive</button>}
             {filters.isArchived && <button onClick={() => bulkAction('unarchive')} disabled={selectedIds.size===0} className="flex items-center gap-1.5 px-3 py-1.5 bg-background border border-border rounded-xl text-sm font-bold hover:bg-card disabled:opacity-50"><ArchiveRestore size={14}/> Unarchive</button>}
+            <button onClick={handleExportSelected} disabled={selectedIds.size===0} className="flex items-center gap-1.5 px-3 py-1.5 bg-background border border-border rounded-xl text-sm font-bold hover:bg-card disabled:opacity-50"><Download size={14}/> Export</button>
             <button onClick={() => bulkAction('delete')} disabled={selectedIds.size===0} className="flex items-center gap-1.5 px-3 py-1.5 bg-red-500/10 text-red-500 rounded-xl text-sm font-bold hover:bg-red-500/20 disabled:opacity-50"><Trash2 size={14}/> Delete</button>
           </div>
         </div>
@@ -589,12 +759,51 @@ export default function SkillsTracker() {
             </div>
           ))}
           {skills.length === 0 && !isAdding && (
-            <div className="col-span-full text-center p-12 border border-dashed border-border rounded-xl text-muted-foreground">
-              No skills tracked yet. Start adding your skillset!
+            <div className="text-center p-12 border border-dashed border-border rounded-xl text-muted-foreground bg-card/50 backdrop-blur">
+              No skills tracked yet. Time to level up!
             </div>
           )}
         </div>
       </div>
+
+      {importConflicts.length > 0 && currentConflictIndex < importConflicts.length && (
+        <div className="fixed inset-0 bg-background/80 backdrop-blur-sm z-50 flex items-center justify-center p-4">
+          <div className="bg-card border border-border w-full max-w-lg rounded-2xl shadow-2xl overflow-hidden animate-in zoom-in-95 duration-200">
+            <div className="p-6 border-b border-border bg-amber-500/10">
+              <h2 className="text-xl font-bold flex items-center gap-2 text-amber-500">
+                Conflict Detected ({currentConflictIndex + 1} of {importConflicts.length})
+              </h2>
+              <p className="text-sm text-muted-foreground mt-2">
+                The imported skill <strong>"{importConflicts[currentConflictIndex].imported.name}"</strong> is older than your current version in the app.
+              </p>
+            </div>
+            <div className="p-6 space-y-4">
+              <div className="grid grid-cols-2 gap-4">
+                <div className="p-4 bg-accent/50 rounded-xl border border-border">
+                  <h3 className="text-sm font-bold mb-1">App Version (Keep)</h3>
+                  <p className="text-xs text-muted-foreground">Updated: {new Date(importConflicts[currentConflictIndex].existing.updatedAt || importConflicts[currentConflictIndex].existing.createdAt || 0).toLocaleString()}</p>
+                </div>
+                <div className="p-4 bg-background rounded-xl border border-border">
+                  <h3 className="text-sm font-bold mb-1">Import Version</h3>
+                  <p className="text-xs text-muted-foreground">Updated: {new Date(importConflicts[currentConflictIndex].imported.updatedAt || importConflicts[currentConflictIndex].imported.createdAt || 0).toLocaleString()}</p>
+                </div>
+              </div>
+            </div>
+            <div className="p-6 border-t border-border bg-accent/30 flex flex-col gap-3">
+              <div className="grid grid-cols-2 gap-3">
+                <button onClick={() => processConflict('replace')} className="w-full px-4 py-2 bg-amber-500 hover:bg-amber-600 text-white font-bold rounded-xl transition-colors">Replace</button>
+                <button onClick={() => processConflict('skip')} className="w-full px-4 py-2 bg-background border border-border hover:bg-accent font-bold rounded-xl transition-colors">Skip</button>
+              </div>
+              {importConflicts.length > 1 && (
+                <div className="grid grid-cols-2 gap-3">
+                  <button onClick={() => processConflict('replace_all')} className="w-full px-4 py-2 bg-red-500 hover:bg-red-600 text-white font-bold rounded-xl transition-colors">Replace All</button>
+                  <button onClick={() => processConflict('skip_all')} className="w-full px-4 py-2 bg-background border border-border hover:bg-accent font-bold rounded-xl transition-colors">Skip All</button>
+                </div>
+              )}
+            </div>
+          </div>
+        </div>
+      )}
       
       {celebrationLevel !== null && (
         <div className="absolute inset-0 overflow-hidden pointer-events-none z-50 animate-in fade-in duration-300">

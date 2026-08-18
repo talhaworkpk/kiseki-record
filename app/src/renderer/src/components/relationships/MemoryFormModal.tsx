@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react'
+import { useState, useEffect, useRef } from 'react'
 import { X, Calendar as CalendarIcon, MapPin, Tag, Users, Paperclip, Folder } from 'lucide-react'
 import TipTapEditor from '../ResumeEditor/TipTapEditor'
 
@@ -41,10 +41,13 @@ export default function MemoryFormModal({ isOpen, onClose, personId, initialData
   
   const [relationships, setRelationships] = useState<any[]>([])
   const [selectedPeople, setSelectedPeople] = useState<string[]>([personId])
+  const [allAlbums, setAllAlbums] = useState<string[]>(ALBUMS.filter(a => a !== 'Custom'))
+  const submitBtnRef = useRef<HTMLButtonElement>(null)
 
   useEffect(() => {
     if (isOpen) {
       loadRelationships()
+      loadAlbums()
       if (initialData) {
         setTitle(initialData.title || '')
         setDate(initialData.date ? new Date(initialData.date).toISOString().slice(0, 10) : new Date().toISOString().slice(0, 10))
@@ -71,11 +74,34 @@ export default function MemoryFormModal({ isOpen, onClose, personId, initialData
     }
   }, [isOpen, initialData, personId])
 
+  useEffect(() => {
+    const handleKeyDown = (e: KeyboardEvent) => {
+      if ((e.ctrlKey || e.metaKey) && e.key === 's') {
+        e.preventDefault()
+        submitBtnRef.current?.click()
+      }
+    }
+    if (isOpen) {
+      window.addEventListener('keydown', handleKeyDown)
+    }
+    return () => window.removeEventListener('keydown', handleKeyDown)
+  }, [isOpen])
+
   const loadRelationships = async () => {
     try {
       // @ts-ignore
       const rels = await window.api.db.find('relationships', {})
       setRelationships(rels)
+    } catch(e) { console.error(e) }
+  }
+
+  const loadAlbums = async () => {
+    try {
+      // @ts-ignore
+      const records = await window.api.db.find('records', { type: 'Memory' })
+      const customCategories = records.map((r: any) => r.category).filter((c: string) => c && !ALBUMS.includes(c))
+      const uniqueCustomCategories = Array.from(new Set(customCategories)) as string[]
+      setAllAlbums([...ALBUMS.filter(a => a !== 'Custom'), ...uniqueCustomCategories])
     } catch(e) { console.error(e) }
   }
 
@@ -101,10 +127,12 @@ export default function MemoryFormModal({ isOpen, onClose, personId, initialData
     e.preventDefault()
     if (!title.trim()) return
 
+    const finalAlbum = album.trim() || 'General'
+
     const memoryRecord = {
       title,
       type: 'Memory', // Memory Type
-      category: album, // Store Album in category
+      category: finalAlbum, // Store Album in category
       date: new Date(date).getTime(),
       mood,
       importance: rating,
@@ -163,9 +191,16 @@ export default function MemoryFormModal({ isOpen, onClose, personId, initialData
                   </div>
                   <div>
                     <label className="text-xs font-bold text-muted-foreground uppercase mb-2 block"><Folder size={14} className="inline mr-1 -mt-0.5"/> Album</label>
-                    <select value={album} onChange={e=>setAlbum(e.target.value)} className="w-full bg-background border border-border p-3 rounded-xl focus:ring-2 focus:ring-primary/50 outline-none">
-                      {ALBUMS.map(a => <option key={a} value={a}>{a}</option>)}
-                    </select>
+                    <input
+                      list="albums-list"
+                      value={album}
+                      onChange={e=>setAlbum(e.target.value)}
+                      placeholder="Select or type an album..."
+                      className="w-full bg-background border border-border p-3 rounded-xl focus:ring-2 focus:ring-primary/50 outline-none"
+                    />
+                    <datalist id="albums-list">
+                      {allAlbums.map(a => <option key={a} value={a} />)}
+                    </datalist>
                   </div>
                 </div>
 
@@ -274,7 +309,7 @@ export default function MemoryFormModal({ isOpen, onClose, personId, initialData
 
             <div className="pt-4 border-t border-border flex justify-end gap-3 shrink-0">
               <button type="button" onClick={onClose} className="px-6 py-2.5 rounded-xl font-bold hover:bg-accent transition-colors">Cancel</button>
-              <button type="submit" className="px-6 py-2.5 rounded-xl font-bold bg-primary text-primary-foreground hover:scale-105 transition-transform shadow-lg shadow-primary/20">
+              <button type="submit" ref={submitBtnRef} className="px-6 py-2.5 rounded-xl font-bold bg-primary text-primary-foreground hover:scale-105 transition-transform shadow-lg shadow-primary/20">
                 {initialData ? 'Save Changes' : 'Create Memory'}
               </button>
             </div>

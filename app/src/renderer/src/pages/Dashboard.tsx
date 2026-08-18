@@ -135,16 +135,24 @@ export default function Dashboard() {
         window.api.db.find('career', {}),
         window.api.db.find('education', {})
       ])
-      
+
+      console.log('Dashboard: Loaded', relationships.length, 'relationships')
+      console.log('Dashboard: All relationship IDs:', relationships.map(r => ({ id: r._id, name: r.name })))
+      // Log memory people IDs
+      const memoryRecords = records.filter((r: any) => r.type === 'Memory')
+      memoryRecords.forEach((m: any) => {
+        console.log('Dashboard: Memory', m._id, 'title:', m.title, 'people IDs:', m.people)
+      })
+
       const userProfile = profiles && profiles.length > 0 ? profiles[0] : null
-      
+
       const habits = rawHabits
         .filter((h: any) => h.archived !== true)
         .map((h: any) => ({
           ...h,
           completedToday: habitRecords.some((r: any) => r.habitId === h._id && r.status === 'completed')
         }))
-      
+
       setData({ records, goals, habits, relationships, journal, calendarMemories, userProfile, achievements, skills, projects, memoryCapsules, certificates, career, education })
     } catch (err) {
       console.error("Dashboard fetch error:", err)

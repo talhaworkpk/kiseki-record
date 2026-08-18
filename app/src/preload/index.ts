@@ -55,7 +55,8 @@ if (process.contextIsolated) {
         switch: (password: string | null) => ipcRenderer.invoke('profile:switch', password),
         updateSettings: (updates: any) => ipcRenderer.invoke('profile:updateSettings', updates),
         updatePassword: (oldPw: string, newPw: string) => ipcRenderer.invoke('profile:updatePassword', oldPw, newPw),
-        delete: (password: string) => ipcRenderer.invoke('profile:delete', password)
+        delete: (password: string) => ipcRenderer.invoke('profile:delete', password),
+        activity: () => ipcRenderer.invoke('profile:activity')
       },
       notifications: {
         getSettings: () => ipcRenderer.invoke('notifications:getSettings'),
@@ -126,7 +127,8 @@ if (process.contextIsolated) {
       switch: (password: string | null) => ipcRenderer.invoke('profile:switch', password),
       updateSettings: (updates: any) => ipcRenderer.invoke('profile:updateSettings', updates),
       updatePassword: (oldPw: string, newPw: string) => ipcRenderer.invoke('profile:updatePassword', oldPw, newPw),
-      delete: (password: string) => ipcRenderer.invoke('profile:delete', password)
+      delete: (password: string) => ipcRenderer.invoke('profile:delete', password),
+      activity: () => ipcRenderer.invoke('profile:activity')
     },
     notifications: {
       getSettings: () => ipcRenderer.invoke('notifications:getSettings'),

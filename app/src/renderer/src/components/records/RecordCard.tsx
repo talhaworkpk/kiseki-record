@@ -1,8 +1,8 @@
 import { useState, useRef, useEffect } from 'react'
 import { RecordItem, Person } from '../../types'
-import { Paperclip, Eye, Edit, Copy, Trash2, Archive, Star, Clock, Image as ImageIcon, Award, Calendar, FileText, Book, BookOpen, MapPin, Smile, MessageCircle, User, Film, Music } from 'lucide-react'
+import { Eye, Edit, Copy, Trash2, Archive, Star, Image as ImageIcon, Award, Calendar, FileText, Book, BookOpen, MapPin, Smile, User, Film, Music } from 'lucide-react'
 import SafeImage from './SafeImage'
-import { normalizeUrl, getSafeMediaUrl } from '../../lib/utils'
+import { getSafeMediaUrl } from '../../lib/utils'
 
 interface RecordCardProps {
   record: RecordItem
@@ -18,6 +18,31 @@ export default function RecordCard({ record, viewMode, isSelectionMode, isSelect
   const [showMore, setShowMore] = useState(false)
   const [contextMenu, setContextMenu] = useState<{ x: number, y: number } | null>(null)
   const menuRef = useRef<HTMLDivElement>(null)
+  const [localRelationships, setLocalRelationships] = useState<Person[]>(relationships)
+
+  // Load fresh relationships when component mounts or when relationships prop changes
+  useEffect(() => {
+    const loadRelationships = async () => {
+      try {
+        // @ts-ignore
+        const rels = await window.api.db.find('relationships', {})
+        console.log('RecordCard: Loaded relationships:', rels.length, 'for record:', record._id)
+        console.log('RecordCard: Memory people IDs:', record.people)
+        console.log('RecordCard: Available relationship IDs:', rels.map(r => r._id))
+        setLocalRelationships(rels)
+      } catch(e) {
+        console.error('RecordCard: Error loading relationships:', e)
+        // Fallback to prop relationships if DB fetch fails
+        setLocalRelationships(relationships)
+      }
+    }
+    // Only fetch from DB if relationships prop is empty
+    if (relationships.length === 0) {
+      loadRelationships()
+    } else {
+      setLocalRelationships(relationships)
+    }
+  }, [record._id, record.people, relationships])
 
   // Handle outside click for context menu
   useEffect(() => {
@@ -65,8 +90,12 @@ export default function RecordCard({ record, viewMode, isSelectionMode, isSelect
   
   // Get related relationships
   const relatedPeople = record.people?.map(personId => {
-    const person = relationships.find(r => r._id === personId)
-    return person ? person.name : personId
+    const person = localRelationships.find(r => r._id === personId)
+    if (!person) {
+      console.log('Relationship not found for ID:', personId, 'Available relationships:', localRelationships.map(r => ({ id: r._id, name: r.name })))
+      return 'Unknown Person' // Fallback instead of showing raw ID
+    }
+    return person.name
   }).filter(Boolean) || []
   
   // Clean text for description
@@ -98,10 +127,10 @@ export default function RecordCard({ record, viewMode, isSelectionMode, isSelect
             {firstImage ? (
               <SafeImage src={firstImage} className="w-full h-full" />
             ) : firstVideo || (record.type === 'Video' && record.attachments && record.attachments.length > 0) ? (
-              <video 
-                src={getSafeMediaUrl(firstVideo || record.attachments[0]) + '#t=1'} 
-                preload="metadata" 
-                className="w-full h-full object-cover" 
+              <video
+                src={getSafeMediaUrl(firstVideo || (record.attachments?.[0] || '')) + '#t=1'}
+                preload="metadata"
+                className="w-full h-full object-cover"
               />
             ) : (
               <div className="text-muted-foreground/30 scale-[3]">

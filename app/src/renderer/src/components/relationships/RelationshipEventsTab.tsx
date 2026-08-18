@@ -1,5 +1,5 @@
 import { useState, useMemo } from 'react'
-import { Plus, Search, Calendar, Filter, Sparkles, Star, MoreVertical, Loader2, Image as ImageIcon, Video, Heart, Clock, Edit2, Trash2, Copy } from 'lucide-react'
+import { Plus, Search, Sparkles, Star, Loader2, Image as ImageIcon, Edit2, Trash2, Copy, Archive } from 'lucide-react'
 import EventFormModal from './EventFormModal'
 import EventPreviewModal from './EventPreviewModal'
 
@@ -46,22 +46,25 @@ export default function RelationshipEventsTab({ person, records, relationships, 
 
   // Analytics Calculation
   const stats = useMemo(() => {
-    const totalEvents = allEvents.length
-    const photos = allEvents.reduce((acc, e) => acc + (e.attachments?.filter((a:string)=>a.match(/\.(jpg|jpeg|png|gif|webp)$/i))?.length || 0), 0)
-    
+    const activeEvents = allEvents.filter(e => !e.isArchived)
+    const totalEvents = activeEvents.length
+    const photos = activeEvents.reduce((acc, e) => acc + (e.attachments?.filter((a:string)=>a.match(/\.(jpg|jpeg|png|gif|webp)$/i))?.length || 0), 0)
+    const videos = activeEvents.reduce((acc, e) => acc + (e.attachments?.filter((a:string)=>a.match(/\.(mp4|webm|ogg|mov)$/i))?.length || 0), 0)
+    const audio = activeEvents.reduce((acc, e) => acc + (e.attachments?.filter((a:string)=>a.match(/\.(mp3|wav|ogg|m4a)$/i))?.length || 0), 0)
+
     const catCounts: Record<string, number> = {}
-    allEvents.forEach(e => {
+    activeEvents.forEach(e => {
       if (e.category) catCounts[e.category] = (catCounts[e.category] || 0) + 1
     })
     const favCat = Object.entries(catCounts).sort((a,b)=>b[1]-a[1])[0]?.[0] || 'None'
 
     const moodCounts: Record<string, number> = {}
-    allEvents.forEach(e => {
+    activeEvents.forEach(e => {
       if (e.mood) moodCounts[e.mood] = (moodCounts[e.mood] || 0) + 1
     })
     const favMood = Object.entries(moodCounts).sort((a,b)=>b[1]-a[1])[0]?.[0] || 'N/A'
 
-    const sortedDates = allEvents.map(e => new Date(e.date).getTime()).sort((a,b)=>b-a)
+    const sortedDates = activeEvents.map(e => new Date(e.date).getTime()).sort((a,b)=>b-a)
     let lastMeetingStr = 'Never'
     if (sortedDates.length > 0) {
       const diffDays = Math.floor((Date.now() - sortedDates[0]) / (1000 * 60 * 60 * 24))
@@ -70,7 +73,7 @@ export default function RelationshipEventsTab({ person, records, relationships, 
       else lastMeetingStr = `${diffDays} Days Ago`
     }
 
-    return { totalEvents, photos, favCat, favMood, lastMeetingStr }
+    return { totalEvents, photos, videos, audio, favCat, favMood, lastMeetingStr }
   }, [allEvents])
 
   // Handlers
@@ -150,14 +153,22 @@ export default function RelationshipEventsTab({ person, records, relationships, 
     <div className="space-y-8 animate-in fade-in duration-500 pb-12">
       
       {/* Analytics Summary */}
-      <div className="grid grid-cols-2 md:grid-cols-5 gap-4">
+      <div className="grid grid-cols-2 md:grid-cols-7 gap-4">
         <div className="bg-card border border-border p-4 rounded-xl flex flex-col items-center justify-center text-center">
           <div className="text-2xl font-black">{stats.totalEvents}</div>
           <div className="text-[10px] font-bold text-muted-foreground uppercase tracking-widest mt-1">Total Events</div>
         </div>
         <div className="bg-card border border-border p-4 rounded-xl flex flex-col items-center justify-center text-center">
           <div className="text-2xl font-black">{stats.photos}</div>
-          <div className="text-[10px] font-bold text-muted-foreground uppercase tracking-widest mt-1">Photos Shared</div>
+          <div className="text-[10px] font-bold text-muted-foreground uppercase tracking-widest mt-1">Photos</div>
+        </div>
+        <div className="bg-card border border-border p-4 rounded-xl flex flex-col items-center justify-center text-center">
+          <div className="text-2xl font-black">{stats.videos}</div>
+          <div className="text-[10px] font-bold text-muted-foreground uppercase tracking-widest mt-1">Videos</div>
+        </div>
+        <div className="bg-card border border-border p-4 rounded-xl flex flex-col items-center justify-center text-center">
+          <div className="text-2xl font-black">{stats.audio}</div>
+          <div className="text-[10px] font-bold text-muted-foreground uppercase tracking-widest mt-1">Audio</div>
         </div>
         <div className="bg-card border border-border p-4 rounded-xl flex flex-col items-center justify-center text-center">
           <div className="text-2xl font-black truncate w-full">{stats.favMood.split(' ')[0] || 'N/A'}</div>
@@ -233,7 +244,7 @@ export default function RelationshipEventsTab({ person, records, relationships, 
                 const photosCount = event.attachments?.filter((a:string)=>a.match(/\.(jpg|jpeg|png|gif|webp)$/i))?.length || 0
 
                 return (
-                  <div key={event._id} className={`relative flex flex-col md:flex-row items-center md:justify-between w-full group cursor-pointer`} onClick={() => setPreviewEvent(event)}>
+                  <div id={`event-card-${event._id}`} key={event._id} className={`relative flex flex-col md:flex-row items-center md:justify-between w-full group cursor-pointer`} onClick={() => setPreviewEvent(event)}>
                     
                     {/* Dot */}
                     <div className="absolute left-[35px] md:left-1/2 md:-translate-x-1/2 w-3 h-3 rounded-full bg-primary ring-4 ring-background z-10 transition-transform group-hover:scale-150"></div>
@@ -289,7 +300,6 @@ export default function RelationshipEventsTab({ person, records, relationships, 
         relationships={relationships}
         onEdit={() => handleEdit()}
         onDelete={() => handleDelete()}
-        onDuplicate={() => handleDuplicate()}
       />
 
     </div>
@@ -297,30 +307,26 @@ export default function RelationshipEventsTab({ person, records, relationships, 
 }
 
 function EventCardContent({ event, photosCount, onFavorite, onArchive, onDelete, onEdit, onDuplicate }: any) {
-  const [showMenu, setShowMenu] = useState(false)
-
   return (
     <div className="bg-card border border-border p-5 rounded-2xl shadow-sm group-hover:border-primary/50 group-hover:shadow-lg transition-all relative text-left">
-      <div className="absolute right-4 top-4 flex gap-1">
-        <button onClick={onFavorite} className="p-1.5 hover:bg-accent rounded-md transition-colors text-yellow-500">
-          <Star size={16} className={event.isFavorite ? 'fill-yellow-500' : ''}/>
+      <div className="absolute right-4 top-4 flex gap-1 opacity-0 group-hover:opacity-100 transition-opacity duration-200">
+        <button onClick={onFavorite} className="p-1.5 bg-black/40 hover:bg-black/60 rounded-full backdrop-blur-md transition-colors text-yellow-400" title="Favorite">
+          <Star size={14} className={event.isFavorite ? 'fill-yellow-400' : ''}/>
         </button>
-        <div className="relative">
-          <button onClick={(e) => {e.stopPropagation(); setShowMenu(!showMenu)}} className="p-1.5 hover:bg-accent rounded-md transition-colors text-muted-foreground">
-            <MoreVertical size={16} />
-          </button>
-          {showMenu && (
-            <div className="absolute right-0 top-8 w-48 bg-background border border-border rounded-xl shadow-2xl py-1 z-50 text-sm font-medium">
-              <button onClick={(e)=>{setShowMenu(false); onEdit(e)}} className="w-full text-left px-4 py-2 hover:bg-accent flex items-center gap-2"><Edit2 size={14}/> Edit Event</button>
-              <button onClick={(e)=>{setShowMenu(false); onDuplicate(e)}} className="w-full text-left px-4 py-2 hover:bg-accent flex items-center gap-2">Duplicate Event</button>
-              <button onClick={(e)=>{setShowMenu(false); onArchive(e)}} className="w-full text-left px-4 py-2 hover:bg-accent flex items-center gap-2 text-yellow-500">{event.isArchived ? 'Restore Event' : 'Archive Event'}</button>
-              <div className="my-1 border-t border-border"></div>
-              <button onClick={(e)=>{setShowMenu(false); onDelete(e)}} className="w-full text-left px-4 py-2 hover:bg-red-500 hover:text-white transition-colors flex items-center gap-2 text-red-500"><Trash2 size={14}/> Delete Event</button>
-            </div>
-          )}
-        </div>
+        <button onClick={(e) => {e.stopPropagation(); onEdit(e)}} className="p-1.5 bg-black/40 hover:bg-black/60 rounded-full backdrop-blur-md transition-colors text-white" title="Edit">
+          <Edit2 size={14}/>
+        </button>
+        <button onClick={(e) => {e.stopPropagation(); onDuplicate(e)}} className="p-1.5 bg-black/40 hover:bg-black/60 rounded-full backdrop-blur-md transition-colors text-white" title="Duplicate">
+          <Copy size={14}/>
+        </button>
+        <button onClick={(e) => {e.stopPropagation(); onArchive(e)}} className="p-1.5 bg-black/40 hover:bg-black/60 rounded-full backdrop-blur-md transition-colors text-yellow-500" title={event.isArchived ? 'Restore' : 'Archive'}>
+          <Archive size={14}/>
+        </button>
+        <button onClick={(e) => {e.stopPropagation(); onDelete(e)}} className="p-1.5 bg-black/40 hover:bg-red-600 rounded-full backdrop-blur-md transition-colors text-red-500 hover:text-white" title="Delete">
+          <Trash2 size={14}/>
+        </button>
       </div>
-      
+
       <h3 className="text-xl font-black mb-2 pr-16 leading-tight">{event.title}</h3>
       <div className="flex items-center gap-2 text-sm text-muted-foreground font-medium mb-4">
         {event.mood && <span className="bg-background border border-border px-2 py-0.5 rounded-md">{event.mood}</span>}
@@ -334,9 +340,6 @@ function EventCardContent({ event, photosCount, onFavorite, onArchive, onDelete,
         </div>
         <span>View Preview →</span>
       </div>
-      
-      {/* Click away layer to close menu */}
-      {showMenu && <div className="fixed inset-0 z-40" onClick={(e) => {e.stopPropagation(); setShowMenu(false)}}></div>}
     </div>
   )
 }

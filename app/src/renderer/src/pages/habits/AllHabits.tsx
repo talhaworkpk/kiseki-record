@@ -1,5 +1,6 @@
 import { useState, useEffect, useRef } from 'react'
-import { Target, Search, ArrowDownUp, CheckSquare, Square, Star, Archive as ArchiveIcon, ArchiveRestore, Trash2, Edit2, ChevronDown, ListChecks } from 'lucide-react'
+import { Target, Search, ArrowDownUp, CheckSquare, Square, Star, Archive as ArchiveIcon, ArchiveRestore, Trash2, Edit2, ChevronDown, ListChecks, Download, Upload, MoreVertical } from 'lucide-react'
+import { Tooltip, TooltipTrigger, TooltipContent } from '../../components/ui/tooltip'
 import { NotificationEngine } from '../../lib/NotificationEngine'
 import { Habit } from '../../types'
 import HabitsStatistics from '../../components/habits/HabitsStatistics'
@@ -23,6 +24,11 @@ export default function AllHabits() {
   const [formOpen, setFormOpen] = useState(false)
   const [activeHabit, setActiveHabit] = useState<Habit | null>(null)
 
+  const [showGlobalMenu, setShowGlobalMenu] = useState(false)
+  const [importConflicts, setImportConflicts] = useState<{imported: any, existing: Habit}[]>([])
+  const [currentConflictIndex, setCurrentConflictIndex] = useState(0)
+  const [pendingImports, setPendingImports] = useState<{toInsert: Habit[], toReplace: Habit[], importedRecords: any}>({ toInsert: [], toReplace: [], importedRecords: {} })
+
   const loadData = async () => {
     try {
       // @ts-ignore
@@ -32,6 +38,202 @@ export default function AllHabits() {
   }
 
   useEffect(() => { loadData() }, [])
+
+  // --- Export / Import ---
+  const handleExportAll = async () => {
+    try {
+      // @ts-ignore
+      const allHabits = await window.api.db.find('habits', {})
+      // @ts-ignore
+      const habitLogs = await window.api.db.find('habitLogs', {})
+      // @ts-ignore
+      const habitTimerSessions = await window.api.db.find('habitTimerSessions', {})
+      // @ts-ignore
+      const habitBreaks = await window.api.db.find('habitBreaks', {})
+      // @ts-ignore
+      const habitActivityLogs = await window.api.db.find('habitActivityLogs', {})
+      
+      const data = { 
+        habits: allHabits, 
+        records: {
+          habitLogs,
+          habitTimerSessions,
+          habitBreaks,
+          habitActivityLogs
+        } 
+      }
+      
+      const blob = new Blob([JSON.stringify(data, null, 2)], { type: 'application/json' })
+      const url = URL.createObjectURL(blob)
+      const a = document.createElement('a')
+      a.href = url
+      a.download = `kiseki_habits_backup.json`
+      a.click()
+      URL.revokeObjectURL(url)
+      NotificationEngine.notify('success', 'Export Complete', 'All habits and history have been exported successfully.', 'Habits')
+    } catch (err) {
+      console.error(err)
+      NotificationEngine.notify('error', 'Export Failed', 'An error occurred while exporting habits.', 'Habits')
+    }
+  }
+
+  const processImportFile = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0]
+    if (!file) return
+    
+    const reader = new FileReader()
+    reader.onload = async (event) => {
+      try {
+        const text = event.target?.result as string
+        const data = JSON.parse(text)
+        
+        if (!data.habits || !Array.isArray(data.habits)) {
+          NotificationEngine.notify('error', 'Invalid File', 'The JSON file does not contain valid habits data.', 'Habits')
+          return
+        }
+
+        const importedHabits = data.habits
+        const importedRecords = data.records || {}
+        
+        const toInsert: Habit[] = []
+        const toReplace: Habit[] = []
+        const conflicts: {imported: any, existing: Habit}[] = []
+
+        for (const imported of importedHabits) {
+          const existing = habits.find(h => h._id === imported._id || h.title.toLowerCase() === imported.title.toLowerCase())
+          
+          if (!existing) {
+            toInsert.push(imported)
+          } else {
+            const importedTime = imported.updatedAt || imported.createdAt || 0
+            const existingTime = existing.updatedAt || existing.createdAt || 0
+            
+            if (importedTime > existingTime) {
+              toReplace.push({...imported, _id: existing._id, _originalImportedId: imported._id})
+            } else if (importedTime < existingTime) {
+              conflicts.push({ imported: {...imported, _originalImportedId: imported._id}, existing })
+            } else if (importedTime === 0 && existingTime === 0) {
+              conflicts.push({ imported: {...imported, _originalImportedId: imported._id}, existing })
+            }
+          }
+        }
+
+        if (conflicts.length > 0) {
+          setPendingImports({ toInsert, toReplace, importedRecords })
+          setImportConflicts(conflicts)
+          setCurrentConflictIndex(0)
+        } else {
+          await executeImports(toInsert, toReplace, importedRecords)
+        }
+      } catch (err) {
+        console.error(err)
+        NotificationEngine.notify('error', 'Import Failed', 'Failed to parse the file.', 'Habits')
+      }
+    }
+    reader.readAsText(file)
+    e.target.value = ''
+  }
+
+  const processConflict = async (action: 'replace' | 'skip' | 'replace_all' | 'skip_all') => {
+    const { toInsert, toReplace, importedRecords } = pendingImports
+    const remainingConflicts = importConflicts.slice(currentConflictIndex)
+    
+    if (action === 'replace_all') {
+      remainingConflicts.forEach(c => toReplace.push({...c.imported, _id: c.existing._id}))
+      setImportConflicts([])
+    } else if (action === 'skip_all') {
+      setImportConflicts([])
+    } else if (action === 'replace') {
+      const current = importConflicts[currentConflictIndex]
+      toReplace.push({...current.imported, _id: current.existing._id})
+      if (currentConflictIndex + 1 < importConflicts.length) {
+        setCurrentConflictIndex(currentConflictIndex + 1)
+        setPendingImports({ toInsert, toReplace, importedRecords })
+        return
+      } else {
+        setImportConflicts([])
+      }
+    } else if (action === 'skip') {
+      if (currentConflictIndex + 1 < importConflicts.length) {
+        setCurrentConflictIndex(currentConflictIndex + 1)
+        return
+      } else {
+        setImportConflicts([])
+      }
+    }
+
+    await executeImports(toInsert, toReplace, importedRecords)
+  }
+
+  const executeImports = async (toInsert: Habit[], toReplace: any[], importedRecords: any) => {
+    try {
+      let importedCount = 0
+      let updatedCount = 0
+      const idMap = new Map<string, string>()
+
+      for (const habit of toInsert) {
+        const oldId = habit._id
+        const { _id, ...habitData } = habit
+        // @ts-ignore
+        const newHabit = await window.api.db.insert('habits', habitData)
+        if (oldId && newHabit._id) idMap.set(oldId, newHabit._id)
+        importedCount++
+      }
+
+      for (const habit of toReplace) {
+        const { _id, _originalImportedId, ...habitData } = habit
+        if (_originalImportedId && _originalImportedId !== _id) {
+          idMap.set(_originalImportedId, _id)
+        }
+        // @ts-ignore
+        await window.api.db.update('habits', { _id }, { $set: habitData }, {})
+        updatedCount++
+      }
+
+      // Process related collections
+      const processSubRecords = async (collectionName: string) => {
+        const recordsArr = importedRecords[collectionName]
+        if (!recordsArr || !Array.isArray(recordsArr)) return
+        
+        // @ts-ignore
+        const existingRecords = await window.api.db.find(collectionName, {})
+        
+        for (const record of recordsArr) {
+          // Remap habitId if it was changed
+          if (record.habitId && idMap.has(record.habitId)) {
+            record.habitId = idMap.get(record.habitId)
+          }
+          
+          const existing = existingRecords.find((r: any) => r._id === record._id)
+          if (!existing) {
+            // @ts-ignore
+            await window.api.db.insert(collectionName, record)
+          } else {
+            const impTime = record.updatedAt || record.createdAt || record.timestamp || record.completionTime || record.startTime || 0
+            const exTime = existing.updatedAt || existing.createdAt || existing.timestamp || existing.completionTime || existing.startTime || 0
+            const belongsToReplacedHabit = toReplace.some(h => h._id === record.habitId || h._originalImportedId === record.habitId)
+            
+            if (impTime > exTime || belongsToReplacedHabit) {
+              const { _id, ...recordData } = record
+              // @ts-ignore
+              await window.api.db.update(collectionName, { _id }, { $set: recordData }, {})
+            }
+          }
+        }
+      }
+
+      await processSubRecords('habitLogs')
+      await processSubRecords('habitTimerSessions')
+      await processSubRecords('habitBreaks')
+      await processSubRecords('habitActivityLogs')
+
+      NotificationEngine.notify('success', 'Import Complete', `Imported ${importedCount} and updated ${updatedCount} habits.`, 'Habits')
+      loadData()
+    } catch (err) {
+      console.error(err)
+      NotificationEngine.notify('error', 'Import Failed', 'Failed to process imported habits.', 'Habits')
+    }
+  }
 
   const filteredHabits = habits.filter(h => {
     if (filters.scheduleType !== 'all' && h.scheduleType !== filters.scheduleType) return false
@@ -60,9 +262,9 @@ export default function AllHabits() {
           await window.api.db.remove('habits', { _id: id }, {})
           NotificationEngine.notify('info', 'Habit Deleted', 'The habit was permanently removed.', 'Habits')
         } else {
-          const updateData = action === 'favorite' ? { isFavorite: true } 
-                           : action === 'archive' ? { archived: true }
-                           : { archived: false }
+          const updateData = action === 'favorite' ? { isFavorite: true, updatedAt: Date.now() } 
+                           : action === 'archive' ? { archived: true, updatedAt: Date.now() }
+                           : { archived: false, updatedAt: Date.now() }
           // @ts-ignore
           await window.api.db.update('habits', { _id: id }, { $set: updateData }, {})
         }
@@ -76,7 +278,7 @@ export default function AllHabits() {
   const toggleFavorite = async (id: string, current: boolean) => {
     try {
       // @ts-ignore
-      await window.api.db.update('habits', { _id: id }, { $set: { isFavorite: !current } }, {})
+      await window.api.db.update('habits', { _id: id }, { $set: { isFavorite: !current, updatedAt: Date.now() } }, {})
       loadData()
     } catch (err) { console.error(err) }
   }
@@ -84,7 +286,7 @@ export default function AllHabits() {
   const toggleArchive = async (id: string, current: boolean) => {
     try {
       // @ts-ignore
-      await window.api.db.update('habits', { _id: id }, { $set: { archived: !current } }, {})
+      await window.api.db.update('habits', { _id: id }, { $set: { archived: !current, updatedAt: Date.now() } }, {})
       loadData()
     } catch (err) { console.error(err) }
   }
@@ -187,6 +389,8 @@ export default function AllHabits() {
             {isSelectionMode ? <CheckSquare size={16}/> : <Square size={16}/>}
             Select
           </button>
+
+          <button onClick={() => setShowGlobalMenu(true)} className="p-2 bg-background border border-border rounded-xl hover:bg-accent"><MoreVertical size={16}/></button>
         </div>
       </div>
 
@@ -248,7 +452,18 @@ export default function AllHabits() {
                 <div className="flex-1 min-w-0 pr-32">
                   <div className="flex items-center gap-3 mb-2 flex-wrap">
                     <span className="text-2xl">{record.icon === 'Sparkles' ? '✨' : record.icon}</span>
-                    <h3 className="text-lg font-bold truncate">{record.title}</h3>
+                    {record.description ? (
+                      <Tooltip>
+                        <TooltipTrigger asChild>
+                          <h3 className="text-lg font-bold truncate cursor-help">{record.title}</h3>
+                        </TooltipTrigger>
+                        <TooltipContent side="bottom" className="max-w-xs text-center font-medium">
+                          {record.description}
+                        </TooltipContent>
+                      </Tooltip>
+                    ) : (
+                      <h3 className="text-lg font-bold truncate">{record.title}</h3>
+                    )}
                     
                     {record.isFavorite && <Star size={14} className="text-yellow-500 fill-yellow-500" />}
                     {record.archived && <ArchiveIcon size={14} className="text-gray-500" />}
@@ -284,6 +499,81 @@ export default function AllHabits() {
           )}
         </div>
       </div>
+
+      {/* Global Menu Modal */}
+      {showGlobalMenu && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-background/80 backdrop-blur-sm" onClick={() => setShowGlobalMenu(false)}>
+          <div className="bg-card border border-border rounded-2xl shadow-2xl w-full max-w-sm overflow-hidden animate-in zoom-in-95 duration-200" onClick={e => e.stopPropagation()}>
+            <div className="p-4 border-b border-border flex justify-between items-center bg-accent/30">
+              <h3 className="font-bold">Habits Options</h3>
+            </div>
+            <div className="p-2">
+              <button onClick={() => { document.getElementById('import-habits-input')?.click(); setShowGlobalMenu(false) }} className="w-full flex items-center gap-3 p-3 hover:bg-accent rounded-xl transition-colors text-left font-medium">
+                <Upload size={18} className="text-primary"/> Import Habits
+              </button>
+              <button onClick={() => { handleExportAll(); setShowGlobalMenu(false) }} className="w-full flex items-center gap-3 p-3 hover:bg-accent rounded-xl transition-colors text-left font-medium">
+                <Download size={18} className="text-primary"/> Export All Habits
+              </button>
+            </div>
+            <div className="p-4 bg-accent/30 border-t border-border">
+              <button onClick={() => setShowGlobalMenu(false)} className="w-full py-2 bg-background border border-border hover:bg-accent rounded-xl font-bold transition-colors">Close</button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Hidden File Input for Import */}
+      <input 
+        type="file" 
+        id="import-habits-input" 
+        accept=".json" 
+        className="hidden" 
+        onChange={processImportFile} 
+      />
+
+      {/* Conflict Resolution Modal */}
+      {importConflicts.length > 0 && currentConflictIndex < importConflicts.length && (
+        <div className="fixed inset-0 bg-background/80 backdrop-blur-sm z-50 flex items-center justify-center p-4">
+          <div className="bg-card border border-border w-full max-w-lg rounded-2xl shadow-2xl overflow-hidden animate-in zoom-in-95 duration-200">
+            <div className="p-6 border-b border-border bg-amber-500/10">
+              <h2 className="text-xl font-bold flex items-center gap-2 text-amber-500">
+                Conflict Detected ({currentConflictIndex + 1} of {importConflicts.length})
+              </h2>
+              <p className="text-sm text-muted-foreground mt-2">
+                The imported habit <strong>"{importConflicts[currentConflictIndex].imported.title}"</strong> is older than your current version in the app.
+              </p>
+              <p className="text-xs text-muted-foreground mt-2 font-medium">
+                Note: Skipping will keep your current habit and discard imported logs. Replacing will overwrite your habit and update all of its daily logs, timers, and breaks.
+              </p>
+            </div>
+            <div className="p-6 space-y-4">
+              <div className="grid grid-cols-2 gap-4">
+                <div className="p-4 bg-accent/50 rounded-xl border border-border">
+                  <h3 className="text-sm font-bold mb-1">App Version (Keep)</h3>
+                  <p className="text-xs text-muted-foreground">Updated: {new Date(importConflicts[currentConflictIndex].existing.updatedAt || importConflicts[currentConflictIndex].existing.createdAt || 0).toLocaleString()}</p>
+                </div>
+                <div className="p-4 bg-background rounded-xl border border-border">
+                  <h3 className="text-sm font-bold mb-1">Import Version</h3>
+                  <p className="text-xs text-muted-foreground">Updated: {new Date(importConflicts[currentConflictIndex].imported.updatedAt || importConflicts[currentConflictIndex].imported.createdAt || 0).toLocaleString()}</p>
+                </div>
+              </div>
+            </div>
+            <div className="p-6 border-t border-border bg-accent/30 flex flex-col gap-3">
+              <div className="grid grid-cols-2 gap-3">
+                <button onClick={() => processConflict('replace')} className="w-full px-4 py-3 bg-red-500 hover:bg-red-600 text-white font-bold rounded-xl transition-colors shadow-sm shadow-red-500/20">Replace</button>
+                <button onClick={() => processConflict('skip')} className="w-full px-4 py-3 bg-background border border-border hover:bg-accent font-bold rounded-xl transition-colors">Skip</button>
+              </div>
+              
+              {importConflicts.length > 1 && (
+                <div className="grid grid-cols-2 gap-3 mt-2">
+                  <button onClick={() => processConflict('replace_all')} className="w-full px-4 py-2 bg-red-500/10 hover:bg-red-500/20 text-red-500 font-bold rounded-xl transition-colors">Replace All</button>
+                  <button onClick={() => processConflict('skip_all')} className="w-full px-4 py-2 bg-background border border-border hover:bg-accent font-bold rounded-xl transition-colors text-muted-foreground">Skip All</button>
+                </div>
+              )}
+            </div>
+          </div>
+        </div>
+      )}
 
       <HabitFormModal 
         isOpen={formOpen} 

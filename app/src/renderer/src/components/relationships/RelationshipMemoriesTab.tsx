@@ -1,5 +1,5 @@
 import { useState, useMemo } from 'react'
-import { Plus, Search, Folder, Sparkles, Star, MoreVertical, Loader2, Image as ImageIcon, Video, Heart, MapPin, Grid, Archive, History, X } from 'lucide-react'
+import { Plus, Search, Folder, Sparkles, Star, Loader2, Image as ImageIcon, Video, Heart, MapPin, Grid, Archive, History, X, Edit2, Copy, Trash2 } from 'lucide-react'
 import MemoryFormModal from './MemoryFormModal'
 import MemoryPreviewModal from './MemoryPreviewModal'
 
@@ -54,21 +54,23 @@ export default function RelationshipMemoriesTab({ person, records, relationships
 
   // Analytics Calculation
   const stats = useMemo(() => {
-    const totalMemories = allMemories.length
-    const photos = allMemories.reduce((acc, e) => acc + (e.attachments?.filter((a:string)=>a.match(/\.(jpg|jpeg|png|gif|webp)$/i))?.length || 0), 0)
-    const videos = allMemories.reduce((acc, e) => acc + (e.attachments?.filter((a:string)=>a.match(/\.(mp4|webm|ogg|mov)$/i))?.length || 0), 0)
-    const favMemories = allMemories.filter(m => m.isFavorite).length
+    const activeMemories = allMemories.filter(m => !m.isArchived)
+    const totalMemories = activeMemories.length
+    const photos = activeMemories.reduce((acc, e) => acc + (e.attachments?.filter((a:string)=>a.match(/\.(jpg|jpeg|png|gif|webp)$/i))?.length || 0), 0)
+    const videos = activeMemories.reduce((acc, e) => acc + (e.attachments?.filter((a:string)=>a.match(/\.(mp4|webm|ogg|mov)$/i))?.length || 0), 0)
+    const audio = activeMemories.reduce((acc, e) => acc + (e.attachments?.filter((a:string)=>a.match(/\.(mp3|wav|ogg|m4a)$/i))?.length || 0), 0)
+    const favMemories = activeMemories.filter(m => m.isFavorite).length
 
-    const albums = new Set(allMemories.map(m => m.category || 'General')).size
+    const albums = new Set(activeMemories.map(m => m.category || 'General')).size
 
     const moodCounts: Record<string, number> = {}
-    allMemories.forEach(e => {
+    activeMemories.forEach(e => {
       if (e.mood) moodCounts[e.mood] = (moodCounts[e.mood] || 0) + 1
     })
     const favMood = Object.entries(moodCounts).sort((a,b)=>b[1]-a[1])[0]?.[0] || 'N/A'
 
     const yearCounts: Record<string, number> = {}
-    allMemories.forEach(e => {
+    activeMemories.forEach(e => {
       if (e.date) {
         const y = new Date(e.date).getFullYear().toString()
         yearCounts[y] = (yearCounts[y] || 0) + 1
@@ -76,22 +78,23 @@ export default function RelationshipMemoriesTab({ person, records, relationships
     })
     const mostActiveYear = Object.entries(yearCounts).sort((a,b)=>b[1]-a[1])[0]?.[0] || 'N/A'
 
-    return { totalMemories, photos, videos, favMemories, albums, favMood, mostActiveYear }
+    return { totalMemories, photos, videos, audio, favMemories, albums, favMood, mostActiveYear }
   }, [allMemories])
 
   // Aggregate Albums
   const albumAggregates = useMemo(() => {
     const agg: Record<string, { memories: number, photos: number, videos: number, cover: string | null }> = {}
-    allMemories.forEach(m => {
+    const activeMemories = allMemories.filter(m => !m.isArchived)
+    activeMemories.forEach(m => {
       const a = m.category || 'General'
       if (!agg[a]) agg[a] = { memories: 0, photos: 0, videos: 0, cover: null }
-      
+
       agg[a].memories += 1
       const pCount = m.attachments?.filter((a:string)=>a.match(/\.(jpg|jpeg|png|gif|webp)$/i))?.length || 0
       const vCount = m.attachments?.filter((a:string)=>a.match(/\.(mp4|webm|ogg|mov)$/i))?.length || 0
       agg[a].photos += pCount
       agg[a].videos += vCount
-      
+
       if (!agg[a].cover && pCount > 0) {
         agg[a].cover = m.attachments?.find((at:string)=>at.match(/\.(jpg|jpeg|png|gif|webp)$/i))
       }
@@ -102,7 +105,8 @@ export default function RelationshipMemoriesTab({ person, records, relationships
   // Aggregate Places
   const placeAggregates = useMemo(() => {
     const agg: Record<string, { memories: number }> = {}
-    allMemories.forEach(m => {
+    const activeMemories = allMemories.filter(m => !m.isArchived)
+    activeMemories.forEach(m => {
       if (m.location) {
         const p = m.location
         if (!agg[p]) agg[p] = { memories: 0 }
@@ -164,6 +168,15 @@ export default function RelationshipMemoriesTab({ person, records, relationships
     setEditingMemory(target)
     setShowMemoryForm(true)
     if (previewMemory) setPreviewMemory(null)
+    // Highlight the memory card when editing from preview modal
+    if (target && target._id) {
+      const el = document.getElementById(`memory-card-${target._id}`)
+      if (el) {
+        el.scrollIntoView({ behavior: 'smooth', block: 'center' })
+        el.classList.add('ring-4', 'ring-primary', 'shadow-2xl', 'shadow-primary/40', 'animate-[pulse_2s_ease-in-out_3]', 'z-50')
+        setTimeout(() => el.classList.remove('ring-4', 'ring-primary', 'shadow-2xl', 'shadow-primary/40', 'animate-[pulse_2s_ease-in-out_3]', 'z-50'), 4000)
+      }
+    }
   }
 
   const generateAIInsight = async () => {
@@ -189,7 +202,7 @@ export default function RelationshipMemoriesTab({ person, records, relationships
     <div className="space-y-8 animate-in fade-in duration-500 pb-12">
       
       {/* Analytics Summary */}
-      <div className="grid grid-cols-2 md:grid-cols-6 gap-4">
+      <div className="grid grid-cols-2 md:grid-cols-7 gap-4">
         <div className="bg-card border border-border p-4 rounded-2xl shadow-sm text-center">
           <div className="text-2xl font-black">{stats.totalMemories}</div>
           <div className="text-[10px] font-bold text-muted-foreground uppercase tracking-widest mt-1">Memories</div>
@@ -201,6 +214,10 @@ export default function RelationshipMemoriesTab({ person, records, relationships
         <div className="bg-card border border-border p-4 rounded-2xl shadow-sm text-center">
           <div className="text-2xl font-black">{stats.videos}</div>
           <div className="text-[10px] font-bold text-muted-foreground uppercase tracking-widest mt-1">Videos</div>
+        </div>
+        <div className="bg-card border border-border p-4 rounded-2xl shadow-sm text-center">
+          <div className="text-2xl font-black">{stats.audio}</div>
+          <div className="text-[10px] font-bold text-muted-foreground uppercase tracking-widest mt-1">Audio</div>
         </div>
         <div className="bg-card border border-border p-4 rounded-2xl shadow-sm text-center">
           <div className="text-2xl font-black">{stats.albums}</div>
@@ -323,6 +340,7 @@ export default function RelationshipMemoriesTab({ person, records, relationships
                       cover={cover}
                       photosCount={photosCount} 
                       vidsCount={vidsCount}
+                      memoryId={memory._id}
                       onClick={() => setPreviewMemory(memory)}
                       onFavorite={(e)=>handleFavoriteToggle(e,memory)} 
                       onArchive={(e)=>handleArchiveToggle(e,memory)} 
@@ -438,38 +456,33 @@ export default function RelationshipMemoriesTab({ person, records, relationships
         relationships={relationships}
         onEdit={() => handleEdit()}
         onDelete={() => handleDelete()}
-        onDuplicate={() => handleDuplicate()}
       />
 
     </div>
   )
 }
 
-function MemoryCard({ memory, cover, photosCount, vidsCount, onClick, onFavorite, onArchive, onDelete, onEdit, onDuplicate }: any) {
-  const [showMenu, setShowMenu] = useState(false)
-
+function MemoryCard({ memory, cover, photosCount, vidsCount, memoryId, onClick, onFavorite, onArchive, onDelete, onEdit, onDuplicate }: any) {
   return (
-    <div className="bg-card border border-border rounded-3xl shadow-sm hover:shadow-xl transition-all relative flex flex-col group h-full">
-      <div className="absolute right-3 top-3 flex gap-1 z-10">
-        <button onClick={onFavorite} className="p-2 bg-black/40 hover:bg-black/60 rounded-full backdrop-blur-md transition-colors text-yellow-400">
+    <div id={`memory-card-${memoryId}`} className="bg-card border border-border rounded-3xl shadow-sm hover:shadow-xl transition-all relative flex flex-col group h-full">
+      <div className="absolute right-3 top-3 flex gap-1 z-20 opacity-0 group-hover:opacity-100 transition-opacity duration-200">
+        <button onClick={onFavorite} className="p-2 bg-black/40 hover:bg-black/60 rounded-full backdrop-blur-md transition-colors text-yellow-400" title="Favorite">
           <Star size={14} className={memory.isFavorite ? 'fill-yellow-400' : ''}/>
         </button>
-        <div className="relative">
-          <button onClick={(e) => {e.stopPropagation(); setShowMenu(!showMenu)}} className="p-2 bg-black/40 hover:bg-black/60 rounded-full backdrop-blur-md transition-colors text-white">
-            <MoreVertical size={14} />
-          </button>
-          {showMenu && (
-            <div className="absolute right-0 top-10 w-48 bg-background border border-border rounded-xl shadow-2xl py-1 z-50 text-sm font-medium">
-              <button onClick={(e)=>{setShowMenu(false); onEdit(e)}} className="w-full text-left px-4 py-2 hover:bg-accent">Edit Memory</button>
-              <button onClick={(e)=>{setShowMenu(false); onDuplicate(e)}} className="w-full text-left px-4 py-2 hover:bg-accent">Duplicate</button>
-              <button onClick={(e)=>{setShowMenu(false); onArchive(e)}} className="w-full text-left px-4 py-2 hover:bg-accent text-yellow-500">{memory.isArchived ? 'Restore' : 'Archive'}</button>
-              <div className="my-1 border-t border-border"></div>
-              <button onClick={(e)=>{setShowMenu(false); onDelete(e)}} className="w-full text-left px-4 py-2 hover:bg-red-500 hover:text-white text-red-500">Delete</button>
-            </div>
-          )}
-        </div>
+        <button onClick={(e) => {e.stopPropagation(); onEdit(e)}} className="p-2 bg-black/40 hover:bg-black/60 rounded-full backdrop-blur-md transition-colors text-white" title="Edit">
+          <Edit2 size={14}/>
+        </button>
+        <button onClick={(e) => {e.stopPropagation(); onDuplicate(e)}} className="p-2 bg-black/40 hover:bg-black/60 rounded-full backdrop-blur-md transition-colors text-white" title="Duplicate">
+          <Copy size={14}/>
+        </button>
+        <button onClick={(e) => {e.stopPropagation(); onArchive(e)}} className="p-2 bg-black/40 hover:bg-black/60 rounded-full backdrop-blur-md transition-colors text-yellow-500" title={memory.isArchived ? 'Restore' : 'Archive'}>
+          <Archive size={14}/>
+        </button>
+        <button onClick={(e) => {e.stopPropagation(); onDelete(e)}} className="p-2 bg-black/40 hover:bg-red-600 rounded-full backdrop-blur-md transition-colors text-red-500 hover:text-white" title="Delete">
+          <Trash2 size={14}/>
+        </button>
       </div>
-      
+
       <div className="aspect-[4/3] bg-accent relative overflow-hidden rounded-t-3xl cursor-pointer" onClick={onClick}>
         {cover ? (
           <img src={cover} className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-700" />
@@ -490,13 +503,13 @@ function MemoryCard({ memory, cover, photosCount, vidsCount, onClick, onFavorite
           {memory.mood && <span className="text-xs font-bold bg-accent text-foreground px-2 py-1 rounded-md">{memory.mood}</span>}
           {memory.category && <span className="text-xs font-bold bg-primary/10 text-primary px-2 py-1 rounded-md">{memory.category}</span>}
         </div>
-        
+
         {memory.description && (
           <div className="text-sm text-muted-foreground line-clamp-2 mb-4 leading-relaxed flex-1">
             {memory.description.replace(/<[^>]*>?/gm, '')}
           </div>
         )}
-        
+
         <div className="flex items-center justify-between text-xs font-bold uppercase tracking-widest text-muted-foreground mt-auto pt-3 border-t border-border">
           <div className="flex gap-2">
             {(photosCount > 0 || vidsCount > 0) && (
@@ -507,8 +520,6 @@ function MemoryCard({ memory, cover, photosCount, vidsCount, onClick, onFavorite
           <span className="text-primary group-hover:text-primary/80 transition-colors">Preview →</span>
         </div>
       </div>
-      
-      {showMenu && <div className="fixed inset-0 z-40" onClick={(e) => {e.stopPropagation(); setShowMenu(false)}}></div>}
     </div>
   )
 }

@@ -1,6 +1,6 @@
 import { useState, useEffect, useRef } from 'react'
 import { useParams, useNavigate } from 'react-router-dom'
-import { ArrowLeft, User, Heart, Calendar, MessageCircle, FileText, Sparkles, Phone, Video, MoreVertical, Plus, Image as ImageIcon, File as FileIcon, Clock, Edit2, Trash2, Pin, Eye, Download, Music } from 'lucide-react'
+import { ArrowLeft, User, Heart, Calendar, MessageCircle, FileText, Sparkles, Phone, Video, MoreVertical, Plus, Image as ImageIcon, File as FileIcon, Clock, Edit2, Trash2, Pin, Eye, Download, Music, Folder, Upload, Star, Shield, TrendingUp } from 'lucide-react'
 import { NotificationEngine } from '../lib/NotificationEngine'
 import { Person, RecordItem } from '../types'
 import Markdown from 'react-markdown'
@@ -84,11 +84,11 @@ export default function RelationshipProfile() {
       // Load related records
       // @ts-ignore
       const rData = await window.api.db.find('records', {})
-      const related = rData.filter((r: RecordItem) => 
-        (r.people && r.people.includes(personId)) || 
+      const related = rData.filter((r: RecordItem) =>
+        (r.people && r.people.includes(personId)) ||
         (r.people && r.people.includes(pData[0]?.name))
       ).sort((a: RecordItem, b: RecordItem) => b.createdAt - a.createdAt)
-      
+
       setRecords(related)
     } catch (err) {
       console.error(err)
@@ -133,7 +133,7 @@ export default function RelationshipProfile() {
     if (!person) return
     try {
       // @ts-ignore
-      await window.api.db.update('relationships', { _id: person._id }, { $set: { profilePicture: picPath } }, {})
+      await window.api.db.update('relationships', { _id: person._id }, { $set: { profilePicture: picPath, updatedAt: Date.now() } }, {})
       setPerson({ ...person, profilePicture: picPath })
       setShowChangePicture(false)
       setShowProfilePicManager(false)
@@ -159,6 +159,8 @@ export default function RelationshipProfile() {
            // @ts-ignore
            await window.api.db.insert('records', newRecord)
          }
+         // @ts-ignore
+         await window.api.db.update('relationships', { _id: person._id }, { $set: { updatedAt: Date.now() } }, {})
          loadData(person!._id!)
       }
     } catch(e) { console.error(e) }
@@ -177,7 +179,7 @@ export default function RelationshipProfile() {
       if (person.audio) updatePayload.audio = person.audio.filter(a => a !== photoUrl)
       
       // @ts-ignore
-      await window.api.db.update('relationships', { _id: person._id }, { $set: updatePayload }, {})
+      await window.api.db.update('relationships', { _id: person._id }, { $set: { ...updatePayload, updatedAt: Date.now() } }, {})
       loadData(person._id!)
       return
     }
@@ -186,7 +188,9 @@ export default function RelationshipProfile() {
     if (record) {
       const newAttachments = record.attachments!.filter(a => a !== photoUrl)
       // @ts-ignore
-      await window.api.db.update('records', { _id: record._id }, { $set: { attachments: newAttachments } }, {})
+      await window.api.db.update('records', { _id: record._id }, { $set: { attachments: newAttachments, updatedAt: Date.now() } }, {})
+      // @ts-ignore
+      await window.api.db.update('relationships', { _id: person._id }, { $set: { updatedAt: Date.now() } }, {})
       loadData(person!._id!)
     }
   }
@@ -205,21 +209,29 @@ export default function RelationshipProfile() {
     if (!person) return
     try {
       // @ts-ignore
-      await window.api.db.update('relationships', { _id: person._id }, { $set: { isArchived: !person.isArchived } }, {})
+      await window.api.db.update('relationships', { _id: person._id }, { $set: { isArchived: !person.isArchived, updatedAt: Date.now() } }, {})
       setPerson({ ...person, isArchived: !person.isArchived })
     } catch(e) { console.error(e) }
   }
 
   const handleExportProfile = () => {
     if (!person) return
-    const data = { person, records }
-    const blob = new Blob([JSON.stringify(data, null, 2)], { type: 'application/json' })
-    const url = URL.createObjectURL(blob)
-    const a = document.createElement('a')
-    a.href = url
-    a.download = `kiseki_profile_${person.name.replace(/\s+/g, '_')}.json`
-    a.click()
-    URL.revokeObjectURL(url)
+    try {
+      // Ensure all records have an attachments array explicitly defined
+      const enrichedRecords = records.map(r => ({ ...r, attachments: r.attachments || [] }))
+      const data = { person, records: enrichedRecords }
+      const blob = new Blob([JSON.stringify(data, null, 2)], { type: 'application/json' })
+      const url = URL.createObjectURL(blob)
+      const a = document.createElement('a')
+      a.href = url
+      a.download = `kiseki_profile_${person.name.replace(/\s+/g, '_')}.json`
+      a.click()
+      URL.revokeObjectURL(url)
+      NotificationEngine.notify('success', 'Export Complete', `Successfully exported ${person.name}'s profile.`, 'Relationships')
+    } catch (e) {
+      console.error('Failed to export profile', e)
+      NotificationEngine.notify('error', 'Export Failed', 'An error occurred while exporting the profile.', 'Relationships')
+    }
   }
 
   const saveEditPerson = async (e: React.FormEvent) => {
@@ -227,7 +239,7 @@ export default function RelationshipProfile() {
     if (!person) return
     try {
       // @ts-ignore
-      await window.api.db.update('relationships', { _id: person._id }, { $set: editForm }, {})
+      await window.api.db.update('relationships', { _id: person._id }, { $set: { ...editForm, updatedAt: Date.now() } }, {})
       setPerson({ ...person, ...editForm } as Person)
       setShowEditModal(false)
     } catch(err) { console.error(err) }
@@ -274,6 +286,8 @@ export default function RelationshipProfile() {
     try {
       // @ts-ignore
       await window.api.db.insert('records', newRecord)
+      // @ts-ignore
+      await window.api.db.update('relationships', { _id: person._id }, { $set: { updatedAt: Date.now() } }, {})
       setFormState({})
       setShowTimelineForm(false)
       setShowMemoryForm(false)
@@ -303,7 +317,7 @@ export default function RelationshipProfile() {
 
     try {
       // @ts-ignore
-      await window.api.db.update('relationships', { _id: person._id }, { $set: { notes: newNotes } }, {})
+      await window.api.db.update('relationships', { _id: person._id }, { $set: { notes: newNotes, updatedAt: Date.now() } }, {})
       setPerson({ ...person, notes: newNotes })
       setFormState({})
       setEditNoteId(null)
@@ -316,7 +330,7 @@ export default function RelationshipProfile() {
     const newNotes = (person.notes || []).filter(n => n._id !== noteId)
     try {
       // @ts-ignore
-      await window.api.db.update('relationships', { _id: person._id }, { $set: { notes: newNotes } }, {})
+      await window.api.db.update('relationships', { _id: person._id }, { $set: { notes: newNotes, updatedAt: Date.now() } }, {})
       setPerson({ ...person, notes: newNotes })
     } catch (err) { console.error(err) }
   }
@@ -329,20 +343,222 @@ export default function RelationshipProfile() {
     
     try {
       // @ts-ignore
-      await window.api.db.update('relationships', { _id: person._id }, { $set: { notes: newNotes } }, {})
+      await window.api.db.update('relationships', { _id: person._id }, { $set: { notes: newNotes, updatedAt: Date.now() } }, {})
       setPerson({ ...person, notes: newNotes })
     } catch (err) { console.error(err) }
   }
+
+  // --- Import Memory ---
+  const handleImportMemory = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0]
+    if (!file || !person) return
+
+    try {
+      const text = await file.text()
+      const importedData = JSON.parse(text)
+
+      // Validate the imported data structure
+      if (!importedData.title || !importedData.date) {
+        NotificationEngine.notify('error', 'Invalid File', 'The JSON file does not contain valid memory data.', 'Relationships')
+        return
+      }
+
+      // Create a new record from the imported data
+      const now = Date.now()
+      const newRecord: RecordItem = {
+        title: importedData.title,
+        description: importedData.description || '',
+        date: importedData.date,
+        type: importedData.type || 'Memory',
+        tags: importedData.tags || [],
+        people: [person._id!], // Associate with current relationship
+        importance: importedData.importance || 3,
+        privacyLevel: importedData.privacyLevel || 'private',
+        createdAt: now,
+        updatedAt: now,
+        isFavorite: importedData.isFavorite || false,
+        isArchived: importedData.isArchived || false,
+        attachments: importedData.attachments || [],
+        mood: importedData.mood || '',
+        location: importedData.location || ''
+      }
+
+      // @ts-ignore
+      await window.api.db.insert('records', newRecord)
+      // @ts-ignore
+      await window.api.db.update('relationships', { _id: person._id }, { $set: { updatedAt: Date.now() } }, {})
+      
+      NotificationEngine.notify('success', 'Import Successful', `Memory "${importedData.title}" has been imported to ${person.name}'s profile.`, 'Relationships')
+      loadData(person._id!)
+
+      // Reset the file input
+      e.target.value = ''
+    } catch (err) {
+      console.error('Failed to import memory:', err)
+      NotificationEngine.notify('error', 'Import Failed', 'Failed to import the memory. Please check the file format.', 'Relationships')
+    }
+  }
+
+  // --- Calculate Dynamic Relationship Score & Health Metrics ---
+  const calculateRelationshipMetrics = () => {
+    if (!person || !records) return { score: 50, trust: 50, communication: 50, intimacy: 50, growth: 50 }
+
+    const activeRecords = records.filter(r => !r.isArchived)
+    const now = Date.now()
+    const oneMonthAgo = now - (30 * 24 * 60 * 60 * 1000)
+    const threeMonthsAgo = now - (90 * 24 * 60 * 60 * 1000)
+    const sixMonthsAgo = now - (180 * 24 * 60 * 60 * 1000)
+
+    let score = 50 // Base score
+
+    // INCREASE FACTORS
+
+    // Factor 1: Number of interactions (max 20 points)
+    const interactionCount = activeRecords.length
+    score += Math.min(20, interactionCount * 2)
+
+    // Factor 2: Recency of interactions (max 30 points)
+    const recentInteractions = activeRecords.filter(r => new Date(r.date).getTime() > oneMonthAgo)
+    const veryRecentInteractions = activeRecords.filter(r => new Date(r.date).getTime() > threeMonthsAgo)
+    score += Math.min(20, recentInteractions.length * 5)
+    score += Math.min(10, veryRecentInteractions.length * 2)
+
+    // Factor 3: Media richness (max 15 points)
+    const totalAttachments = activeRecords.reduce((acc, r) => acc + (r.attachments?.length || 0), 0)
+    score += Math.min(15, totalAttachments * 2)
+
+    // Factor 4: Favorites (max 10 points)
+    const favoriteCount = activeRecords.filter(r => r.isFavorite).length
+    score += Math.min(10, favoriteCount * 3)
+
+    // Factor 5: Relationship duration (max 10 points)
+    if (person.relationshipStarted) {
+      const startDate = new Date(person.relationshipStarted).getTime()
+      const monthsSinceStart = Math.floor((now - startDate) / (30 * 24 * 60 * 60 * 1000))
+      score += Math.min(10, monthsSinceStart * 0.5)
+    }
+
+    // Factor 6: Variety of record types (max 15 points)
+    const uniqueTypes = new Set(activeRecords.map(r => r.type)).size
+    score += Math.min(15, uniqueTypes * 3)
+
+    // DECREASE FACTORS
+
+    // Factor 7: Lack of recent interactions (max -30 points)
+    const oldInteractions = activeRecords.filter(r => new Date(r.date).getTime() < sixMonthsAgo)
+    if (interactionCount > 0 && recentInteractions.length === 0) {
+      score -= Math.min(30, oldInteractions.length * 3)
+    }
+
+    // Factor 8: High ratio of archived items (max -20 points)
+    const totalRecords = records.length
+    const archivedCount = records.filter(r => r.isArchived).length
+    let archiveRatio = 0
+    if (totalRecords > 0) {
+      archiveRatio = archivedCount / totalRecords
+      if (archiveRatio > 0.5) {
+        score -= Math.min(20, Math.round(archiveRatio * 40))
+      }
+    }
+
+    // Factor 9: No media despite many interactions (max -10 points)
+    if (interactionCount > 5 && totalAttachments === 0) {
+      score -= 10
+    }
+
+    // Factor 10: No favorites despite many interactions (max -10 points)
+    if (interactionCount > 3 && favoriteCount === 0) {
+      score -= 10
+    }
+
+    // Calculate individual health metrics
+    let trust = 50
+    let communication = 50
+    let intimacy = 50
+    let growth = 50
+
+    // Trust based on consistency and duration
+    if (person.relationshipStarted) {
+      const startDate = new Date(person.relationshipStarted).getTime()
+      const monthsSinceStart = Math.floor((now - startDate) / (30 * 24 * 60 * 60 * 1000))
+      trust += Math.min(30, monthsSinceStart * 2)
+    }
+    trust += Math.min(20, interactionCount)
+    trust -= Math.min(20, archivedCount * 5)
+
+    // Communication based on recency and frequency
+    communication += Math.min(30, recentInteractions.length * 10)
+    communication += Math.min(20, veryRecentInteractions.length * 5)
+    if (interactionCount > 0 && recentInteractions.length === 0) {
+      communication -= Math.min(40, oldInteractions.length * 5)
+    }
+
+    // Intimacy based on media and favorites
+    intimacy += Math.min(30, totalAttachments * 3)
+    intimacy += Math.min(30, favoriteCount * 5)
+    if (interactionCount > 5 && totalAttachments === 0) intimacy -= 20
+
+    // Growth based on variety and new experiences
+    growth += Math.min(30, uniqueTypes * 5)
+    growth += Math.min(20, recentInteractions.length * 3)
+    if (archiveRatio > 0.3) growth -= Math.min(20, archiveRatio * 50)
+
+    // Ensure all metrics are between 0 and 100
+    score = Math.max(0, Math.min(100, Math.round(score)))
+    trust = Math.max(0, Math.min(100, Math.round(trust)))
+    communication = Math.max(0, Math.min(100, Math.round(communication)))
+    intimacy = Math.max(0, Math.min(100, Math.round(intimacy)))
+    growth = Math.max(0, Math.min(100, Math.round(growth)))
+
+    return { score, trust, communication, intimacy, growth }
+  }
+
+  const metrics = calculateRelationshipMetrics()
+  const dynamicScore = metrics.score
+
+  // Update the person's score in database when it changes significantly
+  useEffect(() => {
+    if (person && dynamicScore !== person.relationshipScore) {
+      const updateScore = async () => {
+        try {
+          // @ts-ignore
+          await window.api.db.update('relationships', { _id: person._id }, { $set: { relationshipScore: dynamicScore, updatedAt: Date.now() } })
+          setPerson({ ...person, relationshipScore: dynamicScore })
+
+          // Show notification based on score change
+          const scoreChange = dynamicScore - person.relationshipScore
+          if (scoreChange > 0) {
+            NotificationEngine.notify(
+              'success',
+              'Relationship Score Improved',
+              `Score increased by ${scoreChange} points to ${dynamicScore}/100`,
+              'Relationships'
+            )
+          } else if (scoreChange < 0) {
+            NotificationEngine.notify(
+              'warning',
+              'Relationship Score Changed',
+              `Score decreased by ${Math.abs(scoreChange)} points to ${dynamicScore}/100`,
+              'Relationships'
+            )
+          }
+        } catch (err) {
+          console.error('Failed to update relationship score:', err)
+        }
+      }
+      updateScore()
+    }
+  }, [dynamicScore])
 
   // --- AI Insights ---
   const generateInsights = async () => {
     if (!person) return
     setIsGenerating(true)
     setAiInsights('')
-    
+
     const systemPrompt = `You are a relationship analyst for the Kiseki Records app. Analyze the relationship with "${person.name}".
 Relationship Type: ${person.relationshipType}
-Score: ${person.relationshipScore}/100
+Score: ${dynamicScore}/100
 Bio: ${person.bio || 'None'}
 Start Date: ${person.relationshipStarted || 'Unknown'}
 
@@ -360,7 +576,7 @@ Provide a brief, insightful summary of this relationship's health and suggest 1-
             modelToUse = data.models[0].name
          }
       }
-      
+
       const response = await fetch('http://127.0.0.1:11434/api/chat', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
@@ -388,15 +604,63 @@ Provide a brief, insightful summary of this relationship's health and suggest 1-
   const memoryRecords = records.filter(r => ['Memory', 'Journal', 'Voice', 'Video', 'Photo', 'Document', 'Link'].includes(r.type))
   const eventRecords = records.filter(r => r.type === 'Event')
   const pAttachments = person.attachments || []
-  const photos = Array.from(new Set([...(person.photos || []), ...pAttachments.filter(a => a.match(/\.(jpg|jpeg|png|gif|webp)$/i)), ...records.filter(r => r.type === 'Photo').flatMap(r => r.attachments || [])]))
-  const audio = Array.from(new Set([...(person.audio || []), ...pAttachments.filter(a => a.match(/\.(mp3|wav|ogg|m4a|mpeg)$/i)), ...records.filter(r => r.type === 'Audio' || r.type === 'Voice').flatMap(r => r.attachments || [])]))
-  const video = Array.from(new Set([...(person.video || []), ...pAttachments.filter(a => a.match(/\.(mp4|webm|mov|mkv|avi|wmv|flv)$/i)), ...records.filter(r => r.type === 'Video').flatMap(r => r.attachments || [])]))
+
+  // Filter out archived records for media tabs
+  const activeRecords = records.filter(r => !r.isArchived)
+
+  // Get all photo attachments from memories, events, and other records (excluding archived)
+  const allPhotoAttachments = activeRecords.flatMap(r => r.attachments?.filter((a: string) => a.match(/\.(jpg|jpeg|png|gif|webp)$/i)) || [])
+  const photos = Array.from(new Set([...(person.photos || []), ...pAttachments.filter((a: string) => a.match(/\.(jpg|jpeg|png|gif|webp)$/i)), ...allPhotoAttachments]))
+
+  // Get all audio attachments from memories, events, and other records (excluding archived)
+  const allAudioAttachments = activeRecords.flatMap(r => r.attachments?.filter((a: string) => a.match(/\.(mp3|wav|ogg|m4a|mpeg)$/i)) || [])
+  const audio = Array.from(new Set([...(person.audio || []), ...pAttachments.filter((a: string) => a.match(/\.(mp3|wav|ogg|m4a|mpeg)$/i)), ...allAudioAttachments]))
+
+  // Get all video attachments from memories, events, and other records (excluding archived)
+  const allVideoAttachments = activeRecords.flatMap(r => r.attachments?.filter((a: string) => a.match(/\.(mp4|webm|mov|mkv|avi|wmv|flv)$/i)) || [])
+  const video = Array.from(new Set([...(person.video || []), ...pAttachments.filter((a: string) => a.match(/\.(mp4|webm|mov|mkv|avi|wmv|flv)$/i)), ...allVideoAttachments]))
   
   const sortedNotes = [...(person.notes || [])].sort((a, b) => {
     if (a.isPinned && !b.isPinned) return -1
     if (!a.isPinned && b.isPinned) return 1
     return b.createdAt - a.createdAt
   })
+
+  // Find memory containing a specific attachment
+  const findMemoryByAttachment = (attachmentUrl: string) => {
+    return records.find(r => r.attachments?.includes(attachmentUrl))
+  }
+
+  // Navigate to memories or events tab and highlight specific record
+  const handleGoToMemory = (attachmentUrl: string) => {
+    const memory = findMemoryByAttachment(attachmentUrl)
+    if (memory) {
+      if (memory.type === 'Event') {
+        setActiveTab('Events')
+        setTimeout(() => {
+          const el = document.getElementById(`event-card-${memory._id}`)
+          if (el) {
+            el.scrollIntoView({ behavior: 'smooth', block: 'center' })
+            el.classList.add('ring-4', 'ring-primary', 'shadow-2xl', 'shadow-primary/40', 'animate-[pulse_2s_ease-in-out_3]', 'z-50')
+            setTimeout(() => el.classList.remove('ring-4', 'ring-primary', 'shadow-2xl', 'shadow-primary/40', 'animate-[pulse_2s_ease-in-out_3]', 'z-50'), 4000)
+          }
+        }, 100)
+      } else {
+        setActiveTab('Memories')
+        setTimeout(() => {
+          const el = document.getElementById(`memory-card-${memory._id}`)
+          if (el) {
+            el.scrollIntoView({ behavior: 'smooth', block: 'center' })
+            el.classList.add('ring-4', 'ring-primary', 'shadow-2xl', 'shadow-primary/40', 'animate-[pulse_2s_ease-in-out_3]', 'z-50')
+            setTimeout(() => el.classList.remove('ring-4', 'ring-primary', 'shadow-2xl', 'shadow-primary/40', 'animate-[pulse_2s_ease-in-out_3]', 'z-50'), 4000)
+          }
+        }, 100)
+      }
+    } else {
+      // Show notification if memory not found
+      NotificationEngine.notify('info', 'Not Found', 'Attachment not found in any memory or event', 'Relationships')
+    }
+  }
 
   return (
     <div className="flex flex-col h-full bg-background animate-in fade-in duration-500 relative">
@@ -418,7 +682,7 @@ Provide a brief, insightful summary of this relationship's health and suggest 1-
             </h1>
             <p className="text-primary font-medium">{person.relationshipType}</p>
             <div className="flex items-center gap-4 mt-2 text-sm text-muted-foreground">
-              <span className="flex items-center gap-1"><Heart size={14} className="text-destructive fill-destructive"/> Score: {person.relationshipScore}</span>
+              <span className="flex items-center gap-1"><Heart size={14} className="text-destructive fill-destructive"/> Score: {dynamicScore}</span>
               {person.relationshipStarted && <span className="flex items-center gap-1"><Calendar size={14}/> Since: {new Date(person.relationshipStarted).getFullYear()}</span>}
             </div>
           </div>
@@ -438,6 +702,7 @@ Provide a brief, insightful summary of this relationship's health and suggest 1-
                 {/* @ts-ignore */}
                 <button title={person.isArchived ? "Unarchive person" : "Archive this person"} onClick={() => { handleArchivePerson(); setShowMenu(false); }} className="w-full text-left px-4 py-2 text-sm hover:bg-accent">{person.isArchived ? 'Unarchive Person' : 'Archive Person'}</button>
                 <button title="Export profile to JSON file" onClick={() => { handleExportProfile(); setShowMenu(false); }} className="w-full text-left px-4 py-2 text-sm hover:bg-accent">Export Profile</button>
+                <button title="Import memory from JSON file" onClick={() => { document.getElementById('import-memory-input')?.click(); setShowMenu(false); }} className="w-full text-left px-4 py-2 text-sm hover:bg-accent flex items-center gap-2"><Upload size={14}/> Import Memory</button>
                 <button title="Generate relationship summary with local AI" onClick={() => { setActiveTab('AI Insights'); setShowMenu(false); generateInsights(); }} className="w-full text-left px-4 py-2 text-sm hover:bg-accent">Generate AI Summary</button>
                 <div className="h-px bg-border my-1"></div>
                 <button title="Delete this person permanently" onClick={() => { setShowDeleteModal(true); setShowMenu(false); }} className="w-full text-left px-4 py-2 text-sm text-destructive hover:bg-destructive/10">Delete Person</button>
@@ -446,6 +711,15 @@ Provide a brief, insightful summary of this relationship's health and suggest 1-
           </div>
         </div>
       </div>
+
+      {/* Hidden file input for memory import */}
+      <input
+        id="import-memory-input"
+        type="file"
+        accept=".json"
+        className="hidden"
+        onChange={handleImportMemory}
+      />
 
       {/* Tabs */}
       <div className="flex gap-1 px-6 border-b border-border bg-card/50 overflow-x-auto shrink-0 scrollbar-hide">
@@ -462,34 +736,106 @@ Provide a brief, insightful summary of this relationship's health and suggest 1-
           
           {/* OVERVIEW */}
           {activeTab === 'Overview' && (
-            <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
-              <div className="md:col-span-2 space-y-6">
-                {person.bio && (
-                  <div className="bg-card border border-border rounded-xl p-6 shadow-sm">
-                    <h3 className="font-bold mb-3 flex items-center gap-2"><User size={18}/> Bio</h3>
-                    <p className="whitespace-pre-wrap text-muted-foreground text-sm leading-relaxed">{person.bio}</p>
+            <div className="space-y-6">
+              {/* Stats Cards */}
+              <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
+                <div className="bg-gradient-to-br from-primary/20 to-primary/5 border border-primary/30 p-5 rounded-2xl shadow-sm">
+                  <div className="flex items-center gap-2 mb-2">
+                    <Heart size={20} className="text-primary"/>
+                    <span className="text-xs font-bold text-primary uppercase tracking-wider">Score</span>
                   </div>
-                )}
-                <div className="bg-card border border-border rounded-xl p-6 shadow-sm">
-                  <h3 className="font-bold mb-3 flex items-center gap-2"><Heart size={18}/> Relationship Health</h3>
-                  <div className="space-y-4 mt-4">
+                  <div className="text-3xl font-black text-primary">{dynamicScore}<span className="text-lg text-primary/60">/100</span></div>
+                </div>
+                <div className="bg-card border border-border p-5 rounded-2xl shadow-sm">
+                  <div className="flex items-center gap-2 mb-2">
+                    <Calendar size={20} className="text-muted-foreground"/>
+                    <span className="text-xs font-bold text-muted-foreground uppercase tracking-wider">Interactions</span>
+                  </div>
+                  <div className="text-3xl font-black">{records.filter(r => !r.isArchived).length}</div>
+                </div>
+                <div className="bg-card border border-border p-5 rounded-2xl shadow-sm">
+                  <div className="flex items-center gap-2 mb-2">
+                    <ImageIcon size={20} className="text-muted-foreground"/>
+                    <span className="text-xs font-bold text-muted-foreground uppercase tracking-wider">Media</span>
+                  </div>
+                  <div className="text-3xl font-black">{records.filter(r => !r.isArchived).reduce((acc, r) => acc + (r.attachments?.length || 0), 0)}</div>
+                </div>
+                <div className="bg-card border border-border p-5 rounded-2xl shadow-sm">
+                  <div className="flex items-center gap-2 mb-2">
+                    <Star size={20} className="text-yellow-500"/>
+                    <span className="text-xs font-bold text-muted-foreground uppercase tracking-wider">Favorites</span>
+                  </div>
+                  <div className="text-3xl font-black">{records.filter(r => !r.isArchived && r.isFavorite).length}</div>
+                </div>
+              </div>
+
+              {/* Relationship Health */}
+              <div className="bg-card border border-border rounded-2xl p-6 shadow-sm">
+                <div className="flex items-center justify-between mb-6">
+                  <h3 className="font-bold text-lg flex items-center gap-2"><Heart size={20} className="text-destructive fill-destructive"/> Relationship Health</h3>
+                  <div className="text-sm font-medium text-muted-foreground">Overall: {dynamicScore}/100</div>
+                </div>
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                  <div className="space-y-4">
                     <div>
-                      <div className="flex justify-between text-xs mb-1"><span className="font-medium">Trust</span><span>{Math.min(100, person.relationshipScore + 10)}%</span></div>
-                      <div className="w-full bg-accent rounded-full h-2"><div className="bg-primary h-2 rounded-full" style={{width: `${Math.min(100, person.relationshipScore + 10)}%`}}></div></div>
+                      <div className="flex justify-between items-center mb-2">
+                        <span className="text-sm font-medium flex items-center gap-2"><Shield size={16} className="text-primary"/> Trust</span>
+                        <span className="text-sm font-bold text-primary">{metrics.trust}%</span>
+                      </div>
+                      <div className="w-full bg-accent rounded-full h-3 overflow-hidden">
+                        <div className="bg-primary h-3 rounded-full transition-all duration-500" style={{width: `${metrics.trust}%`}}></div>
+                      </div>
                     </div>
                     <div>
-                      <div className="flex justify-between text-xs mb-1"><span className="font-medium">Communication</span><span>{person.relationshipScore}%</span></div>
-                      <div className="w-full bg-accent rounded-full h-2"><div className="bg-blue-500 h-2 rounded-full" style={{width: `${person.relationshipScore}%`}}></div></div>
+                      <div className="flex justify-between items-center mb-2">
+                        <span className="text-sm font-medium flex items-center gap-2"><MessageCircle size={16} className="text-blue-500"/> Communication</span>
+                        <span className="text-sm font-bold text-blue-500">{metrics.communication}%</span>
+                      </div>
+                      <div className="w-full bg-accent rounded-full h-3 overflow-hidden">
+                        <div className="bg-blue-500 h-3 rounded-full transition-all duration-500" style={{width: `${metrics.communication}%`}}></div>
+                      </div>
+                    </div>
+                  </div>
+                  <div className="space-y-4">
+                    <div>
+                      <div className="flex justify-between items-center mb-2">
+                        <span className="text-sm font-medium flex items-center gap-2"><Sparkles size={16} className="text-purple-500"/> Intimacy</span>
+                        <span className="text-sm font-bold text-purple-500">{metrics.intimacy}%</span>
+                      </div>
+                      <div className="w-full bg-accent rounded-full h-3 overflow-hidden">
+                        <div className="bg-purple-500 h-3 rounded-full transition-all duration-500" style={{width: `${metrics.intimacy}%`}}></div>
+                      </div>
+                    </div>
+                    <div>
+                      <div className="flex justify-between items-center mb-2">
+                        <span className="text-sm font-medium flex items-center gap-2"><TrendingUp size={16} className="text-green-500"/> Growth</span>
+                        <span className="text-sm font-bold text-green-500">{metrics.growth}%</span>
+                      </div>
+                      <div className="w-full bg-accent rounded-full h-3 overflow-hidden">
+                        <div className="bg-green-500 h-3 rounded-full transition-all duration-500" style={{width: `${metrics.growth}%`}}></div>
+                      </div>
                     </div>
                   </div>
                 </div>
               </div>
-              <div className="space-y-6">
-                <div className="bg-card border border-border rounded-xl p-6 shadow-sm">
+
+              {/* Bio and Details */}
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                {person.bio && (
+                  <div className="bg-card border border-border rounded-2xl p-6 shadow-sm">
+                    <h3 className="font-bold mb-4 flex items-center gap-2"><User size={18}/> Bio</h3>
+                    <p className="whitespace-pre-wrap text-muted-foreground text-sm leading-relaxed">{person.bio}</p>
+                  </div>
+                )}
+                <div className="bg-card border border-border rounded-2xl p-6 shadow-sm">
                   <h3 className="font-bold mb-4">Details</h3>
                   <ul className="space-y-3 text-sm">
+                    {person.relationshipType && <li className="flex justify-between"><span className="text-muted-foreground">Relationship Type</span> <span className="font-medium">{person.relationshipType}</span></li>}
+                    {person.relationshipStarted && <li className="flex justify-between"><span className="text-muted-foreground">Since</span> <span className="font-medium">{new Date(person.relationshipStarted).toLocaleDateString()}</span></li>}
                     {person.birthday && <li className="flex justify-between"><span className="text-muted-foreground">Birthday</span> <span className="font-medium">{person.birthday}</span></li>}
                     {person.occupation && <li className="flex justify-between"><span className="text-muted-foreground">Occupation</span> <span className="font-medium">{person.occupation}</span></li>}
+                    {person.phone && <li className="flex justify-between"><span className="text-muted-foreground">Phone</span> <span className="font-medium">{person.phone}</span></li>}
+                    {person.email && <li className="flex justify-between"><span className="text-muted-foreground">Email</span> <span className="font-medium">{person.email}</span></li>}
                   </ul>
                 </div>
               </div>
@@ -580,6 +926,9 @@ Provide a brief, insightful summary of this relationship's health and suggest 1-
                          <div className="flex gap-2 justify-between items-center text-white">
                             <span className="text-xs truncate max-w-[100px]">{photo.split(/[/\\]/).pop()}</span>
                             <div className="flex gap-1">
+                              {['Memory', 'Event'].includes(findMemoryByAttachment(photo)?.type || '') && (
+                                <button onClick={() => handleGoToMemory(photo)} className="p-1.5 bg-white/20 rounded hover:bg-white/40" title="Go to Memory"><Folder size={14}/></button>
+                              )}
                               <button onClick={() => setViewingPhoto(photo)} className="p-1.5 bg-white/20 rounded hover:bg-white/40"><Eye size={14}/></button>
                               <a href={normalizeUrl(photo)} download target="_blank" rel="noreferrer" className="p-1.5 bg-white/20 rounded hover:bg-white/40 flex items-center"><Download size={14}/></a>
                               <button onClick={() => removeAttachment(photo)} className="p-1.5 bg-destructive/80 rounded hover:bg-destructive"><Trash2 size={14}/></button>
@@ -617,6 +966,9 @@ Provide a brief, insightful summary of this relationship's health and suggest 1-
                       <div className="p-3 bg-card border-t border-border flex justify-between items-center">
                          <span className="text-xs truncate max-w-[150px]">{vid.split(/[/\\]/).pop()}</span>
                          <div className="flex gap-1">
+                            {['Memory', 'Event'].includes(findMemoryByAttachment(vid)?.type || '') && (
+                              <button onClick={() => handleGoToMemory(vid)} className="p-1.5 bg-accent rounded hover:bg-muted" title="Go to Memory"><Folder size={14}/></button>
+                            )}
                             <a href={normalizeUrl(vid)} download target="_blank" rel="noreferrer" className="p-1.5 bg-accent rounded hover:bg-muted"><Download size={14}/></a>
                             <button onClick={() => removeAttachment(vid)} className="p-1.5 bg-destructive/10 text-destructive rounded hover:bg-destructive hover:text-white"><Trash2 size={14}/></button>
                          </div>
@@ -654,6 +1006,9 @@ Provide a brief, insightful summary of this relationship's health and suggest 1-
                          <audio src={getSafeMediaUrl(aud)} controls className="w-full mt-2 h-10" />
                       </div>
                       <div className="flex gap-1 ml-4 shrink-0 flex-col sm:flex-row">
+                         {['Memory', 'Event'].includes(findMemoryByAttachment(aud)?.type || '') && (
+                           <button onClick={() => handleGoToMemory(aud)} className="p-2 bg-background rounded hover:bg-muted text-muted-foreground" title="Go to Memory"><Folder size={16}/></button>
+                         )}
                          <a href={normalizeUrl(aud)} download target="_blank" rel="noreferrer" className="p-2 bg-background rounded hover:bg-muted text-muted-foreground"><Download size={16}/></a>
                          <button onClick={() => removeAttachment(aud)} className="p-2 bg-destructive/10 rounded hover:bg-destructive text-destructive hover:text-white"><Trash2 size={16}/></button>
                       </div>

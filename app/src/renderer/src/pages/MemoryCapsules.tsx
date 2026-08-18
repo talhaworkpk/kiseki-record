@@ -183,6 +183,19 @@ export default function MemoryCapsules() {
     }
   }
 
+  useEffect(() => {
+    const down = (e: KeyboardEvent) => {
+      if (e.ctrlKey && e.key.toLowerCase() === 's') {
+        if (isCreating) {
+          e.preventDefault()
+          handleCreate()
+        }
+      }
+    }
+    window.addEventListener('keydown', down)
+    return () => window.removeEventListener('keydown', down)
+  }, [isCreating, title, message, unlockDuration])
+
   const handleOpen = async (capsule: MemoryCapsule) => {
     if (capsule.status === 'locked' && capsule.unlockDate > Date.now()) {
       NotificationEngine.notify('warning', 'Capsule Locked', `This capsule unlocks on ${new Date(capsule.unlockDate).toLocaleDateString()}`, 'Memory Capsules')

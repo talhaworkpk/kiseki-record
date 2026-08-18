@@ -1,6 +1,7 @@
 import { useState, useEffect, useRef } from 'react'
+import { createPortal } from 'react-dom'
 import { useLocation } from 'react-router-dom'
-import { FileText, Plus, Trash2, Edit2, X, Upload, ExternalLink, Image as ImageIcon, Award } from 'lucide-react'
+import { FileText, Plus, Trash2, Edit2, X, Upload, ExternalLink, Image as ImageIcon, Award, Eye, PlayCircle } from 'lucide-react'
 import { NotificationEngine } from '../../lib/NotificationEngine'
 import { CertificateRecord } from '../../types'
 import { normalizeUrl } from '../../lib/utils'
@@ -10,11 +11,62 @@ export default function CertificatesGallery() {
   const [loading, setLoading] = useState(true)
   const [isAdding, setIsAdding] = useState(false)
   const [editingId, setEditingId] = useState<string | null>(null)
+  
+  const [viewingCertificate, setViewingCertificate] = useState<CertificateRecord | null>(null)
+  const [slideshowActive, setSlideshowActive] = useState(false)
+  const [slideIndex, setSlideIndex] = useState(0)
+  const [isSlideshowPaused, setIsSlideshowPaused] = useState(false)
+
   const [isDragging, setIsDragging] = useState(false)
   const [dragStartY, setDragStartY] = useState(0)
   const [scrollTop, setScrollTop] = useState(0)
   const [showSuccessOverlay, setShowSuccessOverlay] = useState(false)
   const scrollContainerRef = useRef<HTMLDivElement>(null)
+
+  // Auto-advance slideshow (only relevant if we have multiple media, but included for consistency)
+  useEffect(() => {
+    let interval: any
+    const allMedia = viewingCertificate?.imageAttachment ? [viewingCertificate.imageAttachment] : []
+    if (slideshowActive && allMedia.length > 0 && !isSlideshowPaused) {
+      interval = setInterval(() => {
+        setSlideIndex((prev) => (prev + 1) % allMedia.length)
+      }, 3000)
+    }
+    return () => clearInterval(interval)
+  }, [slideshowActive, viewingCertificate, isSlideshowPaused])
+
+  // Escape key to close and space key to pause slideshow
+  useEffect(() => {
+    const handleKeyDown = (e: KeyboardEvent) => {
+      if (!slideshowActive) return
+
+      const tag = document.activeElement?.tagName.toLowerCase()
+      const isInput = tag === 'input' || tag === 'textarea' || document.activeElement?.getAttribute('contenteditable') === 'true'
+      if (isInput) return
+
+      if (e.key === 'Escape') {
+        setSlideshowActive(false)
+      }
+
+      if (e.key === ' ') {
+        e.preventDefault()
+        setIsSlideshowPaused(true)
+      }
+    }
+
+    const handleKeyUp = (e: KeyboardEvent) => {
+      if (e.key === ' ' && slideshowActive) {
+        setIsSlideshowPaused(false)
+      }
+    }
+
+    window.addEventListener('keydown', handleKeyDown)
+    window.addEventListener('keyup', handleKeyUp)
+    return () => {
+      window.removeEventListener('keydown', handleKeyDown)
+      window.removeEventListener('keyup', handleKeyUp)
+    }
+  }, [slideshowActive])
   
   const defaultForm: Partial<CertificateRecord> = {
     name: '', organization: '', issueDate: '', expiryDate: '', credentialId: '', credentialUrl: '', imageAttachment: '', pdfAttachment: ''
@@ -70,6 +122,19 @@ export default function CertificatesGallery() {
       loadData()
     } catch (err) { console.error(err) }
   }
+
+  useEffect(() => {
+    const down = (e: KeyboardEvent) => {
+      if (e.ctrlKey && e.key.toLowerCase() === 's') {
+        if (isAdding) {
+          e.preventDefault()
+          handleSave()
+        }
+      }
+    }
+    window.addEventListener('keydown', down)
+    return () => window.removeEventListener('keydown', down)
+  }, [isAdding, form, editingId])
 
   const handleDelete = async (id: string, title: string) => {
     if (!confirm('Delete this certificate?')) return
@@ -339,11 +404,12 @@ export default function CertificatesGallery() {
             
             <div className="p-6 flex-1 flex flex-col">
               <div className="absolute top-4 right-4 opacity-0 group-hover:opacity-100 transition-opacity flex items-center gap-1 z-10 bg-background/80 backdrop-blur-sm p-1 rounded-lg border border-border">
-                <button onClick={() => openEdit(record)} className="p-1.5 rounded-md hover:bg-accent text-foreground"><Edit2 size={14}/></button>
-                <button onClick={() => handleDelete(record._id!, record.name)} className="p-1.5 rounded-md hover:bg-destructive/10 text-destructive"><Trash2 size={14}/></button>
+                <button onClick={() => setViewingCertificate(record)} className="p-1.5 rounded-md hover:bg-accent text-foreground" title="View Details"><Eye size={14}/></button>
+                <button onClick={() => openEdit(record)} className="p-1.5 rounded-md hover:bg-accent text-foreground" title="Edit"><Edit2 size={14}/></button>
+                <button onClick={() => handleDelete(record._id!, record.name)} className="p-1.5 rounded-md hover:bg-destructive/10 text-destructive" title="Delete"><Trash2 size={14}/></button>
               </div>
 
-              <h3 className="text-xl font-bold mb-1 pr-16">{record.name}</h3>
+              <h3 onClick={() => setViewingCertificate(record)} className="text-xl font-bold mb-1 pr-24 cursor-pointer hover:text-green-500 transition-colors decoration-green-500/30 hover:underline underline-offset-4">{record.name}</h3>
               <p className="text-muted-foreground font-medium mb-4">{record.organization}</p>
               
               <div className="grid grid-cols-2 gap-4 text-sm mb-6 bg-accent/30 p-3 rounded-xl">
@@ -385,6 +451,140 @@ export default function CertificatesGallery() {
         </div>
       )}
       </div>
+
+      {/* Certificate Details Modal */}
+      {viewingCertificate && (
+        <div className="fixed inset-0 z-[100] flex items-center justify-center p-4 sm:p-6 md:p-12">
+          <div className="absolute inset-0 bg-background/80 backdrop-blur-sm animate-in fade-in duration-200" onClick={() => setViewingCertificate(null)}></div>
+          <div className="relative bg-card border border-border w-full max-w-4xl max-h-full rounded-2xl shadow-2xl flex flex-col overflow-hidden animate-in zoom-in-95 duration-200">
+            {viewingCertificate.imageAttachment && (
+              <div 
+                className="h-64 w-full border-b border-border bg-accent/30 shrink-0 cursor-pointer group relative"
+                onClick={() => { setSlideIndex(0); setSlideshowActive(true); }}
+              >
+                <img src={normalizeUrl(viewingCertificate.imageAttachment)} alt={viewingCertificate.name} className="w-full h-full object-cover group-hover:scale-[1.02] transition-transform duration-700" />
+                <div className="absolute inset-0 bg-black/0 group-hover:bg-black/10 transition-colors flex items-center justify-center opacity-0 group-hover:opacity-100">
+                  <PlayCircle size={48} className="text-white/80 drop-shadow-lg" />
+                </div>
+              </div>
+            )}
+            
+            <button onClick={() => setViewingCertificate(null)} className="absolute top-4 right-4 p-2 bg-background/50 backdrop-blur rounded-full hover:bg-background/80 transition-colors z-10 text-foreground border border-border">
+              <X size={20} />
+            </button>
+
+            <div 
+              className={`p-6 md:p-10 overflow-y-auto scrollbar-thin ${isDragging ? 'cursor-grabbing' : 'cursor-grab'}`}
+              ref={(el) => {
+                if (el && !el.onmousedown) {
+                  let isDown = false;
+                  let startY = 0;
+                  let scrollTop = 0;
+                  
+                  el.onmousedown = (e) => {
+                    isDown = true;
+                    startY = e.pageY - el.offsetTop;
+                    scrollTop = el.scrollTop;
+                    el.classList.add('cursor-grabbing');
+                    el.classList.remove('cursor-grab');
+                  };
+                  el.onmouseleave = () => {
+                    isDown = false;
+                    el.classList.remove('cursor-grabbing');
+                    el.classList.add('cursor-grab');
+                  };
+                  el.onmouseup = () => {
+                    isDown = false;
+                    el.classList.remove('cursor-grabbing');
+                    el.classList.add('cursor-grab');
+                  };
+                  el.onmousemove = (e) => {
+                    if (!isDown) return;
+                    e.preventDefault();
+                    const y = e.pageY - el.offsetTop;
+                    const walk = (y - startY) * 1.5;
+                    el.scrollTop = scrollTop - walk;
+                  };
+                }
+              }}
+            >
+              <div className="flex justify-between items-start mb-4 pr-12">
+                <div>
+                  <h2 className="text-3xl font-extrabold">{viewingCertificate.name}</h2>
+                  <p className="text-muted-foreground font-bold mt-1 text-lg">{viewingCertificate.organization}</p>
+                </div>
+                <div className="flex items-center gap-3">
+                  {viewingCertificate.imageAttachment && (
+                    <button onClick={() => { setSlideIndex(0); setSlideshowActive(true) }} className="px-4 py-2 bg-green-500 text-white font-bold rounded-xl hover:scale-105 transition-transform flex items-center gap-2 shadow-lg shadow-green-500/20">
+                      <PlayCircle size={18} /> View Image
+                    </button>
+                  )}
+                </div>
+              </div>
+
+              <div className="grid grid-cols-2 md:grid-cols-3 gap-6 text-sm mb-8 bg-accent/20 p-6 rounded-2xl border border-border">
+                <div>
+                  <span className="text-muted-foreground block text-xs uppercase tracking-wider mb-1">Issued</span>
+                  <span className="font-bold text-lg">{new Date(viewingCertificate.issueDate).toLocaleDateString([], { month: 'short', year: 'numeric' })}</span>
+                </div>
+                <div>
+                  <span className="text-muted-foreground block text-xs uppercase tracking-wider mb-1">Expires</span>
+                  <span className="font-bold text-lg">{viewingCertificate.expiryDate ? new Date(viewingCertificate.expiryDate).toLocaleDateString([], { month: 'short', year: 'numeric' }) : 'Never'}</span>
+                </div>
+                {viewingCertificate.credentialId && (
+                  <div className="col-span-2 md:col-span-1">
+                    <span className="text-muted-foreground block text-xs uppercase tracking-wider mb-1">Credential ID</span>
+                    <span className="font-bold font-mono text-base">{viewingCertificate.credentialId}</span>
+                  </div>
+                )}
+              </div>
+
+              {(viewingCertificate.credentialUrl || viewingCertificate.pdfAttachment) && (
+                <div className="mb-8">
+                  <h4 className="text-sm font-bold text-muted-foreground uppercase tracking-wider mb-3">Links & Documents</h4>
+                  <div className="flex flex-wrap gap-4">
+                    {viewingCertificate.credentialUrl && (
+                      <a href={viewingCertificate.credentialUrl} target="_blank" rel="noreferrer" className="flex items-center gap-2 px-6 py-3 rounded-xl bg-green-500 hover:bg-green-600 text-white text-sm font-bold transition-colors shadow-sm">
+                        <ExternalLink size={18}/> Verify Credential
+                      </a>
+                    )}
+                    {viewingCertificate.pdfAttachment && (
+                      <a href={normalizeUrl(viewingCertificate.pdfAttachment)} target="_blank" rel="noreferrer" className="flex items-center gap-2 px-6 py-3 rounded-xl bg-accent hover:bg-accent/80 text-sm font-bold transition-colors border border-border shadow-sm">
+                        <FileText size={18}/> View PDF Document
+                      </a>
+                    )}
+                  </div>
+                </div>
+              )}
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Slideshow Overlay */}
+      {slideshowActive && viewingCertificate && viewingCertificate.imageAttachment && createPortal(
+        <div
+          className="fixed inset-0 bg-black z-[9999] flex flex-col items-center justify-center animate-in fade-in duration-1000"
+          onMouseDown={() => setIsSlideshowPaused(true)}
+          onMouseUp={() => setIsSlideshowPaused(false)}
+          onMouseLeave={() => setIsSlideshowPaused(false)}
+        >
+          <button onClick={() => setSlideshowActive(false)} className="absolute top-6 right-6 p-3 bg-white/10 hover:bg-white/30 text-white rounded-full backdrop-blur-sm transition-colors z-10">
+            <X size={32} />
+          </button>
+
+          <div className="w-full h-full flex items-center justify-center relative p-12">
+            <img 
+              src={normalizeUrl(viewingCertificate.imageAttachment)} 
+              className="max-w-full max-h-full object-contain shadow-2xl rounded-lg animate-in zoom-in-95 duration-700" 
+            />
+            <div className="absolute bottom-12 left-1/2 -translate-x-1/2 bg-black/50 backdrop-blur-md px-6 py-3 rounded-full text-white text-lg font-medium shadow-2xl">
+              {viewingCertificate.name}
+            </div>
+          </div>
+        </div>,
+        document.body
+      )}
 
       {showSuccessOverlay && (
         <div className="absolute inset-0 z-50 flex items-center justify-center bg-[radial-gradient(ellipse_at_center,_var(--tw-gradient-stops))] from-green-500/30 via-background/80 to-background/95 backdrop-blur-sm animate-in fade-in duration-300">

@@ -40,6 +40,32 @@ export const runHabitMigrations = async () => {
   }
 }
 
+// Add function to check if habit is active on a specific day
+export const isHabitActiveOnDay = (habit: Habit, date: Date = new Date()): boolean => {
+  const day = date.getDay()
+  if (habit.scheduleType === 'weekdays') return day >= 1 && day <= 5
+  if (habit.scheduleType === 'weekends') return day === 0 || day === 6
+  if (habit.scheduleType === 'specific_days' && habit.scheduleDays) {
+    return habit.scheduleDays.includes(day)
+  }
+  return true
+}
+
+// Helper to determine the effective deadline for a habit
+export const getEffectiveDeadline = (h: Habit, elapsed: number = 0): Date => {
+  const deadlineStr = h.deadlineTime || h.preferredTime || '23:59'
+  const [hh, mm] = deadlineStr.split(':')
+  const baseTime = new Date()
+  baseTime.setHours(parseInt(hh), parseInt(mm), 59, 999)
+  
+  if (h.isTimerEnabled && h.targetDuration) {
+    const remainingDuration = Math.max(0, h.targetDuration - elapsed)
+    return new Date(baseTime.getTime() - (remainingDuration * 1000))
+  }
+  
+  return baseTime
+}
+
 // Utility to calculate real stats globally
 export const calculateHabitStats = async () => {
   try {
@@ -52,7 +78,8 @@ export const calculateHabitStats = async () => {
 
     const logsToday = allLogs.filter(l => l.date === todayStr)
     const completedToday = logsToday.filter(l => l.status === 'completed').length
-    const totalToday = allHabits.length // Rough estimate, needs check for scheduled days
+    const habitsToday = allHabits.filter(h => isHabitActiveOnDay(h, new Date()))
+    const totalToday = habitsToday.length
 
     const totalEligible = allHabits.length * (new Set(allLogs.map(l => l.date)).size || 1)
     const totalCompleted = allLogs.filter(l => l.status === 'completed').length
@@ -71,6 +98,7 @@ export const calculateHabitStats = async () => {
       longestStreak,
       completionRate,
       allHabits,
+      habitsToday,
       allLogs,
       logsToday
     }
@@ -89,37 +117,35 @@ export const logHabitActivity = async (habitId: string, action: HabitActivityLog
   }
   // @ts-ignore
   await window.api.db.insert('habitActivityLogs', log)
+  // Bump the parent habit's updatedAt to ensure export/import sync works
+  // @ts-ignore
+  await window.api.db.update('habits', { _id: habitId }, { $set: { updatedAt: Date.now() } }, {})
 }
 
 // Auto Miss detection
 export const checkAutoMisses = async () => {
-  // Finds any habits that have a deadline passed today, and marks them missed if untouched.
-  // Also checks past days.
   try {
     // @ts-ignore
     const allHabits: Habit[] = await window.api.db.find('habits', { archived: { $ne: true } })
     // @ts-ignore
     const allLogs: HabitDailyRecord[] = await window.api.db.find('habitLogs', {})
     
+    const now = new Date()
+
     for (const h of allHabits) {
-      if (!h.deadlineTime) continue
-      
-      const now = new Date()
-      const deadline = new Date()
-      const [hh, mm] = h.deadlineTime.split(':')
-      deadline.setHours(parseInt(hh), parseInt(mm), 0, 0)
-      
-      if (now > deadline) {
-        const log = allLogs.find(l => l.habitId === h._id && l.date === todayStr)
-        if (!log || log.status === 'pending') {
-          // Mark as missed
+      const log = allLogs.find(l => l.habitId === h._id && l.date === todayStr)
+      if (!log || log.status === 'pending') {
+        const effectiveDeadline = getEffectiveDeadline(h) // we assume elapsed=0 on startup check
+        if (now > effectiveDeadline) {
+          const newStatus = h.category === 'Bad Habit' ? 'completed' : 'missed'
+          // Mark as missed or completed
           // @ts-ignore
           await window.api.db.update('habitLogs', 
             { habitId: h._id, date: todayStr }, 
-            { $set: { status: 'missed', updatedAt: Date.now() } }, 
+            { $set: { status: newStatus, updatedAt: Date.now() } }, 
             { upsert: true }
           )
-          if (h._id) await logHabitActivity(h._id, 'auto_missed', 'Deadline passed without completion.')
+          if (h._id) await logHabitActivity(h._id, `auto_${newStatus}`, 'Effective deadline passed.')
         }
       }
     }

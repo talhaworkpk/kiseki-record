@@ -288,6 +288,13 @@ app.whenReady().then(() => {
   ipcMain.handle('profile:hasPrivate', () => profileManager.hasPrivateProfile())
   ipcMain.handle('profile:getSettings', () => profileManager.getSettings())
   
+  ipcMain.handle('profile:activity', () => {
+    const win = BrowserWindow.getAllWindows()[0]
+    if (win && profileManager.currentProfile === 'private') {
+      profileManager.resetAutoLockTimer(win)
+    }
+  })
+  
   ipcMain.handle('profile:setupPrivate', (_, password, hint, name) => {
     return profileManager.setupPrivateProfile(password, hint, name)
   })

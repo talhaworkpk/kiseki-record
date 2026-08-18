@@ -14,11 +14,12 @@ const NavigationHistoryContext = createContext<NavigationHistoryContextType | un
 export function NavigationHistoryProvider({ children }: { children: ReactNode }) {
   const location = useLocation()
   const navigate = useNavigate()
-  
+
   const [backStack, setBackStack] = useState<string[]>([])
   const [forwardStack, setForwardStack] = useState<string[]>([])
   const isInternalNavigation = useRef(false)
   const previousLocation = useRef(location.pathname)
+  const isInitialized = useRef(false)
 
   const canGoBack = backStack.length > 0
   const canGoForward = forwardStack.length > 0
@@ -30,15 +31,24 @@ export function NavigationHistoryProvider({ children }: { children: ReactNode })
       return
     }
 
+    // Skip the first location change (initial load)
+    if (!isInitialized.current) {
+      isInitialized.current = true
+      return
+    }
+
     // Only add to history if the location actually changed
     if (location.pathname !== previousLocation.current) {
+      // Capture the previous location BEFORE updating
+      const locationToAdd = previousLocation.current
+
       setBackStack(prev => {
         // Don't add if it's the same as the last item in back stack
         if (prev.length > 0 && prev[prev.length - 1] === location.pathname) {
           return prev
         }
-        // Add current location to back stack
-        const newBackStack = [...prev, previousLocation.current]
+        // Add previous location to back stack
+        const newBackStack = [...prev, locationToAdd]
         // Clear forward stack when navigating to a new location
         setForwardStack([])
         return newBackStack

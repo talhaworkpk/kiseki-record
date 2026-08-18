@@ -55,9 +55,22 @@ export function RecentMemoriesWidget({ data }: any) {
           onClose={() => setSelectedMemory(null)}
           memory={selectedMemory}
           relationships={relationships}
-          onEdit={() => navigate('/records')}
-          onDelete={() => navigate('/records')}
-          onDuplicate={() => navigate('/records')}
+          onEdit={() => navigate(`/records?edit=${selectedMemory._id}`)}
+          onDelete={() => {
+            // Handle delete by calling the delete handler
+            const handleDelete = async () => {
+              try {
+                // @ts-ignore
+                await window.api.db.remove('records', selectedMemory._id)
+                setSelectedMemory(null)
+                // Reload the widget data
+                window.location.reload()
+              } catch (e) {
+                console.error('Failed to delete memory:', e)
+              }
+            }
+            handleDelete()
+          }}
         />
       )}
     </div>

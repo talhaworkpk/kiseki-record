@@ -1,8 +1,9 @@
 import { useState, useEffect, useRef } from 'react'
 import { useLocation } from 'react-router-dom'
 import { Check, X, Flame, Trophy, TrendingUp, Sparkles, Loader2, Plus, Clock, MoreVertical, Play, Pause, RotateCcw, StopCircle } from 'lucide-react'
+import { Tooltip, TooltipTrigger, TooltipContent } from '../../components/ui/tooltip'
 import { Habit, HabitDailyRecord, HabitTimerSession } from '../../types'
-import { calculateHabitStats, checkAutoMisses, runHabitMigrations, logHabitActivity } from './HabitManager'
+import { calculateHabitStats, checkAutoMisses, runHabitMigrations, logHabitActivity, getEffectiveDeadline } from './HabitManager'
 import { NotificationEngine } from '../../lib/NotificationEngine'
 import HabitFormModal from './HabitFormModal'
 import HabitBreakModal from './HabitBreakModal'
@@ -42,6 +43,9 @@ export default function Dashboard() {
   const [timerElapsed, setTimerElapsed] = useState<Record<string, number>>({}) // habitId -> seconds
   const timerRef = useRef<any>(null)
 
+  const [currentTime, setCurrentTime] = useState(new Date())
+  const processingMissesRef = useRef<Set<string>>(new Set())
+
   const todayStr = new Date().toISOString().split('T')[0]
 
   const loadData = async () => {
@@ -52,7 +56,7 @@ export default function Dashboard() {
       const s = await calculateHabitStats()
       if (s) {
         setStats(s)
-        setHabits(s.allHabits)
+        setHabits(s.habitsToday)
         setLogs(s.allLogs)
         
         const tMap: Record<string, HabitDailyRecord> = {}
@@ -60,7 +64,7 @@ export default function Dashboard() {
         setTodayLogsMap(tMap)
 
         // Find Next Habit
-        const pending = s.allHabits.filter((h:Habit) => !tMap[h._id!] || tMap[h._id!].status === 'pending')
+        const pending = s.habitsToday.filter((h:Habit) => !tMap[h._id!] || tMap[h._id!].status === 'pending')
         if (pending.length > 0) {
           // Sort by deadline if available
           pending.sort((a:Habit, b:Habit) => (a.deadlineTime || '23:59').localeCompare(b.deadlineTime || '23:59'))
@@ -134,6 +138,37 @@ export default function Dashboard() {
       }
     }
   }, [timerElapsed, activeTimerHabit])
+
+  // Current time interval for countdowns
+  useEffect(() => {
+    const timer = setInterval(() => {
+      setCurrentTime(new Date())
+    }, 1000)
+    return () => clearInterval(timer)
+  }, [])
+
+  // Real-time auto-miss logic
+  useEffect(() => {
+    if (!habits || habits.length === 0) return
+    const now = currentTime.getTime()
+    
+    habits.forEach(h => {
+      const statusLog = todayLogsMap[h._id!]
+      const status = statusLog ? statusLog.status : 'pending'
+      
+      if (status === 'pending' && !processingMissesRef.current.has(h._id!)) {
+        const elapsed = timerElapsed[h._id!] || 0
+        const effectiveDeadline = getEffectiveDeadline(h, elapsed).getTime()
+        if (now > effectiveDeadline) {
+          processingMissesRef.current.add(h._id!)
+          const newStatus = h.category === 'Bad Habit' ? 'completed' : 'missed'
+          handleToggle(h._id!, newStatus).finally(() => {
+            setTimeout(() => processingMissesRef.current.delete(h._id!), 2000)
+          })
+        }
+      }
+    })
+  }, [currentTime, habits, todayLogsMap, timerElapsed])
 
   const showToast = (message: string, onUndo?: () => void) => {
     setToast({ message, onUndo })
@@ -236,7 +271,7 @@ export default function Dashboard() {
     try {
       if (mode === 'archive') {
         // @ts-ignore
-        await window.api.db.update('habits', { _id: habitId }, { $set: { archived: true } })
+        await window.api.db.update('habits', { _id: habitId }, { $set: { archived: true, updatedAt: Date.now() } })
         await logHabitActivity(habitId, 'archived')
         NotificationEngine.notify('info', 'Habit Archived', 'The habit has been moved to archives.', 'Habits')
       } else {
@@ -372,15 +407,36 @@ export default function Dashboard() {
                 const s = secs % 60
                 return `${m}:${s.toString().padStart(2, '0')}`
               }
+              
+              const formatCountdown = (deadline: Date, now: Date) => {
+                const diff = Math.max(0, Math.floor((deadline.getTime() - now.getTime()) / 1000))
+                const h = Math.floor(diff / 3600)
+                const m = Math.floor((diff % 3600) / 60)
+                const s = diff % 60
+                return `${h.toString().padStart(2, '0')}:${m.toString().padStart(2, '0')}:${s.toString().padStart(2, '0')}`
+              }
 
               return (
                 <div key={h._id} id={`habit-${h._id}`} className={`flex items-center justify-between p-4 rounded-2xl border transition-all duration-1000 ${status === 'completed' ? 'bg-green-500/5 border-green-500/30 shadow-inner' : status === 'missed' ? 'bg-red-500/5 border-red-500/30 opacity-75' : activeTimerHabit === h._id ? 'bg-blue-500/10 border-blue-500/50 shadow-md ring-2 ring-blue-500/20' : 'bg-card border-border hover:border-primary/50'}`}>
                   
                   {/* Left info */}
                   <div className="flex flex-col">
-                    <span className={`text-lg font-bold ${status === 'completed' ? 'text-green-600 line-through decoration-green-500/50' : status === 'missed' ? 'text-red-500 line-through decoration-red-500/50' : 'text-foreground'}`}>
-                      {h.title}
-                    </span>
+                    {h.description ? (
+                      <Tooltip>
+                        <TooltipTrigger asChild>
+                          <span className={`text-lg font-bold cursor-help ${status === 'completed' ? 'text-green-600 line-through decoration-green-500/50' : status === 'missed' ? 'text-red-500 line-through decoration-red-500/50' : 'text-foreground'}`}>
+                            {h.title}
+                          </span>
+                        </TooltipTrigger>
+                        <TooltipContent side="bottom" className="max-w-xs text-center font-medium">
+                          {h.description}
+                        </TooltipContent>
+                      </Tooltip>
+                    ) : (
+                      <span className={`text-lg font-bold ${status === 'completed' ? 'text-green-600 line-through decoration-green-500/50' : status === 'missed' ? 'text-red-500 line-through decoration-red-500/50' : 'text-foreground'}`}>
+                        {h.title}
+                      </span>
+                    )}
                     <div className="flex items-center gap-3 text-xs text-muted-foreground mt-1 font-medium">
                       {h.deadlineTime && <span className="flex items-center gap-1"><Clock size={12}/> By {h.deadlineTime}</span>}
                       
@@ -393,9 +449,16 @@ export default function Dashboard() {
                       )}
                       
                       {/* Status Badge */}
-                      <span className={`uppercase tracking-widest text-[10px] px-1.5 py-0.5 rounded-sm ${status === 'completed' ? 'bg-green-500/20 text-green-600' : status === 'missed' ? 'bg-red-500/20 text-red-500' : status === 'paused' ? 'bg-accent text-foreground' : 'bg-accent/50 text-muted-foreground'}`}>
-                        {status}
-                      </span>
+                      {status === 'pending' ? (
+                        <span className="uppercase tracking-widest text-[10px] px-1.5 py-0.5 rounded-sm bg-orange-500/20 text-orange-600 font-bold flex items-center gap-1">
+                          <Clock size={10}/>
+                          {formatCountdown(getEffectiveDeadline(h, elapsed), currentTime)}
+                        </span>
+                      ) : (
+                        <span className={`uppercase tracking-widest text-[10px] px-1.5 py-0.5 rounded-sm ${status === 'completed' ? 'bg-green-500/20 text-green-600' : status === 'missed' ? 'bg-red-500/20 text-red-500' : status === 'paused' ? 'bg-accent text-foreground' : 'bg-accent/50 text-muted-foreground'}`}>
+                          {status}
+                        </span>
+                      )}
                     </div>
                   </div>
                   
@@ -414,13 +477,15 @@ export default function Dashboard() {
                       </div>
                     )}
 
-                    <button 
-                      onClick={() => handleToggle(h._id!, 'completed')}
-                      className={`w-10 h-10 rounded-xl flex items-center justify-center transition-transform hover:scale-110 ${status === 'completed' ? 'bg-green-500 text-white shadow-lg shadow-green-500/30' : 'bg-accent hover:bg-green-500/20 text-muted-foreground hover:text-green-500'}`}
-                      title="Complete"
-                    >
-                      <Check size={20} strokeWidth={status === 'completed' ? 3 : 2} />
-                    </button>
+                    {h.category !== 'Bad Habit' && (
+                      <button 
+                        onClick={() => handleToggle(h._id!, 'completed')}
+                        className={`w-10 h-10 rounded-xl flex items-center justify-center transition-transform hover:scale-110 ${status === 'completed' ? 'bg-green-500 text-white shadow-lg shadow-green-500/30' : 'bg-accent hover:bg-green-500/20 text-muted-foreground hover:text-green-500'}`}
+                        title="Complete"
+                      >
+                        <Check size={20} strokeWidth={status === 'completed' ? 3 : 2} />
+                      </button>
+                    )}
                     
                     <button 
                       onClick={() => handleToggle(h._id!, 'missed')}

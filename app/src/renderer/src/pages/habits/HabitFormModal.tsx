@@ -11,7 +11,7 @@ interface HabitFormModalProps {
   onDelete?: (id: string, mode: 'archive' | 'delete') => void
 }
 
-const CATEGORIES = ['Health', 'Productivity', 'Learning', 'Fitness', 'Mindfulness', 'Finance', 'Social', 'Hobbies']
+const CATEGORIES = ['Health', 'Productivity', 'Learning', 'Fitness', 'Mindfulness', 'Finance', 'Social', 'Hobbies', 'Bad Habit']
 
 export default function HabitFormModal({ isOpen, onClose, initialData, onSave, onDelete }: HabitFormModalProps) {
   const [loading, setLoading] = useState(false)
@@ -52,8 +52,6 @@ export default function HabitFormModal({ isOpen, onClose, initialData, onSave, o
     }
   }, [isOpen, initialData])
 
-  if (!isOpen) return null
-
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault()
     if (!formData.title) return
@@ -90,6 +88,21 @@ export default function HabitFormModal({ isOpen, onClose, initialData, onSave, o
       setLoading(false)
     }
   }
+
+  useEffect(() => {
+    const down = (e: KeyboardEvent) => {
+      if (e.ctrlKey && e.key.toLowerCase() === 's') {
+        if (isOpen) {
+          e.preventDefault()
+          handleSubmit(e as unknown as React.FormEvent)
+        }
+      }
+    }
+    window.addEventListener('keydown', down)
+    return () => window.removeEventListener('keydown', down)
+  }, [isOpen, formData, initialData])
+
+  if (!isOpen) return null
 
   const handleDeleteReq = (mode: 'archive' | 'delete') => {
     if (mode === 'delete' && !confirm('Delete this habit permanently? Its completion history, timer sessions, streaks, and analytics will also be deleted.')) return

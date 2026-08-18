@@ -55,7 +55,8 @@ if (process.contextIsolated) {
         switch: (password) => electron.ipcRenderer.invoke("profile:switch", password),
         updateSettings: (updates) => electron.ipcRenderer.invoke("profile:updateSettings", updates),
         updatePassword: (oldPw, newPw) => electron.ipcRenderer.invoke("profile:updatePassword", oldPw, newPw),
-        delete: (password) => electron.ipcRenderer.invoke("profile:delete", password)
+        delete: (password) => electron.ipcRenderer.invoke("profile:delete", password),
+        activity: () => electron.ipcRenderer.invoke("profile:activity")
       },
       notifications: {
         getSettings: () => electron.ipcRenderer.invoke("notifications:getSettings"),
@@ -124,7 +125,8 @@ if (process.contextIsolated) {
       switch: (password) => electron.ipcRenderer.invoke("profile:switch", password),
       updateSettings: (updates) => electron.ipcRenderer.invoke("profile:updateSettings", updates),
       updatePassword: (oldPw, newPw) => electron.ipcRenderer.invoke("profile:updatePassword", oldPw, newPw),
-      delete: (password) => electron.ipcRenderer.invoke("profile:delete", password)
+      delete: (password) => electron.ipcRenderer.invoke("profile:delete", password),
+      activity: () => electron.ipcRenderer.invoke("profile:activity")
     },
     notifications: {
       getSettings: () => electron.ipcRenderer.invoke("notifications:getSettings"),

@@ -210,11 +210,15 @@ function setupVaultHandlers() {
   electron.ipcMain.handle("vault:export", async (_event, _options) => {
     try {
       const zip = new JSZip();
-      const dbFiles = ["records.db", "goals.db", "habits.db", "relationships.db", "journal.db"];
-      for (const file of dbFiles) {
-        const filePath2 = path.join(dataPath, file);
-        if (fs.existsSync(filePath2)) {
-          zip.file(`data/${file}`, fs.readFileSync(filePath2));
+      if (fs.existsSync(dataPath)) {
+        const files = fs.readdirSync(dataPath);
+        for (const file of files) {
+          if (file.endsWith(".db")) {
+            const filePath2 = path.join(dataPath, file);
+            if (fs.statSync(filePath2).isFile()) {
+              zip.file(`data/${file}`, fs.readFileSync(filePath2));
+            }
+          }
         }
       }
       const attachmentsPath2 = path.join(dataPath, "attachments");
@@ -231,15 +235,18 @@ function setupVaultHandlers() {
       if (fs.existsSync(settingsPath)) {
         zip.file("config.json", fs.readFileSync(settingsPath));
       }
-      const content = await zip.generateAsync({ type: "nodebuffer" });
       const backupsDir = path.join(userDataPath$1, "backups");
       if (!fs.existsSync(backupsDir)) {
         fs.mkdirSync(backupsDir, { recursive: true });
       }
       const timestamp = (/* @__PURE__ */ new Date()).toISOString().replace(/[:.]/g, "-");
       const filePath = path.join(backupsDir, `kiseki_backup_${timestamp}.kvault`);
-      fs.writeFileSync(filePath, content);
-      return { success: true, filePath };
+      return new Promise((resolve) => {
+        zip.generateNodeStream({ type: "nodebuffer", streamFiles: true, compression: "DEFLATE" }).pipe(fs.createWriteStream(filePath)).on("finish", () => resolve({ success: true, filePath })).on("error", (err) => {
+          console.error(err);
+          resolve({ success: false, error: err.message });
+        });
+      });
     } catch (err) {
       console.error(err);
       return { success: false, error: err.message };
@@ -282,7 +289,7 @@ function setupVaultHandlers() {
                 const patchLine = (line) => {
                   try {
                     const obj = JSON.parse(line);
-                    if (obj && !obj.$$indexCreated && obj.profile === void 0) {
+                    if (obj && !obj.$$indexCreated) {
                       obj.profile = "private";
                     }
                     return JSON.stringify(obj);
@@ -1063,6 +1070,12 @@ electron.app.whenReady().then(() => {
   electron.ipcMain.handle("profile:getCurrent", () => profileManager.currentProfile);
   electron.ipcMain.handle("profile:hasPrivate", () => profileManager.hasPrivateProfile());
   electron.ipcMain.handle("profile:getSettings", () => profileManager.getSettings());
+  electron.ipcMain.handle("profile:activity", () => {
+    const win = electron.BrowserWindow.getAllWindows()[0];
+    if (win && profileManager.currentProfile === "private") {
+      profileManager.resetAutoLockTimer(win);
+    }
+  });
   electron.ipcMain.handle("profile:setupPrivate", (_, password, hint, name) => {
     return profileManager.setupPrivateProfile(password, hint, name);
   });

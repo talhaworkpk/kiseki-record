@@ -22,6 +22,11 @@ export default function Relationships() {
   const [showSuccessOverlay, setShowSuccessOverlay] = useState(false)
   const [showGlobalMenu, setShowGlobalMenu] = useState(false)
   const [form, setForm] = useState<Partial<Person>>({})
+
+  const [importConflicts, setImportConflicts] = useState<{imported: Person, existing: Person}[]>([])
+  const [currentConflictIndex, setCurrentConflictIndex] = useState(0)
+  const [pendingImports, setPendingImports] = useState<{toInsert: Person[], toReplace: Person[], importedRecords: any[]}>({ toInsert: [], toReplace: [], importedRecords: [] })
+
   useEffect(() => {
     fetchPeople()
   }, [])
@@ -53,6 +58,137 @@ export default function Relationships() {
     } catch(err) { console.error(err) }
   }
 
+  const executeImports = async (toInsert: Person[], toReplace: Person[], importedRecords: any[]) => {
+    try {
+      for (const person of toInsert) {
+        if (typeof person.notes === 'string') {
+          person.notes = [{ _id: Date.now().toString(), content: person.notes, createdAt: Date.now(), isPinned: false }]
+        } else if (!person.notes) {
+          person.notes = []
+        }
+        // @ts-ignore
+        await window.api.db.insert('relationships', person)
+      }
+      for (const person of toReplace) {
+        if (typeof person.notes === 'string') {
+          person.notes = [{ _id: Date.now().toString(), content: person.notes, createdAt: Date.now(), isPinned: false }]
+        }
+        const { _id, ...personData } = person
+        // @ts-ignore
+        await window.api.db.update('relationships', { _id }, { $set: personData }, {})
+      }
+
+      if (importedRecords && Array.isArray(importedRecords)) {
+        // @ts-ignore
+        const existingRecords = await window.api.db.find('records', {})
+        for (const record of importedRecords) {
+          const existing = existingRecords.find((r: any) => r._id === record._id)
+          if (!existing) {
+            // @ts-ignore
+            await window.api.db.insert('records', record)
+          } else {
+            const impTime = record.updatedAt || record.createdAt || 0
+            const exTime = existing.updatedAt || existing.createdAt || 0
+            
+            // If the record belongs to a person that is being replaced, we force overwrite it 
+            // so that older backups can successfully restore deleted photos/data for that person.
+            const belongsToReplacedPerson = record.people && Array.isArray(record.people) && 
+              record.people.some((pid: string) => toReplace.some(p => p._id === pid))
+
+            if (impTime > exTime || belongsToReplacedPerson) {
+              const { _id, ...recordData } = record
+              // @ts-ignore
+              await window.api.db.update('records', { _id }, { $set: recordData }, {})
+            }
+          }
+        }
+      }
+
+      fetchPeople()
+      NotificationEngine.notify('success', 'Import Complete', 'Relationships and records imported successfully.', 'Relationships')
+    } catch (err) {
+      console.error("Error executing imports", err)
+      NotificationEngine.notify('error', 'Import Error', 'Failed to import relationships.', 'Relationships')
+    }
+  }
+
+  const processConflict = async (action: 'replace' | 'skip' | 'replace_all' | 'skip_all') => {
+    let { toInsert, toReplace, importedRecords } = pendingImports
+    const remainingConflicts = importConflicts.slice(currentConflictIndex)
+    
+    if (action === 'replace_all') {
+      remainingConflicts.forEach(c => toReplace.push({...c.imported, _id: c.existing._id}))
+      setImportConflicts([])
+    } else if (action === 'skip_all') {
+      setImportConflicts([])
+    } else if (action === 'replace') {
+      const current = importConflicts[currentConflictIndex]
+      toReplace.push({...current.imported, _id: current.existing._id})
+      if (currentConflictIndex + 1 < importConflicts.length) {
+        setCurrentConflictIndex(currentConflictIndex + 1)
+        setPendingImports({ toInsert, toReplace, importedRecords })
+        return
+      } else {
+        setImportConflicts([])
+      }
+    } else if (action === 'skip') {
+      if (currentConflictIndex + 1 < importConflicts.length) {
+        setCurrentConflictIndex(currentConflictIndex + 1)
+        return
+      } else {
+        setImportConflicts([])
+      }
+    }
+
+    await executeImports(toInsert, toReplace, importedRecords)
+  }
+
+  const processImportFile = async (importedPeople: any[], importedRawRecords: any[]) => {
+    const toInsert: Person[] = []
+    const toReplace: Person[] = []
+    const conflicts: {imported: Person, existing: Person}[] = []
+    const idMap = new Map<string, string>()
+
+    for (const importedPerson of importedPeople) {
+      let existingPerson = people.find(p => p._id === importedPerson._id)
+      if (!existingPerson) existingPerson = people.find(p => p.name === importedPerson.name)
+
+      if (!existingPerson) {
+        toInsert.push(importedPerson)
+      } else {
+        if (importedPerson._id && importedPerson._id !== existingPerson._id) {
+          idMap.set(importedPerson._id, existingPerson._id)
+        }
+
+        const importedTime = importedPerson.updatedAt || importedPerson.createdAt || 0
+        const existingTime = existingPerson.updatedAt || existingPerson.createdAt || 0
+        
+        if (importedTime > existingTime) {
+          toReplace.push({...importedPerson, _id: existingPerson._id})
+        } else if (importedTime < existingTime) {
+          conflicts.push({ imported: importedPerson, existing: existingPerson })
+        } else if (importedTime === 0 && existingTime === 0) {
+          conflicts.push({ imported: importedPerson, existing: existingPerson })
+        }
+      }
+    }
+
+    const importedRecords = Array.isArray(importedRawRecords) ? importedRawRecords.map((r: any) => {
+      if (r.people && Array.isArray(r.people)) {
+        r.people = r.people.map((pid: string) => idMap.get(pid) || pid)
+      }
+      return r
+    }) : []
+
+    if (conflicts.length > 0) {
+      setPendingImports({ toInsert, toReplace, importedRecords })
+      setImportConflicts(conflicts)
+      setCurrentConflictIndex(0)
+    } else {
+      await executeImports(toInsert, toReplace, importedRecords)
+    }
+  }
+
   const handleImportAll = () => {
     const input = document.createElement('input')
     input.type = 'file'
@@ -65,41 +201,18 @@ export default function Relationships() {
         try {
           const data = JSON.parse(e.target?.result as string)
           if (data.relationships && Array.isArray(data.relationships)) {
-            const idMap = new Map<string, string>()
-            for (const person of data.relationships) {
-              const oldId = person._id
-              const copy = { ...person, _id: undefined, createdAt: Date.now(), updatedAt: Date.now() }
-              
-              if (typeof copy.notes === 'string') {
-                copy.notes = [{ _id: Date.now().toString(), content: copy.notes, createdAt: Date.now(), isPinned: false }]
-              } else if (!copy.notes) {
-                copy.notes = []
-              }
-
-              // @ts-ignore
-              const newPerson = await window.api.db.insert('relationships', copy)
-              if (oldId) idMap.set(oldId, newPerson._id)
-            }
-            if (data.records && Array.isArray(data.records)) {
-               for (const record of data.records) {
-                 const newPeople = (record.people || []).map((pId: string) => idMap.get(pId) || pId)
-                 const copyRecord = { ...record, _id: undefined, people: newPeople, createdAt: Date.now(), updatedAt: Date.now() }
-                 // @ts-ignore
-                 await window.api.db.insert('records', copyRecord)
-               }
-            }
-            fetchPeople()
-            alert('Import successful.')
+            await processImportFile(data.relationships, data.records || [])
           } else {
-            alert('Invalid export file format.')
+            NotificationEngine.notify('error', 'Import Failed', 'Invalid export file format.', 'Relationships')
           }
         } catch (err) {
-          alert('Failed to parse file.')
+          NotificationEngine.notify('error', 'Import Failed', 'Failed to parse file.', 'Relationships')
         }
       }
       reader.readAsText(file)
     }
     input.click()
+    setShowGlobalMenu(false)
   }
 
   const handleImportPerson = () => {
@@ -114,38 +227,18 @@ export default function Relationships() {
         try {
           const data = JSON.parse(e.target?.result as string)
           if (data.person) {
-            const oldId = data.person._id
-            const copy = { ...data.person, _id: undefined, createdAt: Date.now(), updatedAt: Date.now() }
-            
-            if (typeof copy.notes === 'string') {
-              copy.notes = [{ _id: Date.now().toString(), content: copy.notes, createdAt: Date.now(), isPinned: false }]
-            } else if (!copy.notes) {
-              copy.notes = []
-            }
-
-            // @ts-ignore
-            const newPerson = await window.api.db.insert('relationships', copy)
-            
-            if (data.records && Array.isArray(data.records)) {
-              for (const record of data.records) {
-                const newPeople = (record.people || []).map((pId: string) => pId === oldId ? newPerson._id : pId)
-                const copyRecord = { ...record, _id: undefined, people: newPeople, createdAt: Date.now(), updatedAt: Date.now() }
-                // @ts-ignore
-                await window.api.db.insert('records', copyRecord)
-              }
-            }
-            fetchPeople()
-            alert('Imported person and their records.')
+            await processImportFile([data.person], data.records || [])
           } else {
-            alert('Invalid person export file.')
+            NotificationEngine.notify('error', 'Import Failed', 'Invalid profile export file.', 'Relationships')
           }
         } catch (err) {
-          alert('Failed to parse file.')
+          NotificationEngine.notify('error', 'Import Failed', 'Failed to parse file.', 'Relationships')
         }
       }
       reader.readAsText(file)
     }
     input.click()
+    setShowGlobalMenu(false)
   }
 
   const handleAttachImage = async () => {
@@ -367,16 +460,7 @@ export default function Relationships() {
             <Plus size={20} /> Add Person
           </button>
           
-          <div className="relative">
-             <button onClick={() => setShowGlobalMenu(!showGlobalMenu)} className="p-2 bg-card border border-border rounded-lg hover:bg-accent"><MoreVertical size={20}/></button>
-             {showGlobalMenu && (
-               <div className="absolute right-0 top-12 w-48 bg-card border border-border rounded-lg shadow-lg py-1 z-50">
-                 <button onClick={() => { handleImportPerson(); setShowGlobalMenu(false); }} className="w-full text-left px-4 py-2 text-sm hover:bg-accent flex items-center gap-2"><Upload size={16}/> Import Person</button>
-                 <button onClick={() => { handleImportAll(); setShowGlobalMenu(false); }} className="w-full text-left px-4 py-2 text-sm hover:bg-accent flex items-center gap-2"><Upload size={16}/> Import All</button>
-                 <button onClick={() => { handleExportAll(); setShowGlobalMenu(false); }} className="w-full text-left px-4 py-2 text-sm hover:bg-accent flex items-center gap-2"><Download size={16}/> Export All</button>
-               </div>
-             )}
-          </div>
+          <button onClick={() => setShowGlobalMenu(true)} className="p-2 bg-card border border-border rounded-lg hover:bg-accent"><MoreVertical size={20}/></button>
         </div>
       </div>
 
@@ -609,6 +693,70 @@ export default function Relationships() {
           )}
         </div>
       )}
+
+      {/* GLOBAL MENU MODAL */}
+      {showGlobalMenu && (
+        <div className="fixed inset-0 bg-background/80 backdrop-blur-sm z-50 flex items-center justify-center p-4">
+          <div className="bg-card border border-border w-full max-w-sm rounded-2xl shadow-2xl p-6 animate-in zoom-in-95 duration-200">
+            <h2 className="text-xl font-bold mb-4 text-center">Relationships Menu</h2>
+            <div className="space-y-3">
+              <button onClick={() => { handleImportPerson(); setShowGlobalMenu(false); }} className="w-full px-6 py-4 bg-card border border-border rounded-xl font-medium flex items-center justify-center gap-3 hover:bg-accent transition-colors">
+                <Upload size={20}/> Import Person
+              </button>
+              <button onClick={() => { handleImportAll(); setShowGlobalMenu(false); }} className="w-full px-6 py-4 bg-card border border-border rounded-xl font-medium flex items-center justify-center gap-3 hover:bg-accent transition-colors">
+                <Upload size={20}/> Import All
+              </button>
+              <button onClick={() => { handleExportAll(); setShowGlobalMenu(false); }} className="w-full px-6 py-4 bg-card border border-border rounded-xl font-medium flex items-center justify-center gap-3 hover:bg-accent transition-colors">
+                <Download size={20}/> Export All
+              </button>
+            </div>
+            <button onClick={() => setShowGlobalMenu(false)} className="w-full mt-4 px-4 py-2 text-muted-foreground hover:text-foreground transition-colors">Cancel</button>
+          </div>
+        </div>
+      )}
+      {/* CONFLICT RESOLUTION MODAL */}
+      {importConflicts.length > 0 && currentConflictIndex < importConflicts.length && (
+        <div className="fixed inset-0 bg-background/80 backdrop-blur-sm z-50 flex items-center justify-center p-4">
+          <div className="bg-card border border-border w-full max-w-lg rounded-2xl shadow-2xl overflow-hidden animate-in zoom-in-95 duration-200">
+            <div className="p-6 border-b border-border bg-amber-500/10">
+              <h2 className="text-xl font-bold flex items-center gap-2 text-amber-500">
+                Conflict Detected ({currentConflictIndex + 1} of {importConflicts.length})
+              </h2>
+              <p className="text-sm text-muted-foreground mt-2">
+                The imported profile for <strong>"{importConflicts[currentConflictIndex].imported.name}"</strong> is older than your current version in the app.
+              </p>
+              <p className="text-xs text-muted-foreground mt-2 font-medium">
+                Note: Skipping will keep your current profile and discard imported memory records for this person. Replacing will overwrite your profile and intelligently merge memory records.
+              </p>
+            </div>
+            <div className="p-6 space-y-4">
+              <div className="grid grid-cols-2 gap-4">
+                <div className="p-4 bg-accent/50 rounded-xl border border-border">
+                  <h3 className="text-sm font-bold mb-1">App Version (Keep)</h3>
+                  <p className="text-xs text-muted-foreground">Updated: {new Date(importConflicts[currentConflictIndex].existing.updatedAt || importConflicts[currentConflictIndex].existing.createdAt || 0).toLocaleString()}</p>
+                </div>
+                <div className="p-4 bg-background rounded-xl border border-border">
+                  <h3 className="text-sm font-bold mb-1">Import Version</h3>
+                  <p className="text-xs text-muted-foreground">Updated: {new Date(importConflicts[currentConflictIndex].imported.updatedAt || importConflicts[currentConflictIndex].imported.createdAt || 0).toLocaleString()}</p>
+                </div>
+              </div>
+            </div>
+            <div className="p-6 border-t border-border bg-accent/30 flex flex-col gap-3">
+              <div className="grid grid-cols-2 gap-3">
+                <button onClick={() => processConflict('replace')} className="w-full px-4 py-2 bg-amber-500 hover:bg-amber-600 text-white font-bold rounded-xl transition-colors">Replace</button>
+                <button onClick={() => processConflict('skip')} className="w-full px-4 py-2 bg-background border border-border hover:bg-accent font-bold rounded-xl transition-colors">Skip</button>
+              </div>
+              {importConflicts.length > 1 && (
+                <div className="grid grid-cols-2 gap-3">
+                  <button onClick={() => processConflict('replace_all')} className="w-full px-4 py-2 bg-red-500 hover:bg-red-600 text-white font-bold rounded-xl transition-colors">Replace All</button>
+                  <button onClick={() => processConflict('skip_all')} className="w-full px-4 py-2 bg-background border border-border hover:bg-accent font-bold rounded-xl transition-colors">Skip All</button>
+                </div>
+              )}
+            </div>
+          </div>
+        </div>
+      )}
+
     </div>
   )
 }

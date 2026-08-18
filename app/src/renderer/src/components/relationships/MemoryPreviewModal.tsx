@@ -1,6 +1,7 @@
 import { useState, useEffect } from 'react'
 import { createPortal } from 'react-dom'
-import { X, Calendar as CalendarIcon, MapPin, Users, Image as ImageIcon, FileText, Download, Copy, Edit2, Trash2, Folder, PlayCircle } from 'lucide-react'
+import { X, Calendar as CalendarIcon, MapPin, Users, Image as ImageIcon, FileText, Download, Edit2, Trash2, Folder, PlayCircle, Music, Film } from 'lucide-react'
+import { getSafeMediaUrl, normalizeUrl } from '../../lib/utils'
 
 interface MemoryPreviewModalProps {
   isOpen: boolean
@@ -9,12 +10,38 @@ interface MemoryPreviewModalProps {
   relationships: any[]
   onEdit: () => void
   onDelete: () => void
-  onDuplicate: () => void
 }
 
-export default function MemoryPreviewModal({ isOpen, onClose, memory, relationships, onEdit, onDelete, onDuplicate }: MemoryPreviewModalProps) {
+export default function MemoryPreviewModal({ isOpen, onClose, memory, relationships, onEdit, onDelete }: MemoryPreviewModalProps) {
   const [slideshowActive, setSlideshowActive] = useState(false)
   const [slideIndex, setSlideIndex] = useState(0)
+  const [localRelationships, setLocalRelationships] = useState<any[]>(relationships)
+  const [isSlideshowPaused, setIsSlideshowPaused] = useState(false)
+
+  // Reload relationships when modal opens to ensure fresh data
+  useEffect(() => {
+    if (isOpen && memory) {
+      setLocalRelationships(relationships)
+      // Also try to fetch fresh relationships from DB
+      const loadRelationships = async () => {
+        try {
+          // @ts-ignore
+          const rels = await window.api.db.find('relationships', {})
+          console.log('MemoryPreviewModal: Loaded', rels.length, 'relationships')
+          console.log('MemoryPreviewModal: All relationship IDs:', rels.map(r => ({ id: r._id, name: r.name })))
+          console.log('MemoryPreviewModal: Looking for people IDs:', memory?.people)
+          // Check if specific problematic ID exists
+          if (memory?.people && memory.people.includes('0hHYbrurc7uCba6T')) {
+            console.log('MemoryPreviewModal: Problematic ID 0hHYbrurc7uCba6T found in memory.people')
+            const exists = rels.find(r => r._id === '0hHYbrurc7uCba6T')
+            console.log('MemoryPreviewModal: Does 0hHYbrurc7uCba6T exist in DB?', !!exists)
+          }
+          setLocalRelationships(rels)
+        } catch(e) { console.error(e) }
+      }
+      loadRelationships()
+    }
+  }, [isOpen, relationships, memory?._id])
 
   // For Photo type records, treat all attachments as photos regardless of extension
   const photos = memory?.type === 'Photo' && memory?.attachments
@@ -25,6 +52,7 @@ export default function MemoryPreviewModal({ isOpen, onClose, memory, relationsh
   const files = memory?.attachments?.filter((a: string) => !a.match(/\.(jpeg|jpg|gif|png|webp|gfif|bmp|tiff|svg|ico|heic|heif|raw|cr2|nef|orf|sr2|mp4|webm|ogg|mov|mp3|wav|m4a)$/i)) || []
 
   const getVisualMedia = () => [...photos, ...videos]
+  const getAllMedia = () => [...photos, ...videos, ...audio]
 
   // Stop slideshow when closing
   useEffect(() => {
@@ -37,20 +65,20 @@ export default function MemoryPreviewModal({ isOpen, onClose, memory, relationsh
   // Auto-advance slideshow
   useEffect(() => {
     let interval: any
-    const visualMedia = getVisualMedia()
-    if (slideshowActive && visualMedia.length > 0) {
+    const allMedia = getAllMedia()
+    if (slideshowActive && allMedia.length > 0 && !isSlideshowPaused) {
       interval = setInterval(() => {
-        setSlideIndex((prev) => (prev + 1) % visualMedia.length)
+        setSlideIndex((prev) => (prev + 1) % allMedia.length)
       }, 3000)
     }
     return () => clearInterval(interval)
-  }, [slideshowActive, memory])
+  }, [slideshowActive, memory, isSlideshowPaused])
 
-  // Escape key to close
+  // Escape key to close and space key to pause slideshow
   useEffect(() => {
     const handleKeyDown = (e: KeyboardEvent) => {
       if (!isOpen) return
-      
+
       const tag = document.activeElement?.tagName.toLowerCase()
       const isInput = tag === 'input' || tag === 'textarea' || document.activeElement?.getAttribute('contenteditable') === 'true'
       if (isInput) return
@@ -62,18 +90,38 @@ export default function MemoryPreviewModal({ isOpen, onClose, memory, relationsh
           onClose()
         }
       }
+
+      // Space key to pause/resume slideshow
+      if (e.key === ' ' && slideshowActive) {
+        e.preventDefault()
+        setIsSlideshowPaused(true)
+      }
     }
+
+    const handleKeyUp = (e: KeyboardEvent) => {
+      if (e.key === ' ' && slideshowActive) {
+        setIsSlideshowPaused(false)
+      }
+    }
+
     window.addEventListener('keydown', handleKeyDown)
-    return () => window.removeEventListener('keydown', handleKeyDown)
+    window.addEventListener('keyup', handleKeyUp)
+    return () => {
+      window.removeEventListener('keydown', handleKeyDown)
+      window.removeEventListener('keyup', handleKeyUp)
+    }
   }, [isOpen, slideshowActive, onClose])
 
-  if (!isOpen || !memory) return null
-
-  const dateObj = new Date(memory.date)
-  const displayDate = dateObj.toLocaleDateString([], { month: 'long', day: 'numeric', year: 'numeric' })
+  const dateObj = memory ? new Date(memory.date) : new Date()
+  const displayDate = memory ? dateObj.toLocaleDateString([], { month: 'long', day: 'numeric', year: 'numeric' }) : ''
 
   const handleExport = () => {
+    if (!memory) return
     const data = { ...memory }
+    // Ensure attachments are included in the export
+    if (data.attachments) {
+      data.attachments = [...data.attachments]
+    }
     const blob = new Blob([JSON.stringify(data, null, 2)], { type: 'application/json' })
     const url = URL.createObjectURL(blob)
     const a = document.createElement('a')
@@ -83,35 +131,56 @@ export default function MemoryPreviewModal({ isOpen, onClose, memory, relationsh
     URL.revokeObjectURL(url)
   }
 
+  // Return empty fragment if memory is null (after all hooks are called)
+  if (!memory) return <></>
+
   // --- Slideshow Overlay ---
   if (slideshowActive) {
-    const visualMedia = getVisualMedia()
-    const currentMedia = visualMedia[slideIndex]
+    const allMedia = getAllMedia()
+    const currentMedia = allMedia[slideIndex]
     const isVideo = currentMedia?.match(/\.(mp4|webm|ogg|mov)$/i)
+    const isAudio = currentMedia?.match(/\.(mp3|wav|ogg|m4a)$/i)
+
+    const handleMouseDown = () => setIsSlideshowPaused(true)
+    const handleMouseUp = () => setIsSlideshowPaused(false)
+    const handleMouseLeave = () => setIsSlideshowPaused(false)
 
     return createPortal(
-      <div className="fixed inset-0 bg-black z-[9999] flex flex-col items-center justify-center animate-in fade-in duration-1000">
+      <div
+        className="fixed inset-0 bg-black z-[9999] flex flex-col items-center justify-center animate-in fade-in duration-1000"
+        onMouseDown={handleMouseDown}
+        onMouseUp={handleMouseUp}
+        onMouseLeave={handleMouseLeave}
+      >
         <button onClick={() => setSlideshowActive(false)} className="absolute top-6 right-6 p-3 bg-white/10 hover:bg-white/30 text-white rounded-full backdrop-blur-sm transition-colors z-10">
           <X size={32} />
         </button>
         <div className="absolute top-6 left-6 text-white text-xl font-black drop-shadow-md z-10 opacity-70">
-          {slideIndex + 1} / {visualMedia.length}
+          {slideIndex + 1} / {allMedia.length}
         </div>
 
-        {visualMedia.length > 0 ? (
+        {allMedia.length > 0 ? (
           <div className="w-full h-full flex items-center justify-center relative p-12">
             {isVideo ? (
-              <video src={currentMedia} autoPlay controls className="max-w-full max-h-full object-contain shadow-2xl rounded-lg animate-in zoom-in-95 duration-700" />
+              <video src={getSafeMediaUrl(currentMedia)} autoPlay controls className="max-w-full max-h-full object-contain shadow-2xl rounded-lg animate-in zoom-in-95 duration-700" />
+            ) : isAudio ? (
+              <div className="flex flex-col items-center gap-6 animate-in zoom-in-95 duration-700">
+                <div className="w-32 h-32 rounded-full bg-cyan-500/20 text-cyan-500 flex items-center justify-center">
+                  <Music size={64} />
+                </div>
+                <audio src={getSafeMediaUrl(currentMedia)} controls className="w-96" />
+                <div className="text-white text-lg font-medium">{currentMedia.split(/[\\/]/).pop()}</div>
+              </div>
             ) : (
               <img key={currentMedia} src={currentMedia} className="max-w-full max-h-full object-contain shadow-2xl rounded-lg animate-in zoom-in-95 duration-700" />
             )}
-            
+
             <div className="absolute bottom-12 left-1/2 -translate-x-1/2 bg-black/50 backdrop-blur-md px-6 py-3 rounded-full text-white text-lg font-medium shadow-2xl">
               {memory.title}
             </div>
           </div>
         ) : (
-          <div className="text-white text-2xl font-bold">No photos or videos to show.</div>
+          <div className="text-white text-2xl font-bold">No photos, videos, or audio to show.</div>
         )}
       </div>,
       document.body
@@ -119,11 +188,11 @@ export default function MemoryPreviewModal({ isOpen, onClose, memory, relationsh
   }
 
   return createPortal(
-    <div 
+    <div
       className="fixed inset-0 bg-background/90 backdrop-blur-sm z-[9999] flex items-center justify-center p-4"
       onMouseDown={(e) => e.stopPropagation()}
     >
-      <div className="bg-card border border-border w-full max-w-3xl h-auto max-h-[85vh] rounded-3xl shadow-2xl flex flex-col overflow-hidden animate-in zoom-in-95 duration-200">
+      <div className="bg-card border border-border w-full max-w-6xl h-auto max-h-[85vh] rounded-3xl shadow-2xl flex flex-col overflow-hidden animate-in zoom-in-95 duration-200">
         
         {/* Header */}
         <div className="px-8 py-6 border-b border-border flex justify-between items-start bg-card z-10 shrink-0">
@@ -136,7 +205,7 @@ export default function MemoryPreviewModal({ isOpen, onClose, memory, relationsh
             </div>
           </div>
           <div className="flex items-center gap-3">
-            {getVisualMedia().length > 0 && (
+            {getAllMedia().length > 0 && (
               <button onClick={() => { setSlideIndex(0); setSlideshowActive(true) }} className="px-4 py-2 bg-primary text-primary-foreground font-bold rounded-xl hover:scale-105 transition-transform flex items-center gap-2 shadow-lg shadow-primary/20">
                 <PlayCircle size={18} /> Slideshow
               </button>
@@ -162,25 +231,75 @@ export default function MemoryPreviewModal({ isOpen, onClose, memory, relationsh
               </div>
             )}
 
-            {/* Photos & Videos Gallery */}
-            {(photos.length > 0 || videos.length > 0) && (
+            {/* Photos Section */}
+            {photos.length > 0 && (
               <div>
-                <h3 className="text-sm font-bold text-muted-foreground uppercase mb-4 flex items-center gap-2 tracking-widest"><ImageIcon size={16}/> Visual Memories</h3>
+                <h3 className="text-sm font-bold text-muted-foreground uppercase mb-4 flex items-center gap-2 tracking-widest"><ImageIcon size={16}/> Photos</h3>
                 <div className="columns-2 md:columns-3 gap-4 space-y-4">
-                  {getVisualMedia().map((url: string, i: number) => {
-                    const isVid = url.match(/\.(mp4|webm|ogg|mov)$/i)
-                    return (
-                      <div key={i} className="break-inside-avoid relative rounded-2xl overflow-hidden border border-border group shadow-sm hover:shadow-xl transition-all">
-                        {isVid ? (
-                          <video src={url} controls className="w-full object-cover" />
-                        ) : (
-                          <a href={url} target="_blank" rel="noreferrer" className="block w-full">
-                            <img src={url} alt={`Memory ${i+1}`} className="w-full object-cover group-hover:scale-105 transition-transform duration-700" />
-                          </a>
-                        )}
+                  {photos.map((url: string, i: number) => (
+                    <div key={i} className="break-inside-avoid relative rounded-2xl overflow-hidden border border-border group shadow-sm hover:shadow-xl transition-all">
+                      <a href={normalizeUrl(url)} target="_blank" rel="noreferrer" className="block w-full">
+                        <img src={normalizeUrl(url)} alt={`Photo ${i+1}`} className="w-full object-cover group-hover:scale-105 transition-transform duration-700" />
+                      </a>
+                    </div>
+                  ))}
+                </div>
+              </div>
+            )}
+
+            {/* Videos Section */}
+            {videos.length > 0 && (
+              <div>
+                <h3 className="text-sm font-bold text-muted-foreground uppercase mb-4 flex items-center gap-2 tracking-widest"><Film size={16}/> Videos</h3>
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                  {videos.map((url: string, i: number) => (
+                    <div key={i} className="group relative bg-gradient-to-br from-slate-900/50 to-slate-800/50 border border-border rounded-2xl overflow-hidden hover:border-primary/50 transition-all duration-300 shadow-lg hover:shadow-xl">
+                      <div className="relative aspect-video bg-black">
+                        <video
+                          src={getSafeMediaUrl(url)}
+                          controls
+                          className="w-full h-full object-contain"
+                          preload="metadata"
+                        />
                       </div>
-                    )
-                  })}
+                      <div className="absolute bottom-0 left-0 right-0 bg-gradient-to-t from-black/80 to-transparent p-3 opacity-0 group-hover:opacity-100 transition-opacity duration-300">
+                        <p className="text-white text-xs font-medium truncate" title={url.split(/[\\/]/).pop()}>
+                          {url.split(/[\\/]/).pop()}
+                        </p>
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              </div>
+            )}
+
+            {/* Audio Section */}
+            {audio.length > 0 && (
+              <div>
+                <h3 className="text-sm font-bold text-muted-foreground uppercase mb-4 flex items-center gap-2 tracking-widest"><Music size={16}/> Audio</h3>
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                  {audio.map((url: string, i: number) => (
+                    <div key={i} className="group relative bg-gradient-to-br from-cyan-900/30 to-blue-900/30 border border-border rounded-2xl overflow-hidden hover:border-cyan-500/50 transition-all duration-300 shadow-lg hover:shadow-xl">
+                      <div className="p-5">
+                        <div className="flex items-center gap-4 mb-3">
+                          <div className="w-14 h-14 rounded-xl bg-gradient-to-br from-cyan-500/20 to-blue-500/20 text-cyan-400 flex items-center justify-center shrink-0 border border-cyan-500/30 group-hover:scale-110 transition-transform duration-300">
+                            <Music size={28} />
+                          </div>
+                          <div className="flex-1 min-w-0">
+                            <p className="text-sm font-bold text-foreground truncate" title={url.split(/[\\/]/).pop()}>
+                              {url.split(/[\\/]/).pop()}
+                            </p>
+                          </div>
+                        </div>
+                        <audio
+                          src={getSafeMediaUrl(url)}
+                          controls
+                          className="w-full h-10 [&::-webkit-media-controls-panel]:bg-accent/50 [&::-webkit-media-controls-current-time-display]:text-xs [&::-webkit-media-controls-time-remaining-display]:text-xs"
+                          preload="metadata"
+                        />
+                      </div>
+                    </div>
+                  ))}
                 </div>
               </div>
             )}
@@ -209,10 +328,15 @@ export default function MemoryPreviewModal({ isOpen, onClose, memory, relationsh
                 <div className="text-xs font-bold text-muted-foreground uppercase mb-3">People Present</div>
                 <div className="flex flex-wrap gap-2">
                   {memory.people?.map((pid: string) => {
-                    const p = relationships.find(r => r._id === pid)
+                    const p = localRelationships.find(r => r._id === pid)
+                    const displayName = p ? p.name : 'Unknown Person'
+                    // Debug: log if relationship not found
+                    if (!p) {
+                      console.log('Relationship not found for ID:', pid, 'Available relationships:', localRelationships.map(r => ({ id: r._id, name: r.name })))
+                    }
                     return (
-                      <div key={pid} className="bg-background border border-border px-3 py-1.5 rounded-full text-sm font-bold flex items-center gap-2 shadow-sm">
-                        <Users size={14} className="text-primary"/> {p ? p.name : pid}
+                      <div key={pid} className="bg-background border border-border px-3 py-1.5 rounded-full text-sm font-bold flex items-center gap-2 shadow-sm" title={pid}>
+                        <Users size={14} className="text-primary"/> {displayName}
                       </div>
                     )
                   })}
@@ -238,7 +362,7 @@ export default function MemoryPreviewModal({ isOpen, onClose, memory, relationsh
                   <div className="space-y-3">
                     {audio.map((url: string, i: number) => (
                       <div key={i} className="p-3 bg-background border border-border rounded-xl">
-                        <audio src={url} controls className="w-full h-8" />
+                        <audio src={getSafeMediaUrl(url)} controls className="w-full h-8" />
                       </div>
                     ))}
                   </div>
@@ -264,9 +388,6 @@ export default function MemoryPreviewModal({ isOpen, onClose, memory, relationsh
             <div className="space-y-3">
               <button onClick={onEdit} className="w-full flex items-center justify-center gap-2 py-3 bg-primary text-black font-bold rounded-xl hover:scale-105 transition-transform shadow-lg shadow-primary/20">
                 <Edit2 size={18}/> Edit Memory
-              </button>
-              <button onClick={onDuplicate} className="w-full flex items-center justify-center gap-2 py-3 bg-accent text-foreground font-bold rounded-xl hover:bg-accent/80 transition-colors">
-                <Copy size={18}/> Duplicate
               </button>
               <button onClick={handleExport} className="w-full flex items-center justify-center gap-2 py-3 bg-accent text-foreground font-bold rounded-xl hover:bg-accent/80 transition-colors">
                 <Download size={18}/> Export JSON

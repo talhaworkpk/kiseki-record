@@ -1,21 +1,26 @@
 import React from 'react'
 import { Sparkles, ArrowRight } from 'lucide-react'
+import { useNavigate } from 'react-router-dom'
 
 export function AiInsightWidget({ data }: any) {
   const rels = data.relationships || []
   const habits = data.habits || []
+  const navigate = useNavigate()
   
   let insight1 = "You're doing great!"
   let insight2 = "Keep tracking your life to generate more insights."
   let recommendation = "Log a new memory today"
+  let navPath = '/records'
 
   if (rels.length > 0) {
     insight1 = `You have ${rels.length} people in your network.`
     recommendation = `Message ${rels[0].name} today`
-  }
-  if (habits.length > 0) {
+    navPath = `/relationships/${rels[0]._id}`
+  } else if (habits.length > 0) {
     const topHabit = habits[0]
     insight2 = `Your habit '${topHabit.title}' is going strong.`
+    recommendation = `Update ${topHabit.title}`
+    navPath = `/habits`
   }
 
   return (
@@ -39,7 +44,10 @@ export function AiInsightWidget({ data }: any) {
 
         <div className="mt-6 pt-4 border-t border-cyan-500/20">
           <p className="text-xs font-bold uppercase tracking-wider text-cyan-600/80 dark:text-cyan-400/80 mb-2">Recommendation</p>
-          <button className="w-full flex items-center justify-between p-3 bg-cyan-500 text-white rounded-xl hover:bg-cyan-600 transition-colors shadow-lg shadow-cyan-500/20 font-bold text-sm">
+          <button 
+            onClick={() => navigate(navPath)}
+            className="w-full flex items-center justify-between p-3 bg-cyan-500 text-white rounded-xl hover:bg-cyan-600 transition-colors shadow-lg shadow-cyan-500/20 font-bold text-sm"
+          >
             {recommendation}
             <ArrowRight size={16} />
           </button>
