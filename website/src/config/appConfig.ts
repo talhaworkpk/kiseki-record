@@ -106,6 +106,21 @@ export const appConfig = {
       ]
     },
     {
+      version: '1.3.0',
+      date: new Date().toISOString().split('T')[0],
+      changes: [
+        'Added Sub-goals support to break down your main goals into actionable steps',
+        'Added Grid/List view toggle in the Goals section for better organization',
+        'Introduced detailed Preview Modals with image Slideshows for Projects, Career, Education, and Certificates',
+        'Enabled custom album creation when adding new memories in Relationships',
+        'Overhauled the Habits section to be significantly more user-friendly and intuitive',
+        'Added global keyboard shortcut (Ctrl+S) to instantly save forms across the app (Goals, Skills, Projects, Habits, Records, etc.)'
+      ],
+      tips: [
+        'Pro Tip: You can now press Ctrl+S to quickly save your progress instead of clicking the save button when creating a new Goal, Project, or Habit!'
+      ]
+    },
+    {
       version: '1.2.0',
       date: new Date().toISOString().split('T')[0],
       changes: [
