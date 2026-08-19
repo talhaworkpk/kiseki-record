@@ -131,21 +131,51 @@ export const checkAutoMisses = async () => {
     const allLogs: HabitDailyRecord[] = await window.api.db.find('habitLogs', {})
     
     const now = new Date()
+    const today = new Date()
+    today.setHours(0, 0, 0, 0)
+    // To avoid timezone issues with ISOString, construct it properly in local time
+    const todayStr = new Date().toLocaleDateString('en-CA') // YYYY-MM-DD
 
     for (const h of allHabits) {
-      const log = allLogs.find(l => l.habitId === h._id && l.date === todayStr)
-      if (!log || log.status === 'pending') {
-        const effectiveDeadline = getEffectiveDeadline(h) // we assume elapsed=0 on startup check
-        if (now > effectiveDeadline) {
-          const newStatus = h.category === 'Bad Habit' ? 'completed' : 'missed'
-          // Mark as missed or completed
-          // @ts-ignore
-          await window.api.db.update('habitLogs', 
-            { habitId: h._id, date: todayStr }, 
-            { $set: { status: newStatus, updatedAt: Date.now() } }, 
-            { upsert: true }
-          )
-          if (h._id) await logHabitActivity(h._id, `auto_${newStatus}`, 'Effective deadline passed.')
+      // 1. Backfill past missing days
+      const startDate = new Date(h.startDate || h.createdAt || Date.now())
+      startDate.setHours(0, 0, 0, 0)
+      
+      const loopDate = new Date(startDate)
+      while (loopDate < today) {
+        const loopDateStr = loopDate.toLocaleDateString('en-CA')
+        
+        if (isHabitActiveOnDay(h, loopDate)) {
+          const log = allLogs.find(l => l.habitId === h._id && l.date === loopDateStr)
+          if (!log || log.status === 'pending') {
+            const newStatus = h.category === 'Bad Habit' ? 'completed' : 'missed'
+            // @ts-ignore
+            await window.api.db.update('habitLogs', 
+              { habitId: h._id, date: loopDateStr }, 
+              { $set: { status: newStatus, updatedAt: Date.now() } }, 
+              { upsert: true }
+            )
+            if (h._id) await logHabitActivity(h._id, `auto_${newStatus}`, `Auto filled for past day ${loopDateStr}`)
+          }
+        }
+        loopDate.setDate(loopDate.getDate() + 1)
+      }
+
+      // 2. Check today
+      if (isHabitActiveOnDay(h, new Date())) {
+        const logToday = allLogs.find(l => l.habitId === h._id && l.date === todayStr)
+        if (!logToday || logToday.status === 'pending') {
+          const effectiveDeadline = getEffectiveDeadline(h)
+          if (now > effectiveDeadline) {
+            const newStatus = h.category === 'Bad Habit' ? 'completed' : 'missed'
+            // @ts-ignore
+            await window.api.db.update('habitLogs', 
+              { habitId: h._id, date: todayStr }, 
+              { $set: { status: newStatus, updatedAt: Date.now() } }, 
+              { upsert: true }
+            )
+            if (h._id) await logHabitActivity(h._id, `auto_${newStatus}`, 'Effective deadline passed.')
+          }
         }
       }
     }

@@ -67,6 +67,18 @@ if (process.contextIsolated) {
       },
       app: {
         restart: () => ipcRenderer.invoke('app:restart')
+      },
+      storage: {
+        getInfo: (mode?: string) => ipcRenderer.invoke('storage:getInfo', mode),
+        clearCache: () => ipcRenderer.invoke('storage:clearCache'),
+        setMaxAppSize: (size: number | null) => ipcRenderer.invoke('storage:setMaxAppSize', size),
+        checkLimits: (expectedBytes: number) => ipcRenderer.invoke('storage:checkLimits', expectedBytes)
+      },
+      settings: {
+        get: (key: string, defaultValue?: any) => ipcRenderer.invoke('settings:get', key, defaultValue),
+        set: (key: string, value: any) => ipcRenderer.invoke('settings:set', key, value),
+        delete: (key: string) => ipcRenderer.invoke('settings:delete', key),
+        getAll: () => ipcRenderer.invoke('settings:getAll')
       }
     })
   } catch (error) {
@@ -139,6 +151,18 @@ if (process.contextIsolated) {
     },
     app: {
       restart: () => ipcRenderer.invoke('app:restart')
+    },
+    storage: {
+      getInfo: (mode?: string) => ipcRenderer.invoke('storage:getInfo', mode),
+      clearCache: () => ipcRenderer.invoke('storage:clearCache'),
+      setMaxAppSize: (size: number | null) => ipcRenderer.invoke('storage:setMaxAppSize', size),
+      checkLimits: (expectedBytes: number) => ipcRenderer.invoke('storage:checkLimits', expectedBytes)
+    },
+    settings: {
+      get: (key: string, defaultValue?: any) => ipcRenderer.invoke('settings:get', key, defaultValue),
+      set: (key: string, value: any) => ipcRenderer.invoke('settings:set', key, value),
+      delete: (key: string) => ipcRenderer.invoke('settings:delete', key),
+      getAll: () => ipcRenderer.invoke('settings:getAll')
     }
   }
 }

@@ -5,6 +5,7 @@ import { NotificationEngine } from '../lib/NotificationEngine'
 import OfflineMaps from './Settings/OfflineMaps'
 import PrivateProfileSettings from './Settings/PrivateProfileSettings'
 import DesktopNotificationSettings from './Settings/DesktopNotificationSettings'
+import StorageSettings from './Settings/StorageSettings'
 
 export default function Settings() {
   const [currentProfile, setCurrentProfile] = useState<'public' | 'private'>('public')
@@ -190,6 +191,12 @@ export default function Settings() {
           >
             Notifications
           </Tabs.Trigger>
+          <Tabs.Trigger
+            value="storage"
+            className="px-6 py-3 font-medium text-muted-foreground data-[state=active]:text-primary data-[state=active]:border-b-2 data-[state=active]:border-primary transition-colors focus-visible:outline-none"
+          >
+            Storage
+          </Tabs.Trigger>
           {currentProfile === 'private' && (
             <Tabs.Trigger
               value="private"
@@ -336,6 +343,10 @@ export default function Settings() {
         
         <Tabs.Content value="notifications" className="focus-visible:outline-none">
           <DesktopNotificationSettings devMode={devMode} />
+        </Tabs.Content>
+
+        <Tabs.Content value="storage" className="focus-visible:outline-none space-y-8">
+          <StorageSettings />
         </Tabs.Content>
 
         {currentProfile === 'private' && (

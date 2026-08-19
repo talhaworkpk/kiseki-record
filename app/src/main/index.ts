@@ -4,11 +4,13 @@ import fs from 'fs'
 import path from 'path'
 import { db } from './database'
 import { profileManager } from './ProfileManager'
+import { settingsManager } from './SettingsManager'
 import { powerMonitor } from 'electron'
 import { setupVaultHandlers } from './vault'
 import { setupMapManager } from './map-manager'
 import { setupTileServer } from './tile-server'
 import { notificationService } from './notification-service'
+import { setupStorageHandlers, storageService } from './storage-service'
 // @ts-ignore
 import iconUrl from '../../icon.png?asset'
 
@@ -122,6 +124,7 @@ app.whenReady().then(() => {
 
   // Setup specialized IPC handlers
   setupVaultHandlers()
+  setupStorageHandlers()
 
   // Start notification background checks
   notificationService.markAppOpened()
@@ -188,6 +191,18 @@ app.whenReady().then(() => {
         filters: options?.filters || []
       })
       if (filePaths && filePaths.length > 0) {
+        let totalSize = 0
+        for (const p of filePaths) {
+          try { totalSize += fs.statSync(p).size } catch {}
+        }
+        const limitCheck = await storageService.checkLimitsBeforeWrite(totalSize)
+        if (!limitCheck.allowed) {
+          dialog.showErrorBox('Storage Limit Reached', limitCheck.reason === 'APP_LIMIT_REACHED' 
+            ? 'Kiseki Record has reached your configured storage limit. Free up space or increase the limit.' 
+            : 'Your drive is critically low on space. Kiseki Record cannot save more files.')
+          return { success: false, error: limitCheck.reason }
+        }
+
         const results: { filePath: string; filename: string }[] = []
         for (const sourcePath of filePaths) {
           const filename = `${Date.now()}_${path.basename(sourcePath)}`
@@ -212,6 +227,15 @@ app.whenReady().then(() => {
         return { success: false, error: 'Invalid base64 format' }
       }
       const buffer = Buffer.from(matches[2], 'base64')
+      
+      const limitCheck = await storageService.checkLimitsBeforeWrite(buffer.length)
+      if (!limitCheck.allowed) {
+        dialog.showErrorBox('Storage Limit Reached', limitCheck.reason === 'APP_LIMIT_REACHED' 
+          ? 'Kiseki Record has reached your configured storage limit. Free up space or increase the limit.' 
+          : 'Your drive is critically low on space. Kiseki Record cannot save more files.')
+        return { success: false, error: limitCheck.reason }
+      }
+
       const extension = matches[1].split('/')[1] || 'png'
       const filename = `${Date.now()}_cropped.${extension}`
       const destPath = path.join(attachmentsPath, filename)
@@ -226,6 +250,16 @@ app.whenReady().then(() => {
 
   ipcMain.handle('attachment:save-file', async (_, sourcePath: string) => {
     try {
+      let fileSize = 0
+      try { fileSize = fs.statSync(sourcePath).size } catch {}
+      const limitCheck = await storageService.checkLimitsBeforeWrite(fileSize)
+      if (!limitCheck.allowed) {
+        dialog.showErrorBox('Storage Limit Reached', limitCheck.reason === 'APP_LIMIT_REACHED' 
+          ? 'Kiseki Record has reached your configured storage limit. Free up space or increase the limit.' 
+          : 'Your drive is critically low on space. Kiseki Record cannot save more files.')
+        return { success: false, error: limitCheck.reason }
+      }
+
       const filename = `${Date.now()}_${path.basename(sourcePath)}`
       const destPath = path.join(attachmentsPath, filename)
       fs.copyFileSync(sourcePath, destPath)
@@ -595,6 +629,25 @@ app.whenReady().then(() => {
   ipcMain.handle('app:restart', () => {
     app.relaunch()
     app.exit(0)
+  })
+
+  // --- Global Settings IPC Handlers ---
+  ipcMain.handle('settings:get', (_, key, defaultValue) => {
+    return settingsManager.get(key, defaultValue)
+  })
+
+  ipcMain.handle('settings:set', (_, key, value) => {
+    settingsManager.set(key, value)
+    return true
+  })
+
+  ipcMain.handle('settings:delete', (_, key) => {
+    settingsManager.delete(key)
+    return true
+  })
+
+  ipcMain.handle('settings:getAll', () => {
+    return settingsManager.getAll()
   })
 
   createWindow()

@@ -114,5 +114,15 @@ export const features: Feature[] = [
     icon: 'Hourglass',
     title: 'Memory Capsules',
     description: 'Create time-locked memories that reveal themselves to you in the future.',
+  },
+  {
+    icon: 'HardDrive',
+    title: 'Granular Storage Management',
+    description: 'Monitor your memory overhead and easily clear isolated image cache instantly.',
+  },
+  {
+    icon: 'User',
+    title: 'Self-Reflection Profile',
+    description: 'A dedicated "Myself" relationship profile seamlessly synced with your core app persona.',
   }
 ];

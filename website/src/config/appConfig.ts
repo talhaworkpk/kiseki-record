@@ -91,18 +91,19 @@ export const appConfig = {
   changelog: [
     {
       version: '1.4.0',
-      date: new Date().toISOString().split('T')[0],
+      date: '2026-08-19',
       changes: [
+        'Introduced the "Myself" self-reflection profile strictly isolated across Public and Private modes',
+        'Comprehensive Storage Management interface to monitor cache and memory overhead globally',
+        'Global sleek custom scrollbar UI replacing default Windows scrollbars everywhere',
+        'Universal Right-Click Drag-to-Scroll support across all app tabs for effortless navigation',
+        'Custom global persistent UI settings (AI background, chat message colors) seamlessly stored across sessions',
         'Deep integration between Projects and Goals: Link goals directly to projects',
-        'Automatic Project progress calculation based on linked goals and sub-goals',
-        'Robust Conflict Resolution engine for JSON imports (Habits, Goals)',
-        'Redesigned global action menus (Three-dots menus) across Relationships, Habits, and Goals',
-        'New keyboard shortcuts (e.g., Ctrl+S to save memories)',
-        'UI enhancements and bug fixes for a smoother user experience'
+        'Automatic Project progress calculation based on linked goals and sub-goals'
       ],
       tips: [
-        'Pro Tip: Use the new Project dropdown when creating a Goal to automatically track its progress in your Project Portfolio!',
-        'You can now safely import backups—if a conflict is detected, you will be prompted to replace or skip the imported item.'
+        'Pro Tip: Update your main profile and watch your "Myself" relationship card automatically stay in sync!',
+        'You can now safely control exactly how much memory Kiseki Record takes up via Settings > Storage.'
       ]
     },
     {

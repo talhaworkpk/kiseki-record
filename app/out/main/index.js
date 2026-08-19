@@ -6,31 +6,31 @@ const Datastore = require("@seald-io/nedb");
 const Store = require("electron-store");
 const crypto = require("crypto");
 const JSZip = require("jszip");
-const userDataPath$2 = electron.app.getPath("userData");
-const dataPath$1 = path.join(userDataPath$2, "data");
+const userDataPath$3 = electron.app.getPath("userData");
+const dataPath$2 = path.join(userDataPath$3, "data");
 const settingsStore = new Store();
 const db = {
-  records: new Datastore({ filename: path.join(dataPath$1, "records.db"), autoload: true }),
-  goals: new Datastore({ filename: path.join(dataPath$1, "goals.db"), autoload: true }),
-  habits: new Datastore({ filename: path.join(dataPath$1, "habits.db"), autoload: true }),
-  habitLogs: new Datastore({ filename: path.join(dataPath$1, "habitLogs.db"), autoload: true }),
-  habitTimerSessions: new Datastore({ filename: path.join(dataPath$1, "habitTimerSessions.db"), autoload: true }),
-  habitBreaks: new Datastore({ filename: path.join(dataPath$1, "habitBreaks.db"), autoload: true }),
-  habitActivityLogs: new Datastore({ filename: path.join(dataPath$1, "habitActivityLogs.db"), autoload: true }),
-  relationships: new Datastore({ filename: path.join(dataPath$1, "relationships.db"), autoload: true }),
-  journal: new Datastore({ filename: path.join(dataPath$1, "journal.db"), autoload: true }),
-  conversations: new Datastore({ filename: path.join(dataPath$1, "conversations.db"), autoload: true }),
-  education: new Datastore({ filename: path.join(dataPath$1, "education.db"), autoload: true }),
-  career: new Datastore({ filename: path.join(dataPath$1, "career.db"), autoload: true }),
-  projects: new Datastore({ filename: path.join(dataPath$1, "projects.db"), autoload: true }),
-  skills: new Datastore({ filename: path.join(dataPath$1, "skills.db"), autoload: true }),
-  certificates: new Datastore({ filename: path.join(dataPath$1, "certificates.db"), autoload: true }),
-  achievements: new Datastore({ filename: path.join(dataPath$1, "achievements.db"), autoload: true }),
-  userProfile: new Datastore({ filename: path.join(dataPath$1, "userProfile.db"), autoload: true }),
-  notifications: new Datastore({ filename: path.join(dataPath$1, "notifications.db"), autoload: true }),
-  memoryCapsules: new Datastore({ filename: path.join(dataPath$1, "memoryCapsules.db"), autoload: true }),
-  systemUnlocks: new Datastore({ filename: path.join(dataPath$1, "systemUnlocks.db"), autoload: true }),
-  calendarMemories: new Datastore({ filename: path.join(dataPath$1, "calendarMemories.db"), autoload: true })
+  records: new Datastore({ filename: path.join(dataPath$2, "records.db"), autoload: true }),
+  goals: new Datastore({ filename: path.join(dataPath$2, "goals.db"), autoload: true }),
+  habits: new Datastore({ filename: path.join(dataPath$2, "habits.db"), autoload: true }),
+  habitLogs: new Datastore({ filename: path.join(dataPath$2, "habitLogs.db"), autoload: true }),
+  habitTimerSessions: new Datastore({ filename: path.join(dataPath$2, "habitTimerSessions.db"), autoload: true }),
+  habitBreaks: new Datastore({ filename: path.join(dataPath$2, "habitBreaks.db"), autoload: true }),
+  habitActivityLogs: new Datastore({ filename: path.join(dataPath$2, "habitActivityLogs.db"), autoload: true }),
+  relationships: new Datastore({ filename: path.join(dataPath$2, "relationships.db"), autoload: true }),
+  journal: new Datastore({ filename: path.join(dataPath$2, "journal.db"), autoload: true }),
+  conversations: new Datastore({ filename: path.join(dataPath$2, "conversations.db"), autoload: true }),
+  education: new Datastore({ filename: path.join(dataPath$2, "education.db"), autoload: true }),
+  career: new Datastore({ filename: path.join(dataPath$2, "career.db"), autoload: true }),
+  projects: new Datastore({ filename: path.join(dataPath$2, "projects.db"), autoload: true }),
+  skills: new Datastore({ filename: path.join(dataPath$2, "skills.db"), autoload: true }),
+  certificates: new Datastore({ filename: path.join(dataPath$2, "certificates.db"), autoload: true }),
+  achievements: new Datastore({ filename: path.join(dataPath$2, "achievements.db"), autoload: true }),
+  userProfile: new Datastore({ filename: path.join(dataPath$2, "userProfile.db"), autoload: true }),
+  notifications: new Datastore({ filename: path.join(dataPath$2, "notifications.db"), autoload: true }),
+  memoryCapsules: new Datastore({ filename: path.join(dataPath$2, "memoryCapsules.db"), autoload: true }),
+  systemUnlocks: new Datastore({ filename: path.join(dataPath$2, "systemUnlocks.db"), autoload: true }),
+  calendarMemories: new Datastore({ filename: path.join(dataPath$2, "calendarMemories.db"), autoload: true })
 };
 const dbAsync = {
   find: (collection, query) => {
@@ -204,24 +204,45 @@ class ProfileManager {
   }
 }
 const profileManager = new ProfileManager();
-const userDataPath$1 = electron.app.getPath("userData");
-const dataPath = path.join(userDataPath$1, "data");
+class SettingsManager {
+  store;
+  constructor() {
+    this.store = new Store({
+      name: "global-settings"
+    });
+  }
+  get(key, defaultValue) {
+    return this.store.get(key, defaultValue);
+  }
+  set(key, value) {
+    this.store.set(key, value);
+  }
+  delete(key) {
+    this.store.delete(key);
+  }
+  getAll() {
+    return this.store.store;
+  }
+}
+const settingsManager = new SettingsManager();
+const userDataPath$2 = electron.app.getPath("userData");
+const dataPath$1 = path.join(userDataPath$2, "data");
 function setupVaultHandlers() {
   electron.ipcMain.handle("vault:export", async (_event, _options) => {
     try {
       const zip = new JSZip();
-      if (fs.existsSync(dataPath)) {
-        const files = fs.readdirSync(dataPath);
+      if (fs.existsSync(dataPath$1)) {
+        const files = fs.readdirSync(dataPath$1);
         for (const file of files) {
           if (file.endsWith(".db")) {
-            const filePath2 = path.join(dataPath, file);
+            const filePath2 = path.join(dataPath$1, file);
             if (fs.statSync(filePath2).isFile()) {
               zip.file(`data/${file}`, fs.readFileSync(filePath2));
             }
           }
         }
       }
-      const attachmentsPath2 = path.join(dataPath, "attachments");
+      const attachmentsPath2 = path.join(dataPath$1, "attachments");
       if (fs.existsSync(attachmentsPath2)) {
         const files = fs.readdirSync(attachmentsPath2);
         for (const file of files) {
@@ -231,11 +252,11 @@ function setupVaultHandlers() {
           }
         }
       }
-      const settingsPath = path.join(userDataPath$1, "config.json");
+      const settingsPath = path.join(userDataPath$2, "config.json");
       if (fs.existsSync(settingsPath)) {
         zip.file("config.json", fs.readFileSync(settingsPath));
       }
-      const backupsDir = path.join(userDataPath$1, "backups");
+      const backupsDir = path.join(userDataPath$2, "backups");
       if (!fs.existsSync(backupsDir)) {
         fs.mkdirSync(backupsDir, { recursive: true });
       }
@@ -268,17 +289,17 @@ function setupVaultHandlers() {
       if (filePath) {
         const data = fs.readFileSync(filePath);
         const zip = await JSZip.loadAsync(data);
-        if (!fs.existsSync(dataPath)) {
-          fs.mkdirSync(dataPath, { recursive: true });
+        if (!fs.existsSync(dataPath$1)) {
+          fs.mkdirSync(dataPath$1, { recursive: true });
         }
         const mode = options.mode || "replace";
         for (const [filename, fileData] of Object.entries(zip.files)) {
           if (!fileData.dir) {
             const buffer = await fileData.async("nodebuffer");
             if (filename === "config.json") {
-              fs.writeFileSync(path.join(userDataPath$1, filename), buffer);
+              fs.writeFileSync(path.join(userDataPath$2, filename), buffer);
             } else if (filename.startsWith("data/")) {
-              const destPath = path.join(userDataPath$1, filename);
+              const destPath = path.join(userDataPath$2, filename);
               const destDir = path.dirname(destPath);
               if (!fs.existsSync(destDir)) {
                 fs.mkdirSync(destDir, { recursive: true });
@@ -386,7 +407,7 @@ function setupVaultHandlers() {
   });
   electron.ipcMain.handle("vault:listBackups", async () => {
     try {
-      const backupsDir = path.join(userDataPath$1, "backups");
+      const backupsDir = path.join(userDataPath$2, "backups");
       if (!fs.existsSync(backupsDir)) return { success: true, backups: [] };
       const files = fs.readdirSync(backupsDir);
       const backups = files.filter((f) => f.endsWith(".kvault")).map((f) => {
@@ -840,6 +861,237 @@ class NotificationService {
   }
 }
 const notificationService = NotificationService.getInstance();
+const userDataPath$1 = electron.app.getPath("userData");
+const dataPath = path.join(userDataPath$1, "data");
+const cachePath = electron.app.getPath("cache");
+function getFileSizeSafe(filePath) {
+  try {
+    return fs.statSync(filePath).size;
+  } catch {
+    return 0;
+  }
+}
+function getFolderSize(folderPath) {
+  let size = 0;
+  let count = 0;
+  try {
+    if (!fs.existsSync(folderPath)) return { size, count };
+    const files = fs.readdirSync(folderPath);
+    for (const file of files) {
+      const fullPath = path.join(folderPath, file);
+      const stats = fs.statSync(fullPath);
+      if (stats.isDirectory()) {
+        const sub = getFolderSize(fullPath);
+        size += sub.size;
+        count += sub.count;
+      } else {
+        size += stats.size;
+        count++;
+      }
+    }
+  } catch {
+  }
+  return { size, count };
+}
+function extractFilePathsFromDoc(doc) {
+  let paths = [];
+  if (doc.attachments && Array.isArray(doc.attachments)) {
+    paths.push(...doc.attachments.filter((p) => p.startsWith("file:///")));
+  }
+  if (doc.photos && Array.isArray(doc.photos)) {
+    paths.push(...doc.photos.filter((p) => p.startsWith("file:///")));
+  }
+  if (doc.audio && Array.isArray(doc.audio)) {
+    paths.push(...doc.audio.filter((p) => p.startsWith("file:///")));
+  }
+  if (doc.videos && Array.isArray(doc.videos)) {
+    paths.push(...doc.videos.filter((p) => p.startsWith("file:///")));
+  }
+  if (doc.documents && Array.isArray(doc.documents)) {
+    paths.push(...doc.documents.filter((p) => p.startsWith("file:///")));
+  }
+  if (doc.coverImage && doc.coverImage.startsWith("file:///")) {
+    paths.push(doc.coverImage);
+  }
+  return paths.map((p) => {
+    let clean = p.replace(/^file:\/\/\//i, "");
+    try {
+      clean = decodeURIComponent(clean);
+    } catch {
+    }
+    return clean;
+  });
+}
+const SECTION_CONFIG = [
+  { collection: "relationships", name: "Relationships" },
+  { collection: "journal", name: "Journal" },
+  { collection: "records", name: "Records" },
+  { collection: "goals", name: "Goals" },
+  { collection: "habits", name: "Habits" },
+  { collection: "projects", name: "Projects" },
+  { collection: "career", name: "Career" },
+  { collection: "education", name: "Education" },
+  { collection: "certificates", name: "Certificates" },
+  { collection: "skills", name: "Skills" },
+  { collection: "achievements", name: "Achievements" },
+  { collection: "memoryCapsules", name: "Memory Capsules" },
+  { collection: "calendarMemories", name: "Calendar" }
+];
+const storageService = {
+  async getStorageInfo(mode = "both") {
+    const sections = [];
+    let totalAppSize = 0;
+    let totalFileCount = 0;
+    const fileTypes = {
+      Images: { type: "Images", size: 0, count: 0 },
+      Videos: { type: "Videos", size: 0, count: 0 },
+      Audio: { type: "Audio", size: 0, count: 0 },
+      Documents: { type: "Documents", size: 0, count: 0 },
+      Database: { type: "Database", size: 0, count: 0 },
+      Other: { type: "Other", size: 0, count: 0 }
+    };
+    for (const config of SECTION_CONFIG) {
+      const section = { name: config.name, size: 0, count: 0, items: [] };
+      let dbPath = path.join(dataPath, `${config.collection}.db`);
+      let dbSize = getFileSizeSafe(dbPath);
+      section.size += dbSize;
+      section.count += 1;
+      fileTypes.Database.size += dbSize;
+      fileTypes.Database.count += 1;
+      try {
+        const query = {};
+        if (mode === "public") query.profile = "public";
+        else if (mode === "private") query.profile = "private";
+        const docs = await dbAsync.find(config.collection, query);
+        for (const doc of docs) {
+          const dbItemFootprint = Buffer.byteLength(JSON.stringify(doc), "utf8");
+          let itemSize = dbItemFootprint;
+          section.size += dbItemFootprint;
+          section.count += 1;
+          const paths = extractFilePathsFromDoc(doc);
+          for (const p of paths) {
+            const size = getFileSizeSafe(p);
+            itemSize += size;
+            section.size += size;
+            section.count += 1;
+            const ext = path.extname(p).toLowerCase();
+            if ([".jpg", ".jpeg", ".png", ".gif", ".webp", ".bmp"].includes(ext)) {
+              fileTypes.Images.size += size;
+              fileTypes.Images.count += 1;
+            } else if ([".mp4", ".mkv", ".avi", ".mov", ".webm"].includes(ext)) {
+              fileTypes.Videos.size += size;
+              fileTypes.Videos.count += 1;
+            } else if ([".mp3", ".wav", ".ogg", ".m4a"].includes(ext)) {
+              fileTypes.Audio.size += size;
+              fileTypes.Audio.count += 1;
+            } else if ([".pdf", ".doc", ".docx", ".txt", ".csv"].includes(ext)) {
+              fileTypes.Documents.size += size;
+              fileTypes.Documents.count += 1;
+            } else {
+              fileTypes.Other.size += size;
+              fileTypes.Other.count += 1;
+            }
+          }
+          if (itemSize > 0) {
+            section.items.push({
+              name: doc.title || doc.name || doc.company || doc.school || doc.degree || "Untitled",
+              size: itemSize
+            });
+          }
+        }
+      } catch (err) {
+        console.error(`Error calculating storage for ${config.name}:`, err);
+      }
+      section.items.sort((a, b) => b.size - a.size);
+      sections.push(section);
+      totalAppSize += section.size;
+      totalFileCount += section.count;
+    }
+    const remainingDbs = ["habitLogs", "habitTimerSessions", "habitBreaks", "habitActivityLogs", "conversations", "userProfile", "notifications", "systemUnlocks"];
+    let otherDbSize = 0;
+    let otherDbCount = 0;
+    for (const dbName of remainingDbs) {
+      const dbPath = path.join(dataPath, `${dbName}.db`);
+      const sz = getFileSizeSafe(dbPath);
+      otherDbSize += sz;
+      if (sz > 0) otherDbCount++;
+    }
+    if (otherDbSize > 0) {
+      sections.push({ name: "System Data", size: otherDbSize, count: otherDbCount, items: [] });
+      totalAppSize += otherDbSize;
+      totalFileCount += otherDbCount;
+      fileTypes.Database.size += otherDbSize;
+      fileTypes.Database.count += otherDbCount;
+    }
+    sections.sort((a, b) => b.size - a.size);
+    const cacheStats = getFolderSize(cachePath);
+    let driveInfo = { path: userDataPath$1.substring(0, 3) || "C:\\", total: 0, free: 0, used: 0, percentUsed: 0 };
+    try {
+      const stat = fs.statfsSync(userDataPath$1);
+      const total = stat.bsize * stat.blocks;
+      const free = stat.bsize * stat.bfree;
+      const used = total - free;
+      driveInfo = {
+        path: userDataPath$1.substring(0, 3).toUpperCase(),
+        total,
+        free,
+        used,
+        percentUsed: total > 0 ? used / total * 100 : 0
+      };
+    } catch (e) {
+      console.error("Failed to get drive info", e);
+    }
+    const maxAppSize = settingsStore.get("maxAppSize", null);
+    return {
+      totalAppSize,
+      maxAppSize,
+      fileCount: totalFileCount,
+      sections,
+      fileTypes: Object.values(fileTypes).filter((ft) => ft.size > 0).sort((a, b) => b.size - a.size),
+      drive: driveInfo,
+      cacheSize: cacheStats.size
+    };
+  },
+  async clearCache() {
+    const stats = getFolderSize(cachePath);
+    try {
+      if (fs.existsSync(cachePath)) {
+        fs.rmSync(cachePath, { recursive: true, force: true });
+        fs.mkdirSync(cachePath, { recursive: true });
+      }
+    } catch (e) {
+      console.error("Failed to clear cache", e);
+    }
+    return stats.size;
+  },
+  async setMaxAppSize(sizeInBytes) {
+    settingsStore.set("maxAppSize", sizeInBytes);
+  },
+  async checkLimitsBeforeWrite(expectedBytes) {
+    const maxAppSize = settingsStore.get("maxAppSize", null);
+    if (maxAppSize !== null) {
+      const info = await this.getStorageInfo();
+      if (info.totalAppSize + expectedBytes > maxAppSize) {
+        return { allowed: false, reason: "APP_LIMIT_REACHED" };
+      }
+    }
+    try {
+      const stat = fs.statfsSync(userDataPath$1);
+      const free = stat.bsize * stat.bfree;
+      if (expectedBytes + 100 * 1024 * 1024 > free) {
+        return { allowed: false, reason: "DRIVE_LIMIT_REACHED" };
+      }
+    } catch (e) {
+    }
+    return { allowed: true };
+  }
+};
+function setupStorageHandlers() {
+  electron.ipcMain.handle("storage:getInfo", (_, mode) => storageService.getStorageInfo(mode));
+  electron.ipcMain.handle("storage:clearCache", () => storageService.clearCache());
+  electron.ipcMain.handle("storage:setMaxAppSize", (_, size) => storageService.setMaxAppSize(size));
+  electron.ipcMain.handle("storage:checkLimits", (_, size) => storageService.checkLimitsBeforeWrite(size));
+}
 let tray = null;
 let isQuitting = false;
 const userDataPath = electron.app.getPath("userData");
@@ -923,6 +1175,7 @@ electron.app.whenReady().then(() => {
     electron.app.setAppUserModelId("com.kisekirecord.app");
   }
   setupVaultHandlers();
+  setupStorageHandlers();
   notificationService.markAppOpened();
   notificationService.startBackgroundChecks();
   try {
@@ -980,6 +1233,18 @@ electron.app.whenReady().then(() => {
         filters: options?.filters || []
       });
       if (filePaths && filePaths.length > 0) {
+        let totalSize = 0;
+        for (const p of filePaths) {
+          try {
+            totalSize += fs.statSync(p).size;
+          } catch {
+          }
+        }
+        const limitCheck = await storageService.checkLimitsBeforeWrite(totalSize);
+        if (!limitCheck.allowed) {
+          electron.dialog.showErrorBox("Storage Limit Reached", limitCheck.reason === "APP_LIMIT_REACHED" ? "Kiseki Record has reached your configured storage limit. Free up space or increase the limit." : "Your drive is critically low on space. Kiseki Record cannot save more files.");
+          return { success: false, error: limitCheck.reason };
+        }
         const results = [];
         for (const sourcePath of filePaths) {
           const filename = `${Date.now()}_${path.basename(sourcePath)}`;
@@ -1003,6 +1268,11 @@ electron.app.whenReady().then(() => {
         return { success: false, error: "Invalid base64 format" };
       }
       const buffer = Buffer.from(matches[2], "base64");
+      const limitCheck = await storageService.checkLimitsBeforeWrite(buffer.length);
+      if (!limitCheck.allowed) {
+        electron.dialog.showErrorBox("Storage Limit Reached", limitCheck.reason === "APP_LIMIT_REACHED" ? "Kiseki Record has reached your configured storage limit. Free up space or increase the limit." : "Your drive is critically low on space. Kiseki Record cannot save more files.");
+        return { success: false, error: limitCheck.reason };
+      }
       const extension = matches[1].split("/")[1] || "png";
       const filename = `${Date.now()}_cropped.${extension}`;
       const destPath = path.join(attachmentsPath, filename);
@@ -1016,6 +1286,16 @@ electron.app.whenReady().then(() => {
   });
   electron.ipcMain.handle("attachment:save-file", async (_, sourcePath) => {
     try {
+      let fileSize = 0;
+      try {
+        fileSize = fs.statSync(sourcePath).size;
+      } catch {
+      }
+      const limitCheck = await storageService.checkLimitsBeforeWrite(fileSize);
+      if (!limitCheck.allowed) {
+        electron.dialog.showErrorBox("Storage Limit Reached", limitCheck.reason === "APP_LIMIT_REACHED" ? "Kiseki Record has reached your configured storage limit. Free up space or increase the limit." : "Your drive is critically low on space. Kiseki Record cannot save more files.");
+        return { success: false, error: limitCheck.reason };
+      }
       const filename = `${Date.now()}_${path.basename(sourcePath)}`;
       const destPath = path.join(attachmentsPath, filename);
       fs.copyFileSync(sourcePath, destPath);
@@ -1306,6 +1586,20 @@ electron.app.whenReady().then(() => {
   electron.ipcMain.handle("app:restart", () => {
     electron.app.relaunch();
     electron.app.exit(0);
+  });
+  electron.ipcMain.handle("settings:get", (_, key, defaultValue) => {
+    return settingsManager.get(key, defaultValue);
+  });
+  electron.ipcMain.handle("settings:set", (_, key, value) => {
+    settingsManager.set(key, value);
+    return true;
+  });
+  electron.ipcMain.handle("settings:delete", (_, key) => {
+    settingsManager.delete(key);
+    return true;
+  });
+  electron.ipcMain.handle("settings:getAll", () => {
+    return settingsManager.getAll();
   });
   createWindow();
   const window = electron.BrowserWindow.getAllWindows()[0];

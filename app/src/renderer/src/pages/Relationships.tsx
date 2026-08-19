@@ -34,7 +34,39 @@ export default function Relationships() {
     setLoading(true)
     try {
       // @ts-ignore
-      const data = await window.api.db.find('relationships', {})
+      let data = await window.api.db.find('relationships', {})
+      
+      // Auto-generate "Myself" relationship if missing but userProfile exists
+      // @ts-ignore
+      const currentProfile = await window.api.profile.getCurrent()
+      const selfId = `self_${currentProfile}`
+
+      if (!data.some((p: any) => p._id === selfId)) {
+        // @ts-ignore
+        const userProfiles = await window.api.db.find('userProfile', {})
+        if (userProfiles && userProfiles.length > 0) {
+          const profile = userProfiles[0]
+          const selfPerson = {
+            _id: selfId,
+            name: profile.fullName || 'Myself',
+            profilePicture: profile.photoPath || '',
+            gender: profile.gender || '',
+            birthday: profile.dateOfBirth || '',
+            phone: profile.phone || '',
+            email: profile.email || '',
+            address: profile.address || '',
+            relationshipType: 'Myself',
+            tags: [],
+            notes: [],
+            createdAt: Date.now(),
+            updatedAt: Date.now()
+          }
+          // @ts-ignore
+          await window.api.db.insert('relationships', selfPerson)
+          data.push(selfPerson)
+        }
+      }
+
       setPeople(data)
     } catch (err) {
       console.error(err)
@@ -495,7 +527,10 @@ export default function Relationships() {
                     {person.profilePicture ? <img src={normalizeUrl(person.profilePicture)} className="w-full h-full object-cover"/> : <User size={24} className="text-muted-foreground"/>}
                   </div>
                   <div>
-                    <h3 className="text-lg font-bold">{person.name}</h3>
+                    <h3 className="text-lg font-bold flex items-center gap-2">
+                      {person.name}
+                      {person._id?.startsWith('self_') && <span className="text-xs bg-primary/20 text-primary px-1.5 py-0.5 rounded-md">You</span>}
+                    </h3>
                     <span className="text-sm bg-accent text-accent-foreground px-2 py-0.5 rounded-full inline-block mt-1">{person.relationshipType}</span>
                   </div>
                 </div>

@@ -1,6 +1,29 @@
 @tailwind base;
 @tailwind components;
 @tailwind utilities;
+
+/* Global Scrollbar Override */
+::-webkit-scrollbar {
+  width: 6px;
+  height: 8px; /* Taller for horizontal visibility */
+}
+::-webkit-scrollbar-track {
+  background: transparent;
+}
+::-webkit-scrollbar-track:horizontal {
+  background: hsl(var(--muted) / 0.15); /* Slightly visible track for horizontal */
+  border-radius: 10px;
+}
+::-webkit-scrollbar-thumb {
+  background: hsl(var(--primary) / 0.5);
+  border-radius: 10px;
+}
+::-webkit-scrollbar-thumb:horizontal {
+  background: hsl(var(--primary) / 0.6);
+}
+::-webkit-scrollbar-thumb:hover {
+  background: hsl(var(--primary));
+}
  
 @layer base {
   :root {
@@ -69,14 +92,21 @@
 
   .scrollbar-custom::-webkit-scrollbar {
     width: 6px;
-    height: 6px;
+    height: 8px; /* Taller for horizontal visibility */
   }
   .scrollbar-custom::-webkit-scrollbar-track {
     background: transparent;
   }
+  .scrollbar-custom::-webkit-scrollbar-track:horizontal {
+    background: hsl(var(--muted) / 0.15); /* Slightly visible track for horizontal */
+    border-radius: 10px;
+  }
   .scrollbar-custom::-webkit-scrollbar-thumb {
     background-color: hsl(var(--primary) / 0.4);
     border-radius: 10px;
+  }
+  .scrollbar-custom::-webkit-scrollbar-thumb:horizontal {
+    background-color: hsl(var(--primary) / 0.6);
   }
   .scrollbar-custom::-webkit-scrollbar-thumb:hover {
     background-color: hsl(var(--primary) / 0.7);
@@ -215,4 +245,26 @@
     transform: rotate(45deg) translateX(250vw) scaleX(0.2);
     opacity: 0;
   }
+}
+
+.custom-scrollbar::-webkit-scrollbar {
+  width: 6px;
+  height: 8px; /* Taller for horizontal visibility */
+}
+.custom-scrollbar::-webkit-scrollbar-track {
+  background: transparent;
+}
+.custom-scrollbar::-webkit-scrollbar-track:horizontal {
+  background: hsl(var(--muted) / 0.15); /* Slightly visible track for horizontal */
+  border-radius: 10px;
+}
+.custom-scrollbar::-webkit-scrollbar-thumb {
+  background: hsl(var(--primary) / 0.5);
+  border-radius: 10px;
+}
+.custom-scrollbar::-webkit-scrollbar-thumb:horizontal {
+  background: hsl(var(--primary) / 0.6);
+}
+.custom-scrollbar::-webkit-scrollbar-thumb:hover {
+  background: hsl(var(--primary));
 }

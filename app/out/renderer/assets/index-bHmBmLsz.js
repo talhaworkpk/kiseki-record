@@ -9123,6 +9123,23 @@ const FileArchive = createLucideIcon("FileArchive", [
  * This source code is licensed under the ISC license.
  * See the LICENSE file in the root directory of this source tree.
  */
+const FileAudio = createLucideIcon("FileAudio", [
+  ["path", { d: "M17.5 22h.5a2 2 0 0 0 2-2V7l-5-5H6a2 2 0 0 0-2 2v3", key: "rslqgf" }],
+  ["path", { d: "M14 2v4a2 2 0 0 0 2 2h4", key: "tnqrlb" }],
+  [
+    "path",
+    {
+      d: "M2 19a2 2 0 1 1 4 0v1a2 2 0 1 1-4 0v-4a6 6 0 0 1 12 0v4a2 2 0 1 1-4 0v-1a2 2 0 1 1 4 0",
+      key: "9f7x3i"
+    }
+  ]
+]);
+/**
+ * @license lucide-react v0.428.0 - ISC
+ *
+ * This source code is licensed under the ISC license.
+ * See the LICENSE file in the root directory of this source tree.
+ */
 const FileChartColumnIncreasing = createLucideIcon("FileChartColumnIncreasing", [
   ["path", { d: "M15 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V7Z", key: "1rqfz7" }],
   ["path", { d: "M14 2v4a2 2 0 0 0 2 2h4", key: "tnqrlb" }],
@@ -9208,9 +9225,31 @@ const FileText = createLucideIcon("FileText", [
  * This source code is licensed under the ISC license.
  * See the LICENSE file in the root directory of this source tree.
  */
+const FileVideo = createLucideIcon("FileVideo", [
+  ["path", { d: "M15 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V7Z", key: "1rqfz7" }],
+  ["path", { d: "M14 2v4a2 2 0 0 0 2 2h4", key: "tnqrlb" }],
+  ["path", { d: "m10 11 5 3-5 3v-6Z", key: "7ntvm4" }]
+]);
+/**
+ * @license lucide-react v0.428.0 - ISC
+ *
+ * This source code is licensed under the ISC license.
+ * See the LICENSE file in the root directory of this source tree.
+ */
 const File = createLucideIcon("File", [
   ["path", { d: "M15 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V7Z", key: "1rqfz7" }],
   ["path", { d: "M14 2v4a2 2 0 0 0 2 2h4", key: "tnqrlb" }]
+]);
+/**
+ * @license lucide-react v0.428.0 - ISC
+ *
+ * This source code is licensed under the ISC license.
+ * See the LICENSE file in the root directory of this source tree.
+ */
+const Files = createLucideIcon("Files", [
+  ["path", { d: "M20 7h-3a2 2 0 0 1-2-2V2", key: "x099mo" }],
+  ["path", { d: "M9 18a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h7l4 4v10a2 2 0 0 1-2 2Z", key: "18t6ie" }],
+  ["path", { d: "M3 7.6v12.8A1.6 1.6 0 0 0 4.6 22h9.8", key: "1nja0z" }]
 ]);
 /**
  * @license lucide-react v0.428.0 - ISC
@@ -10046,6 +10085,18 @@ const Search = createLucideIcon("Search", [
 const Send = createLucideIcon("Send", [
   ["path", { d: "m22 2-7 20-4-9-9-4Z", key: "1q3vgg" }],
   ["path", { d: "M22 2 11 13", key: "nzbqef" }]
+]);
+/**
+ * @license lucide-react v0.428.0 - ISC
+ *
+ * This source code is licensed under the ISC license.
+ * See the LICENSE file in the root directory of this source tree.
+ */
+const Server = createLucideIcon("Server", [
+  ["rect", { width: "20", height: "8", x: "2", y: "2", rx: "2", ry: "2", key: "ngkwjq" }],
+  ["rect", { width: "20", height: "8", x: "2", y: "14", rx: "2", ry: "2", key: "iecqi9" }],
+  ["line", { x1: "6", x2: "6.01", y1: "6", y2: "6", key: "16zg32" }],
+  ["line", { x1: "6", x2: "6.01", y1: "18", y2: "18", key: "nzw8ys" }]
 ]);
 /**
  * @license lucide-react v0.428.0 - ISC
@@ -52773,6 +52824,318 @@ function SettingRow({ icon: icon2, title, description, checked, onChange: onChan
     ] })
   ] });
 }
+function StorageSettings() {
+  const [loading, setLoading] = reactExports.useState(true);
+  const [info, setInfo] = reactExports.useState(null);
+  const [expandedSection, setExpandedSection] = reactExports.useState(null);
+  const [maxSizeLimit, setMaxSizeLimit] = reactExports.useState("null");
+  const [clearingCache, setClearingCache] = reactExports.useState(false);
+  const [currentProfile, setCurrentProfile] = reactExports.useState("public");
+  const [viewMode, setViewMode] = reactExports.useState("public");
+  const containerRef = reactExports.useRef(null);
+  const handleMouseDown = (e3) => {
+    if (e3.button === 2) {
+      e3.preventDefault();
+      let scrollable = e3.target;
+      while (scrollable) {
+        if (scrollable.scrollHeight > scrollable.clientHeight) {
+          const overflowY = window.getComputedStyle(scrollable).overflowY;
+          if (overflowY === "auto" || overflowY === "scroll") {
+            break;
+          }
+        }
+        scrollable = scrollable.parentElement;
+      }
+      if (!scrollable) scrollable = document.querySelector("main") || document.documentElement;
+      const startY = e3.clientY;
+      const startScrollY = scrollable.scrollTop || window.scrollY;
+      const onMouseMove = (moveEvent) => {
+        const deltaY = moveEvent.clientY - startY;
+        if (scrollable === document.documentElement) {
+          window.scrollTo(window.scrollX, startScrollY - deltaY);
+        } else {
+          scrollable.scrollTop = startScrollY - deltaY;
+        }
+      };
+      const onMouseUp = () => {
+        document.removeEventListener("mousemove", onMouseMove);
+        document.removeEventListener("mouseup", onMouseUp);
+      };
+      document.addEventListener("mousemove", onMouseMove);
+      document.addEventListener("mouseup", onMouseUp);
+    }
+  };
+  const loadInfo = async (modeToLoad) => {
+    setLoading(true);
+    try {
+      if (window.api.storage) {
+        const data = await window.api.storage.getInfo(modeToLoad);
+        setInfo(data);
+        setMaxSizeLimit(data.maxAppSize ? data.maxAppSize.toString() : "null");
+      }
+    } catch (err) {
+      console.error(err);
+    } finally {
+      setLoading(false);
+    }
+  };
+  reactExports.useEffect(() => {
+    if (window.api.profile) {
+      window.api.profile.getCurrent().then((p2) => {
+        setCurrentProfile(p2);
+        const initialMode = p2 === "private" ? "both" : "public";
+        setViewMode(initialMode);
+        loadInfo(initialMode);
+      });
+    } else {
+      loadInfo("public");
+    }
+  }, []);
+  const handleClearCache = async () => {
+    if (!confirm("Are you sure you want to clear temporary/cache files? Your personal data will not be deleted.")) return;
+    setClearingCache(true);
+    try {
+      const freed = await window.api.storage.clearCache();
+      NotificationEngine.notify("success", "Cache Cleared", `Successfully freed ${formatBytes(freed)}`);
+      await loadInfo(viewMode);
+    } catch (e3) {
+      NotificationEngine.notify("error", "Error", "Failed to clear cache");
+    } finally {
+      setClearingCache(false);
+    }
+  };
+  const handleSaveLimit = async (val) => {
+    setMaxSizeLimit(val);
+    try {
+      const num = val === "null" ? null : parseInt(val, 10);
+      await window.api.storage.setMaxAppSize(num);
+      NotificationEngine.notify("success", "Limit Updated", "Maximum app storage limit saved.");
+      await loadInfo(viewMode);
+    } catch (e3) {
+      NotificationEngine.notify("error", "Error", "Failed to update limit");
+    }
+  };
+  const formatBytes = (bytes, decimals = 2) => {
+    if (!+bytes) return "0 Bytes";
+    const k2 = 1024;
+    const dm = decimals < 0 ? 0 : decimals;
+    const sizes = ["Bytes", "KB", "MB", "GB", "TB"];
+    const i2 = Math.floor(Math.log(bytes) / Math.log(k2));
+    return `${parseFloat((bytes / Math.pow(k2, i2)).toFixed(dm))} ${sizes[i2]}`;
+  };
+  const getPercentage = (part, total) => {
+    if (total === 0 || part === 0) return "0.0%";
+    const p2 = part / total * 100;
+    if (p2 > 0 && p2 < 0.1) return "0.0%";
+    return p2.toFixed(1) + "%";
+  };
+  const toggleSection = (name2) => {
+    setExpandedSection(expandedSection === name2 ? null : name2);
+  };
+  const getFileIcon = (type) => {
+    if (type === "Images") return /* @__PURE__ */ jsxRuntimeExports.jsx(Image$2, { size: 18, className: "text-blue-400" });
+    if (type === "Videos") return /* @__PURE__ */ jsxRuntimeExports.jsx(FileVideo, { size: 18, className: "text-purple-400" });
+    if (type === "Audio") return /* @__PURE__ */ jsxRuntimeExports.jsx(FileAudio, { size: 18, className: "text-yellow-400" });
+    if (type === "Documents") return /* @__PURE__ */ jsxRuntimeExports.jsx(FileText, { size: 18, className: "text-orange-400" });
+    if (type === "Database") return /* @__PURE__ */ jsxRuntimeExports.jsx(Database, { size: 18, className: "text-emerald-400" });
+    return /* @__PURE__ */ jsxRuntimeExports.jsx(Files, { size: 18, className: "text-gray-400" });
+  };
+  if (loading && !info) {
+    return /* @__PURE__ */ jsxRuntimeExports.jsx("div", { className: "p-8 flex items-center justify-center", children: /* @__PURE__ */ jsxRuntimeExports.jsx(LoaderCircle, { className: "animate-spin text-primary", size: 32 }) });
+  }
+  if (!info) return /* @__PURE__ */ jsxRuntimeExports.jsx("div", { children: "Failed to load storage info." });
+  const gbOptions = [1, 2, 5, 10, 25, 50, 100].map((gb2) => ({ label: `${gb2} GB`, value: (gb2 * 1024 * 1024 * 1024).toString() }));
+  return /* @__PURE__ */ jsxRuntimeExports.jsxs(
+    "div",
+    {
+      className: "space-y-6 pb-12 cursor-default select-none",
+      ref: containerRef,
+      onMouseDown: handleMouseDown,
+      onContextMenu: (e3) => e3.preventDefault(),
+      children: [
+        /* @__PURE__ */ jsxRuntimeExports.jsxs("div", { className: "flex justify-between items-center", children: [
+          /* @__PURE__ */ jsxRuntimeExports.jsxs("div", { className: "flex items-center gap-4", children: [
+            /* @__PURE__ */ jsxRuntimeExports.jsx("h2", { className: "text-xl font-semibold", children: "Storage Management" }),
+            currentProfile === "private" && /* @__PURE__ */ jsxRuntimeExports.jsxs("div", { className: "flex bg-accent/30 p-1 rounded-xl border border-border/50 shadow-sm items-center gap-1", children: [
+              /* @__PURE__ */ jsxRuntimeExports.jsx(
+                "button",
+                {
+                  onClick: () => {
+                    setViewMode("private");
+                    loadInfo("private");
+                  },
+                  className: `px-5 py-1.5 text-xs font-bold rounded-lg transition-all duration-300 ${viewMode === "private" ? "bg-primary text-primary-foreground shadow-md transform scale-[1.02]" : "bg-transparent text-muted-foreground hover:bg-background/80 hover:text-foreground"}`,
+                  children: "Private Only"
+                }
+              ),
+              /* @__PURE__ */ jsxRuntimeExports.jsx(
+                "button",
+                {
+                  onClick: () => {
+                    setViewMode("both");
+                    loadInfo("both");
+                  },
+                  className: `px-5 py-1.5 text-xs font-bold rounded-lg transition-all duration-300 ${viewMode === "both" ? "bg-primary text-primary-foreground shadow-md transform scale-[1.02]" : "bg-transparent text-muted-foreground hover:bg-background/80 hover:text-foreground"}`,
+                  children: "Private & Public"
+                }
+              )
+            ] })
+          ] }),
+          /* @__PURE__ */ jsxRuntimeExports.jsx("button", { onClick: () => loadInfo(viewMode), className: "text-sm px-3 py-1.5 bg-accent hover:bg-primary/20 text-foreground font-medium rounded-md transition-colors", children: "Refresh Data" })
+        ] }),
+        /* @__PURE__ */ jsxRuntimeExports.jsx("section", { className: "p-6 border border-border rounded-xl bg-card shadow-sm", children: /* @__PURE__ */ jsxRuntimeExports.jsxs("div", { className: "flex items-start gap-4", children: [
+          /* @__PURE__ */ jsxRuntimeExports.jsx("div", { className: "p-4 bg-primary/10 rounded-full text-primary shrink-0", children: /* @__PURE__ */ jsxRuntimeExports.jsx(Server, { size: 32 }) }),
+          /* @__PURE__ */ jsxRuntimeExports.jsxs("div", { className: "flex-1 min-w-0", children: [
+            /* @__PURE__ */ jsxRuntimeExports.jsx("h3", { className: "font-medium text-muted-foreground mb-1", children: "Total App Size" }),
+            /* @__PURE__ */ jsxRuntimeExports.jsx("div", { className: "text-4xl font-bold mb-2", children: formatBytes(info.totalAppSize) }),
+            info.maxAppSize && /* @__PURE__ */ jsxRuntimeExports.jsxs(jsxRuntimeExports.Fragment, { children: [
+              /* @__PURE__ */ jsxRuntimeExports.jsxs("p", { className: "text-sm text-muted-foreground mb-3", children: [
+                (info.totalAppSize / info.maxAppSize * 100).toFixed(1),
+                "% of ",
+                formatBytes(info.maxAppSize),
+                " limit"
+              ] }),
+              /* @__PURE__ */ jsxRuntimeExports.jsx("div", { className: "h-2 w-full bg-accent rounded-full overflow-hidden", children: /* @__PURE__ */ jsxRuntimeExports.jsx(
+                "div",
+                {
+                  className: `h-full rounded-full transition-all ${info.totalAppSize / info.maxAppSize > 0.9 ? "bg-destructive" : "bg-primary"}`,
+                  style: { width: `${Math.min(info.totalAppSize / info.maxAppSize * 100, 100)}%` }
+                }
+              ) })
+            ] }),
+            !info.maxAppSize && /* @__PURE__ */ jsxRuntimeExports.jsx("p", { className: "text-sm text-muted-foreground", children: "No limit configured." })
+          ] })
+        ] }) }),
+        info.drive && info.drive.total > 0 && /* @__PURE__ */ jsxRuntimeExports.jsxs("section", { className: "p-6 border border-border rounded-xl bg-card shadow-sm", children: [
+          /* @__PURE__ */ jsxRuntimeExports.jsxs("div", { className: "flex items-center gap-3 mb-4", children: [
+            /* @__PURE__ */ jsxRuntimeExports.jsx(HardDrive, { className: "text-primary", size: 20 }),
+            /* @__PURE__ */ jsxRuntimeExports.jsxs("h3", { className: "font-semibold text-lg", children: [
+              "Drive ",
+              info.drive.path
+            ] })
+          ] }),
+          /* @__PURE__ */ jsxRuntimeExports.jsxs("div", { className: "flex justify-between text-sm mb-2 font-medium", children: [
+            /* @__PURE__ */ jsxRuntimeExports.jsxs("span", { children: [
+              "Used: ",
+              formatBytes(info.drive.used)
+            ] }),
+            /* @__PURE__ */ jsxRuntimeExports.jsxs("span", { className: "text-muted-foreground", children: [
+              "Free: ",
+              formatBytes(info.drive.free)
+            ] })
+          ] }),
+          /* @__PURE__ */ jsxRuntimeExports.jsx("div", { className: "h-3 w-full bg-accent rounded-full overflow-hidden mb-2", children: /* @__PURE__ */ jsxRuntimeExports.jsx(
+            "div",
+            {
+              className: `h-full rounded-full transition-all ${info.drive.percentUsed > 90 ? "bg-destructive" : info.drive.percentUsed > 80 ? "bg-yellow-500" : "bg-primary"}`,
+              style: { width: `${info.drive.percentUsed}%` }
+            }
+          ) }),
+          /* @__PURE__ */ jsxRuntimeExports.jsxs("p", { className: "text-sm font-medium text-muted-foreground", children: [
+            info.drive.percentUsed.toFixed(1),
+            "% used of ",
+            formatBytes(info.drive.total)
+          ] })
+        ] }),
+        /* @__PURE__ */ jsxRuntimeExports.jsxs("section", { className: "p-6 border border-border rounded-xl bg-card shadow-sm", children: [
+          /* @__PURE__ */ jsxRuntimeExports.jsx("h3", { className: "font-semibold text-lg mb-4", children: "Storage by Section" }),
+          /* @__PURE__ */ jsxRuntimeExports.jsx("div", { className: "space-y-2", children: info.sections.map((sec, idx) => /* @__PURE__ */ jsxRuntimeExports.jsxs("div", { className: "border border-border rounded-xl bg-card shadow-sm overflow-hidden hover:shadow-md transition-shadow", children: [
+            /* @__PURE__ */ jsxRuntimeExports.jsxs(
+              "button",
+              {
+                onClick: () => toggleSection(sec.name),
+                className: "w-full flex items-center justify-between p-4 hover:bg-accent/50 transition-colors focus:outline-none",
+                children: [
+                  /* @__PURE__ */ jsxRuntimeExports.jsxs("div", { className: "flex items-center gap-3", children: [
+                    expandedSection === sec.name ? /* @__PURE__ */ jsxRuntimeExports.jsx(ChevronDown, { size: 16 }) : /* @__PURE__ */ jsxRuntimeExports.jsx(ChevronRight, { size: 16 }),
+                    /* @__PURE__ */ jsxRuntimeExports.jsx("span", { className: "font-semibold", children: sec.name })
+                  ] }),
+                  /* @__PURE__ */ jsxRuntimeExports.jsxs("div", { className: "flex items-center gap-4 text-sm font-medium", children: [
+                    /* @__PURE__ */ jsxRuntimeExports.jsxs("span", { className: "text-muted-foreground", children: [
+                      sec.count,
+                      " items"
+                    ] }),
+                    /* @__PURE__ */ jsxRuntimeExports.jsx("span", { className: "w-24 text-right", children: formatBytes(sec.size) }),
+                    /* @__PURE__ */ jsxRuntimeExports.jsx("span", { className: "w-16 text-right text-muted-foreground", children: getPercentage(sec.size, info.totalAppSize) })
+                  ] })
+                ]
+              }
+            ),
+            expandedSection === sec.name && /* @__PURE__ */ jsxRuntimeExports.jsx("div", { className: "p-4 border-t border-border bg-accent/10 space-y-2 max-h-64 overflow-y-auto custom-scrollbar", children: sec.items.length === 0 ? /* @__PURE__ */ jsxRuntimeExports.jsx("p", { className: "text-sm text-muted-foreground", children: "No specific items found, data is mostly system or DB overhead." }) : sec.items.map((item, i2) => /* @__PURE__ */ jsxRuntimeExports.jsxs("div", { className: "flex justify-between items-center py-2 px-3 hover:bg-background/80 rounded-md transition-colors border border-transparent hover:border-border", children: [
+              /* @__PURE__ */ jsxRuntimeExports.jsx("span", { className: "text-sm font-medium truncate mr-4 flex-1", children: item.name }),
+              /* @__PURE__ */ jsxRuntimeExports.jsxs("div", { className: "flex gap-4 text-xs font-medium shrink-0", children: [
+                /* @__PURE__ */ jsxRuntimeExports.jsx("span", { className: "w-20 text-right", children: formatBytes(item.size) }),
+                /* @__PURE__ */ jsxRuntimeExports.jsx("span", { className: "w-12 text-right text-muted-foreground", children: getPercentage(item.size, info.totalAppSize) })
+              ] })
+            ] }, i2)) })
+          ] }, idx)) })
+        ] }),
+        /* @__PURE__ */ jsxRuntimeExports.jsxs("section", { className: "p-6 border border-border rounded-xl bg-card shadow-sm", children: [
+          /* @__PURE__ */ jsxRuntimeExports.jsx("h3", { className: "font-semibold text-lg mb-4", children: "Storage by File Type" }),
+          /* @__PURE__ */ jsxRuntimeExports.jsx("div", { className: "grid grid-cols-1 md:grid-cols-2 gap-4", children: info.fileTypes.map((ft, idx) => /* @__PURE__ */ jsxRuntimeExports.jsxs("div", { className: "flex items-center gap-4 p-3 bg-accent/20 rounded-lg", children: [
+            /* @__PURE__ */ jsxRuntimeExports.jsx("div", { className: "p-2 bg-background rounded-md shadow-sm", children: getFileIcon(ft.type) }),
+            /* @__PURE__ */ jsxRuntimeExports.jsxs("div", { className: "flex-1", children: [
+              /* @__PURE__ */ jsxRuntimeExports.jsxs("div", { className: "flex justify-between", children: [
+                /* @__PURE__ */ jsxRuntimeExports.jsx("span", { className: "font-medium text-sm", children: ft.type }),
+                /* @__PURE__ */ jsxRuntimeExports.jsx("span", { className: "font-bold text-sm", children: formatBytes(ft.size) })
+              ] }),
+              /* @__PURE__ */ jsxRuntimeExports.jsxs("div", { className: "flex justify-between mt-1 text-xs text-muted-foreground", children: [
+                /* @__PURE__ */ jsxRuntimeExports.jsxs("span", { children: [
+                  ft.count,
+                  " items"
+                ] }),
+                /* @__PURE__ */ jsxRuntimeExports.jsx("span", { children: getPercentage(ft.size, info.totalAppSize) })
+              ] })
+            ] })
+          ] }, idx)) })
+        ] }),
+        /* @__PURE__ */ jsxRuntimeExports.jsxs("div", { className: "grid grid-cols-1 md:grid-cols-2 gap-6", children: [
+          /* @__PURE__ */ jsxRuntimeExports.jsxs("section", { className: "p-6 border border-border rounded-xl bg-card shadow-sm", children: [
+            /* @__PURE__ */ jsxRuntimeExports.jsx("h3", { className: "font-semibold text-lg mb-4", children: "Cache" }),
+            /* @__PURE__ */ jsxRuntimeExports.jsx("p", { className: "text-sm text-muted-foreground mb-4", children: "Cache is used to improve app performance. Clearing it will not delete your personal records, photos, or journals." }),
+            /* @__PURE__ */ jsxRuntimeExports.jsxs("div", { className: "flex justify-between items-center p-4 bg-accent/20 rounded-lg", children: [
+              /* @__PURE__ */ jsxRuntimeExports.jsxs("div", { children: [
+                /* @__PURE__ */ jsxRuntimeExports.jsx("p", { className: "font-medium", children: "Current Cache Size" }),
+                /* @__PURE__ */ jsxRuntimeExports.jsx("p", { className: "text-2xl font-bold", children: formatBytes(info.cacheSize) })
+              ] }),
+              /* @__PURE__ */ jsxRuntimeExports.jsxs(
+                "button",
+                {
+                  onClick: handleClearCache,
+                  disabled: clearingCache,
+                  className: "flex items-center gap-2 px-4 py-2 bg-background hover:bg-destructive hover:text-white text-destructive border border-destructive rounded-md transition-colors font-medium text-sm disabled:opacity-50",
+                  children: [
+                    clearingCache ? /* @__PURE__ */ jsxRuntimeExports.jsx(LoaderCircle, { className: "animate-spin", size: 16 }) : /* @__PURE__ */ jsxRuntimeExports.jsx(Trash2, { size: 16 }),
+                    "Clear Cache"
+                  ]
+                }
+              )
+            ] })
+          ] }),
+          /* @__PURE__ */ jsxRuntimeExports.jsxs("section", { className: "p-6 border border-border rounded-xl bg-card shadow-sm", children: [
+            /* @__PURE__ */ jsxRuntimeExports.jsx("h3", { className: "font-semibold text-lg mb-4", children: "Storage Limits" }),
+            /* @__PURE__ */ jsxRuntimeExports.jsx("p", { className: "text-sm text-muted-foreground mb-4", children: "Set a maximum storage limit. If Kiseki Record reaches this size, you will be blocked from adding large files." }),
+            /* @__PURE__ */ jsxRuntimeExports.jsxs("div", { className: "flex flex-col gap-2", children: [
+              /* @__PURE__ */ jsxRuntimeExports.jsx("label", { className: "text-sm font-medium", children: "Maximum App Size" }),
+              /* @__PURE__ */ jsxRuntimeExports.jsxs(
+                "select",
+                {
+                  value: maxSizeLimit,
+                  onChange: (e3) => handleSaveLimit(e3.target.value),
+                  className: "w-full p-2.5 bg-background border border-border rounded-md focus:ring-2 focus:ring-primary focus:border-primary text-sm font-medium",
+                  children: [
+                    /* @__PURE__ */ jsxRuntimeExports.jsx("option", { value: "null", children: "No Limit" }),
+                    gbOptions.map((opt) => /* @__PURE__ */ jsxRuntimeExports.jsx("option", { value: opt.value, children: opt.label }, opt.value))
+                  ]
+                }
+              )
+            ] })
+          ] })
+        ] })
+      ]
+    }
+  );
+}
 function Settings() {
   const [currentProfile, setCurrentProfile] = reactExports.useState("public");
   const [exporting, setExporting] = reactExports.useState(false);
@@ -52933,6 +53296,14 @@ function Settings() {
             children: "Notifications"
           }
         ),
+        /* @__PURE__ */ jsxRuntimeExports.jsx(
+          Trigger$1,
+          {
+            value: "storage",
+            className: "px-6 py-3 font-medium text-muted-foreground data-[state=active]:text-primary data-[state=active]:border-b-2 data-[state=active]:border-primary transition-colors focus-visible:outline-none",
+            children: "Storage"
+          }
+        ),
         currentProfile === "private" && /* @__PURE__ */ jsxRuntimeExports.jsx(
           Trigger$1,
           {
@@ -53066,6 +53437,7 @@ function Settings() {
       ] }),
       /* @__PURE__ */ jsxRuntimeExports.jsx(Content$1, { value: "maps", className: "focus-visible:outline-none", children: /* @__PURE__ */ jsxRuntimeExports.jsx(OfflineMaps, {}) }),
       /* @__PURE__ */ jsxRuntimeExports.jsx(Content$1, { value: "notifications", className: "focus-visible:outline-none", children: /* @__PURE__ */ jsxRuntimeExports.jsx(DesktopNotificationSettings, { devMode }) }),
+      /* @__PURE__ */ jsxRuntimeExports.jsx(Content$1, { value: "storage", className: "focus-visible:outline-none space-y-8", children: /* @__PURE__ */ jsxRuntimeExports.jsx(StorageSettings, {}) }),
       currentProfile === "private" && /* @__PURE__ */ jsxRuntimeExports.jsx(Content$1, { value: "private", className: "focus-visible:outline-none", children: /* @__PURE__ */ jsxRuntimeExports.jsx(PrivateProfileSettings, {}) })
     ] })
   ] });
@@ -53188,19 +53560,44 @@ const checkAutoMisses = async () => {
     const allHabits = await window.api.db.find("habits", { archived: { $ne: true } });
     const allLogs = await window.api.db.find("habitLogs", {});
     const now2 = /* @__PURE__ */ new Date();
+    const today = /* @__PURE__ */ new Date();
+    today.setHours(0, 0, 0, 0);
+    const todayStr2 = (/* @__PURE__ */ new Date()).toLocaleDateString("en-CA");
     for (const h2 of allHabits) {
-      const log2 = allLogs.find((l2) => l2.habitId === h2._id && l2.date === todayStr);
-      if (!log2 || log2.status === "pending") {
-        const effectiveDeadline = getEffectiveDeadline(h2);
-        if (now2 > effectiveDeadline) {
-          const newStatus = h2.category === "Bad Habit" ? "completed" : "missed";
-          await window.api.db.update(
-            "habitLogs",
-            { habitId: h2._id, date: todayStr },
-            { $set: { status: newStatus, updatedAt: Date.now() } },
-            { upsert: true }
-          );
-          if (h2._id) await logHabitActivity(h2._id, `auto_${newStatus}`, "Effective deadline passed.");
+      const startDate = new Date(h2.startDate || h2.createdAt || Date.now());
+      startDate.setHours(0, 0, 0, 0);
+      const loopDate = new Date(startDate);
+      while (loopDate < today) {
+        const loopDateStr = loopDate.toLocaleDateString("en-CA");
+        if (isHabitActiveOnDay(h2, loopDate)) {
+          const log2 = allLogs.find((l2) => l2.habitId === h2._id && l2.date === loopDateStr);
+          if (!log2 || log2.status === "pending") {
+            const newStatus = h2.category === "Bad Habit" ? "completed" : "missed";
+            await window.api.db.update(
+              "habitLogs",
+              { habitId: h2._id, date: loopDateStr },
+              { $set: { status: newStatus, updatedAt: Date.now() } },
+              { upsert: true }
+            );
+            if (h2._id) await logHabitActivity(h2._id, `auto_${newStatus}`, `Auto filled for past day ${loopDateStr}`);
+          }
+        }
+        loopDate.setDate(loopDate.getDate() + 1);
+      }
+      if (isHabitActiveOnDay(h2, /* @__PURE__ */ new Date())) {
+        const logToday = allLogs.find((l2) => l2.habitId === h2._id && l2.date === todayStr2);
+        if (!logToday || logToday.status === "pending") {
+          const effectiveDeadline = getEffectiveDeadline(h2);
+          if (now2 > effectiveDeadline) {
+            const newStatus = h2.category === "Bad Habit" ? "completed" : "missed";
+            await window.api.db.update(
+              "habitLogs",
+              { habitId: h2._id, date: todayStr2 },
+              { $set: { status: newStatus, updatedAt: Date.now() } },
+              { upsert: true }
+            );
+            if (h2._id) await logHabitActivity(h2._id, `auto_${newStatus}`, "Effective deadline passed.");
+          }
         }
       }
     }
@@ -112907,6 +113304,7 @@ function CareerList() {
 }
 function ProjectsPortfolio() {
   const [projects, setProjects] = reactExports.useState([]);
+  const [goals, setGoals] = reactExports.useState([]);
   const [loading, setLoading] = reactExports.useState(true);
   const [isAdding, setIsAdding] = reactExports.useState(false);
   const [editingId, setEditingId] = reactExports.useState(null);
@@ -112979,11 +113377,28 @@ function ProjectsPortfolio() {
         return (isNaN(timeB) ? 0 : timeB) - (isNaN(timeA) ? 0 : timeA);
       });
       setProjects(sorted);
+      const goalsData = await window.api.db.find("goals", {});
+      setGoals(goalsData);
     } catch (err) {
       console.error(err);
     } finally {
       setLoading(false);
     }
+  };
+  const getProjectStats = (projectId, originalStatus) => {
+    const linkedGoals = goals.filter((g2) => g2.projectId === projectId);
+    if (linkedGoals.length === 0) return { progress: null, status: originalStatus, goals: [] };
+    const completedGoals = linkedGoals.filter((g2) => {
+      if (g2.status !== "Completed") return false;
+      if (g2.subGoals && g2.subGoals.length > 0) {
+        return g2.subGoals.every((sg2) => sg2.completed);
+      }
+      return true;
+    });
+    const progress = Math.round(completedGoals.length / linkedGoals.length * 100);
+    const isCompleted = completedGoals.length === linkedGoals.length;
+    const effectiveStatus = isCompleted ? "Completed" : originalStatus === "Completed" ? "Active" : originalStatus;
+    return { progress, status: effectiveStatus, goals: linkedGoals };
   };
   reactExports.useEffect(() => {
     loadData();
@@ -113035,8 +113450,12 @@ function ProjectsPortfolio() {
   const handleDelete2 = async (id2, title) => {
     if (!confirm("Delete this project?")) return;
     try {
+      const linkedGoals = goals.filter((g2) => g2.projectId === id2);
+      for (const goal of linkedGoals) {
+        await window.api.db.update("goals", { _id: goal._id }, { $set: { projectId: null, updatedAt: Date.now() } }, {});
+      }
       await window.api.db.remove("projects", { _id: id2 }, {});
-      NotificationEngine.notify("info", "Project Deleted", `"${title}" was removed.`, "Career");
+      NotificationEngine.notify("info", "Project Deleted", `"${title}" was removed and ${linkedGoals.length} goals were unlinked.`, "Career");
       loadData();
     } catch (err) {
       console.error(err);
@@ -113190,36 +113609,50 @@ function ProjectsPortfolio() {
               /* @__PURE__ */ jsxRuntimeExports.jsx("button", { onClick: handleSave, className: "px-4 py-2 bg-pink-500 text-white rounded-md hover:bg-pink-600 font-medium", children: "Save Project" })
             ] })
           ] }) : null,
-          /* @__PURE__ */ jsxRuntimeExports.jsx("div", { className: "grid grid-cols-1 md:grid-cols-2 gap-6", children: projects.map((record) => /* @__PURE__ */ jsxRuntimeExports.jsxs("div", { id: `project-${record._id}`, className: "bg-card border border-border rounded-2xl shadow-sm relative group hover:border-pink-500/50 transition-all duration-1000 flex flex-col overflow-hidden", children: [
-            record.screenshots && record.screenshots.length > 0 && /* @__PURE__ */ jsxRuntimeExports.jsx("div", { className: "h-48 w-full border-b border-border bg-accent/30 relative", children: /* @__PURE__ */ jsxRuntimeExports.jsx("img", { src: normalizeUrl(record.screenshots[0]), alt: record.title, className: "w-full h-full object-cover" }) }),
-            /* @__PURE__ */ jsxRuntimeExports.jsxs("div", { className: "p-6 flex-1 flex flex-col", children: [
-              /* @__PURE__ */ jsxRuntimeExports.jsxs("div", { className: "absolute top-4 right-4 opacity-0 group-hover:opacity-100 transition-opacity flex items-center gap-1 z-10 bg-background/80 backdrop-blur-sm p-1 rounded-lg border border-border", children: [
-                /* @__PURE__ */ jsxRuntimeExports.jsx("button", { onClick: () => setViewingProject(record), className: "p-1.5 rounded-md hover:bg-accent text-foreground", title: "View Details", children: /* @__PURE__ */ jsxRuntimeExports.jsx(Eye, { size: 14 }) }),
-                /* @__PURE__ */ jsxRuntimeExports.jsx("button", { onClick: () => openEdit(record), className: "p-1.5 rounded-md hover:bg-accent text-foreground", title: "Edit", children: /* @__PURE__ */ jsxRuntimeExports.jsx(Pen, { size: 14 }) }),
-                /* @__PURE__ */ jsxRuntimeExports.jsx("button", { onClick: () => handleDelete2(record._id, record.title), className: "p-1.5 rounded-md hover:bg-destructive/10 text-destructive", title: "Delete", children: /* @__PURE__ */ jsxRuntimeExports.jsx(Trash2, { size: 14 }) })
-              ] }),
-              /* @__PURE__ */ jsxRuntimeExports.jsxs("div", { className: "flex justify-between items-start mb-2 pr-24", children: [
-                /* @__PURE__ */ jsxRuntimeExports.jsx("h3", { onClick: () => setViewingProject(record), className: "text-xl font-bold cursor-pointer hover:text-pink-500 transition-colors decoration-pink-500/30 hover:underline underline-offset-4", children: record.title }),
-                /* @__PURE__ */ jsxRuntimeExports.jsx("span", { className: `px-2 py-0.5 rounded-full text-xs font-medium ${record.status === "Completed" ? "bg-green-500/10 text-green-500" : record.status === "Active" ? "bg-blue-500/10 text-blue-500" : "bg-muted text-muted-foreground"}`, children: record.status })
-              ] }),
-              /* @__PURE__ */ jsxRuntimeExports.jsxs("div", { className: "text-sm text-muted-foreground mb-4", children: [
-                new Date(record.startDate).toLocaleDateString([], { month: "short", year: "numeric" }),
-                record.endDate && ` - ${new Date(record.endDate).toLocaleDateString([], { month: "short", year: "numeric" })}`
-              ] }),
-              record.description && /* @__PURE__ */ jsxRuntimeExports.jsx("p", { className: "text-sm text-foreground/90 mb-4 line-clamp-3 flex-1", children: record.description }),
-              record.technologies && record.technologies.length > 0 && /* @__PURE__ */ jsxRuntimeExports.jsx("div", { className: "flex flex-wrap gap-1.5 mb-6", children: record.technologies.map((t2) => /* @__PURE__ */ jsxRuntimeExports.jsx("span", { className: "bg-pink-500/10 text-pink-500 px-2 py-0.5 rounded border border-pink-500/20 text-xs font-medium", children: t2 }, t2)) }),
-              /* @__PURE__ */ jsxRuntimeExports.jsxs("div", { className: "flex gap-3 pt-4 border-t border-border mt-auto", children: [
-                record.gitUrl && /* @__PURE__ */ jsxRuntimeExports.jsxs("a", { href: record.gitUrl, target: "_blank", rel: "noreferrer", className: "flex items-center gap-1.5 text-sm font-medium text-muted-foreground hover:text-foreground transition-colors", children: [
-                  /* @__PURE__ */ jsxRuntimeExports.jsx(Github, { size: 16 }),
-                  " Repository"
+          /* @__PURE__ */ jsxRuntimeExports.jsx("div", { className: "grid grid-cols-1 md:grid-cols-2 gap-6", children: projects.map((record) => {
+            const stats = getProjectStats(record._id, record.status);
+            const displayStatus = stats.status;
+            const hasGoals = stats.goals.length > 0;
+            return /* @__PURE__ */ jsxRuntimeExports.jsxs("div", { id: `project-${record._id}`, className: "bg-card border border-border rounded-2xl shadow-sm relative group hover:border-pink-500/50 transition-all duration-1000 flex flex-col overflow-hidden", children: [
+              record.screenshots && record.screenshots.length > 0 && /* @__PURE__ */ jsxRuntimeExports.jsx("div", { className: "h-48 w-full border-b border-border bg-accent/30 relative", children: /* @__PURE__ */ jsxRuntimeExports.jsx("img", { src: normalizeUrl(record.screenshots[0]), alt: record.title, className: "w-full h-full object-cover" }) }),
+              /* @__PURE__ */ jsxRuntimeExports.jsxs("div", { className: "p-6 flex-1 flex flex-col", children: [
+                /* @__PURE__ */ jsxRuntimeExports.jsxs("div", { className: "absolute top-4 right-4 opacity-0 group-hover:opacity-100 transition-opacity flex items-center gap-1 z-10 bg-background/80 backdrop-blur-sm p-1 rounded-lg border border-border", children: [
+                  /* @__PURE__ */ jsxRuntimeExports.jsx("button", { onClick: () => setViewingProject(record), className: "p-1.5 rounded-md hover:bg-accent text-foreground", title: "View Details", children: /* @__PURE__ */ jsxRuntimeExports.jsx(Eye, { size: 14 }) }),
+                  /* @__PURE__ */ jsxRuntimeExports.jsx("button", { onClick: () => openEdit(record), className: "p-1.5 rounded-md hover:bg-accent text-foreground", title: "Edit", children: /* @__PURE__ */ jsxRuntimeExports.jsx(Pen, { size: 14 }) }),
+                  /* @__PURE__ */ jsxRuntimeExports.jsx("button", { onClick: () => handleDelete2(record._id, record.title), className: "p-1.5 rounded-md hover:bg-destructive/10 text-destructive", title: "Delete", children: /* @__PURE__ */ jsxRuntimeExports.jsx(Trash2, { size: 14 }) })
                 ] }),
-                record.websiteUrl && /* @__PURE__ */ jsxRuntimeExports.jsxs("a", { href: record.websiteUrl, target: "_blank", rel: "noreferrer", className: "flex items-center gap-1.5 text-sm font-medium text-muted-foreground hover:text-foreground transition-colors", children: [
-                  /* @__PURE__ */ jsxRuntimeExports.jsx(ExternalLink, { size: 16 }),
-                  " Live App"
+                /* @__PURE__ */ jsxRuntimeExports.jsxs("div", { className: "flex justify-between items-start mb-2 pr-24", children: [
+                  /* @__PURE__ */ jsxRuntimeExports.jsx("h3", { onClick: () => setViewingProject(record), className: "text-xl font-bold cursor-pointer hover:text-pink-500 transition-colors decoration-pink-500/30 hover:underline underline-offset-4", children: record.title }),
+                  /* @__PURE__ */ jsxRuntimeExports.jsx("span", { className: `px-2 py-0.5 rounded-full text-xs font-medium ${displayStatus === "Completed" ? "bg-green-500/10 text-green-500" : displayStatus === "Active" ? "bg-blue-500/10 text-blue-500" : "bg-muted text-muted-foreground"}`, children: displayStatus })
+                ] }),
+                hasGoals && stats.progress !== null && /* @__PURE__ */ jsxRuntimeExports.jsxs("div", { className: "mb-4", children: [
+                  /* @__PURE__ */ jsxRuntimeExports.jsxs("div", { className: "flex justify-between text-xs font-bold text-muted-foreground mb-1", children: [
+                    /* @__PURE__ */ jsxRuntimeExports.jsxs("span", { className: "flex items-center gap-1", children: [
+                      /* @__PURE__ */ jsxRuntimeExports.jsx(Target, { size: 12 }),
+                      " Goals Progress"
+                    ] }),
+                    /* @__PURE__ */ jsxRuntimeExports.jsxs("span", { children: [
+                      stats.progress,
+                      "%"
+                    ] })
+                  ] }),
+                  /* @__PURE__ */ jsxRuntimeExports.jsx("div", { className: "w-full bg-accent rounded-full h-1.5 overflow-hidden", children: /* @__PURE__ */ jsxRuntimeExports.jsx("div", { className: `h-full transition-all duration-500 ${stats.progress === 100 ? "bg-green-500" : "bg-pink-500"}`, style: { width: `${stats.progress}%` } }) })
+                ] }),
+                /* @__PURE__ */ jsxRuntimeExports.jsx("p", { className: "text-muted-foreground text-sm line-clamp-2 mb-4 leading-relaxed", children: record.description }),
+                record.technologies && record.technologies.length > 0 && /* @__PURE__ */ jsxRuntimeExports.jsx("div", { className: "flex flex-wrap gap-1.5 mb-6", children: record.technologies.map((t2) => /* @__PURE__ */ jsxRuntimeExports.jsx("span", { className: "bg-pink-500/10 text-pink-500 px-2 py-0.5 rounded border border-pink-500/20 text-xs font-medium", children: t2 }, t2)) }),
+                /* @__PURE__ */ jsxRuntimeExports.jsxs("div", { className: "flex gap-3 pt-4 border-t border-border mt-auto", children: [
+                  record.gitUrl && /* @__PURE__ */ jsxRuntimeExports.jsxs("a", { href: record.gitUrl, target: "_blank", rel: "noreferrer", className: "flex items-center gap-1.5 text-sm font-medium text-muted-foreground hover:text-foreground transition-colors", children: [
+                    /* @__PURE__ */ jsxRuntimeExports.jsx(Github, { size: 16 }),
+                    " Repository"
+                  ] }),
+                  record.websiteUrl && /* @__PURE__ */ jsxRuntimeExports.jsxs("a", { href: record.websiteUrl, target: "_blank", rel: "noreferrer", className: "flex items-center gap-1.5 text-sm font-medium text-muted-foreground hover:text-foreground transition-colors", children: [
+                    /* @__PURE__ */ jsxRuntimeExports.jsx(ExternalLink, { size: 16 }),
+                    " Live App"
+                  ] })
                 ] })
               ] })
-            ] })
-          ] }, record._id)) }),
+            ] }, record._id);
+          }) }),
           projects.length === 0 && !isAdding && /* @__PURE__ */ jsxRuntimeExports.jsx("div", { className: "text-center p-12 border border-dashed border-border rounded-xl text-muted-foreground", children: "No projects added yet. Share what you've been working on!" })
         ]
       }
@@ -113281,7 +113714,7 @@ function ProjectsPortfolio() {
               /* @__PURE__ */ jsxRuntimeExports.jsxs("div", { className: "flex justify-between items-start mb-4 pr-12", children: [
                 /* @__PURE__ */ jsxRuntimeExports.jsx("h2", { className: "text-3xl font-extrabold", children: viewingProject.title }),
                 /* @__PURE__ */ jsxRuntimeExports.jsxs("div", { className: "flex items-center gap-3", children: [
-                  /* @__PURE__ */ jsxRuntimeExports.jsx("span", { className: `px-3 py-1 rounded-full text-sm font-bold ${viewingProject.status === "Completed" ? "bg-green-500/10 text-green-500 border border-green-500/20" : viewingProject.status === "Active" ? "bg-blue-500/10 text-blue-500 border border-blue-500/20" : "bg-muted text-muted-foreground border border-border"}`, children: viewingProject.status }),
+                  /* @__PURE__ */ jsxRuntimeExports.jsx("span", { className: `px-3 py-1 rounded-full text-sm font-bold ${getProjectStats(viewingProject._id, viewingProject.status).status === "Completed" ? "bg-green-500/10 text-green-500 border border-green-500/20" : getProjectStats(viewingProject._id, viewingProject.status).status === "Active" ? "bg-blue-500/10 text-blue-500 border border-blue-500/20" : "bg-muted text-muted-foreground border border-border"}`, children: getProjectStats(viewingProject._id, viewingProject.status).status }),
                   viewingProject.screenshots && viewingProject.screenshots.length > 0 && /* @__PURE__ */ jsxRuntimeExports.jsxs("button", { onClick: () => {
                     setSlideIndex(0);
                     setSlideshowActive(true);
@@ -113306,6 +113739,27 @@ function ProjectsPortfolio() {
                 /* @__PURE__ */ jsxRuntimeExports.jsx("h4", { className: "text-sm font-bold text-muted-foreground uppercase tracking-wider mb-3", children: "About this project" }),
                 /* @__PURE__ */ jsxRuntimeExports.jsx("div", { className: "prose prose-sm dark:prose-invert max-w-none prose-p:leading-relaxed prose-a:text-pink-500 hover:prose-a:text-pink-600 whitespace-pre-wrap", children: viewingProject.description || /* @__PURE__ */ jsxRuntimeExports.jsx("span", { className: "text-muted-foreground italic", children: "No description provided." }) })
               ] }),
+              (() => {
+                const stats = getProjectStats(viewingProject._id, viewingProject.status);
+                if (stats.goals.length === 0) return null;
+                return /* @__PURE__ */ jsxRuntimeExports.jsxs("div", { className: "mb-8", children: [
+                  /* @__PURE__ */ jsxRuntimeExports.jsxs("div", { className: "flex justify-between items-center mb-3", children: [
+                    /* @__PURE__ */ jsxRuntimeExports.jsx("h4", { className: "text-sm font-bold text-muted-foreground uppercase tracking-wider", children: "Linked Goals" }),
+                    /* @__PURE__ */ jsxRuntimeExports.jsxs("span", { className: "text-xs font-bold bg-accent px-2 py-0.5 rounded-full", children: [
+                      stats.progress,
+                      "% Completed"
+                    ] })
+                  ] }),
+                  /* @__PURE__ */ jsxRuntimeExports.jsx("div", { className: "space-y-2", children: stats.goals.map((g2) => {
+                    const isCompleted = g2.status === "Completed" && (!g2.subGoals || g2.subGoals.every((sg2) => sg2.completed));
+                    return /* @__PURE__ */ jsxRuntimeExports.jsxs("div", { className: "flex items-center gap-3 p-3 bg-background border border-border rounded-xl", children: [
+                      isCompleted ? /* @__PURE__ */ jsxRuntimeExports.jsx(CircleCheck, { size: 16, className: "text-green-500 shrink-0" }) : /* @__PURE__ */ jsxRuntimeExports.jsx(Circle, { size: 16, className: "text-muted-foreground shrink-0" }),
+                      /* @__PURE__ */ jsxRuntimeExports.jsx("span", { className: `text-sm font-medium flex-1 ${isCompleted ? "text-muted-foreground line-through" : ""}`, children: g2.title }),
+                      /* @__PURE__ */ jsxRuntimeExports.jsx("span", { className: "text-xs px-2 py-0.5 rounded-full bg-accent text-muted-foreground", children: g2.status })
+                    ] }, g2._id);
+                  }) })
+                ] });
+              })(),
               viewingProject.screenshots && viewingProject.screenshots.length > 0 && /* @__PURE__ */ jsxRuntimeExports.jsxs("div", { className: "mb-8", children: [
                 /* @__PURE__ */ jsxRuntimeExports.jsx("h4", { className: "text-sm font-bold text-muted-foreground uppercase tracking-wider mb-3", children: "Gallery" }),
                 /* @__PURE__ */ jsxRuntimeExports.jsx("div", { className: "grid grid-cols-2 md:grid-cols-3 gap-4", children: viewingProject.screenshots.map((img, i2) => /* @__PURE__ */ jsxRuntimeExports.jsxs(
@@ -115529,6 +115983,8 @@ function GoalsStatistics({ goals, setFilters }) {
 }
 function Goals() {
   const [goals, setGoals] = reactExports.useState([]);
+  const [projects, setProjects] = reactExports.useState([]);
+  const [selectedProjectId, setSelectedProjectId] = reactExports.useState("all_goals");
   const [isAdding, setIsAdding] = reactExports.useState(false);
   const [editingId, setEditingId] = reactExports.useState(null);
   const [showCelebration, setShowCelebration] = reactExports.useState(false);
@@ -115637,6 +116093,8 @@ function Goals() {
       const data = await window.api.db.find("goals", {});
       const careerGoals = data.filter((g2) => ["Career", "Education", "Professional"].includes(g2.category));
       setGoals(careerGoals);
+      const projData = await window.api.db.find("projects", {});
+      setProjects(projData);
     } catch (err) {
       console.error(err);
     }
@@ -115760,7 +116218,13 @@ function Goals() {
     input.click();
     setIsMenuOpen(false);
   };
-  const filteredGoals = goals.filter((g2) => {
+  const projectGoals = goals.filter((g2) => {
+    if (selectedProjectId === "all_goals") return true;
+    if (selectedProjectId === "all") return !!g2.projectId;
+    if (selectedProjectId === "none") return !g2.projectId;
+    return g2.projectId === selectedProjectId;
+  });
+  const filteredGoals = projectGoals.filter((g2) => {
     if (filters.status !== "all" && g2.status !== filters.status) return false;
     if (filters.isFavorite && !g2.isFavorite) return false;
     if (filters.isArchived && !g2.isArchived) return false;
@@ -116714,6 +117178,15 @@ function Goals() {
               className: "pl-9 pr-4 py-1.5 w-64 text-sm rounded-xl border border-border bg-background focus:ring-2 focus:ring-red-500 outline-none transition-shadow"
             }
           )
+        ] }),
+        /* @__PURE__ */ jsxRuntimeExports.jsxs("div", { className: "flex border border-border rounded-xl bg-background overflow-hidden", title: "Filter goals by project", children: [
+          /* @__PURE__ */ jsxRuntimeExports.jsx("div", { className: "flex items-center px-2 border-r border-border bg-accent/30", children: /* @__PURE__ */ jsxRuntimeExports.jsx(LayoutGrid, { size: 14, className: "text-muted-foreground" }) }),
+          /* @__PURE__ */ jsxRuntimeExports.jsxs("select", { value: selectedProjectId || "all_goals", onChange: (e3) => setSelectedProjectId(e3.target.value), className: "bg-transparent text-sm font-medium px-2 py-1 outline-none cursor-pointer max-w-[150px] truncate", children: [
+            /* @__PURE__ */ jsxRuntimeExports.jsx("option", { value: "all_goals", children: "All Goals" }),
+            /* @__PURE__ */ jsxRuntimeExports.jsx("option", { value: "none", children: "No Project" }),
+            /* @__PURE__ */ jsxRuntimeExports.jsx("option", { value: "all", children: "All Projects" }),
+            projects.map((p2) => /* @__PURE__ */ jsxRuntimeExports.jsx("option", { value: p2._id, children: p2.title }, p2._id))
+          ] })
         ] })
       ] }),
       /* @__PURE__ */ jsxRuntimeExports.jsxs("div", { className: "flex items-center gap-3", children: [
@@ -116776,16 +117249,16 @@ function Goals() {
           ),
           isMenuOpen && /* @__PURE__ */ jsxRuntimeExports.jsxs(jsxRuntimeExports.Fragment, { children: [
             /* @__PURE__ */ jsxRuntimeExports.jsx("div", { className: "fixed inset-0 z-40", onClick: () => setIsMenuOpen(false) }),
-            /* @__PURE__ */ jsxRuntimeExports.jsxs("div", { className: "absolute right-0 top-full mt-2 w-48 bg-card border border-border rounded-xl shadow-lg z-50 overflow-hidden animate-in slide-in-from-top-2", children: [
-              /* @__PURE__ */ jsxRuntimeExports.jsxs("button", { onClick: handleImport, className: "w-full text-left px-4 py-3 hover:bg-accent flex items-center gap-2 text-sm font-medium transition-colors", children: [
-                /* @__PURE__ */ jsxRuntimeExports.jsx(Upload, { size: 16 }),
+            /* @__PURE__ */ jsxRuntimeExports.jsx("div", { className: "absolute right-0 top-full mt-2 w-56 bg-card border border-border rounded-xl shadow-lg z-50 p-2 overflow-hidden animate-in slide-in-from-top-2", children: /* @__PURE__ */ jsxRuntimeExports.jsxs("div", { className: "space-y-1", children: [
+              /* @__PURE__ */ jsxRuntimeExports.jsxs("button", { onClick: handleImport, className: "w-full text-left px-3 py-2.5 bg-background hover:bg-accent border border-border rounded-lg flex items-center gap-2.5 text-sm font-bold transition-colors", children: [
+                /* @__PURE__ */ jsxRuntimeExports.jsx(Upload, { size: 16, className: "text-blue-500" }),
                 " Import Goals"
               ] }),
-              /* @__PURE__ */ jsxRuntimeExports.jsxs("button", { onClick: handleExportAll, className: "w-full text-left px-4 py-3 hover:bg-accent flex items-center gap-2 text-sm font-medium transition-colors border-t border-border", children: [
-                /* @__PURE__ */ jsxRuntimeExports.jsx(Download, { size: 16 }),
+              /* @__PURE__ */ jsxRuntimeExports.jsxs("button", { onClick: handleExportAll, className: "w-full text-left px-3 py-2.5 bg-background hover:bg-accent border border-border rounded-lg flex items-center gap-2.5 text-sm font-bold transition-colors", children: [
+                /* @__PURE__ */ jsxRuntimeExports.jsx(Download, { size: 16, className: "text-green-500" }),
                 " Export All Goals"
               ] })
-            ] })
+            ] }) })
           ] })
         ] })
       ] })
@@ -116825,7 +117298,7 @@ function Goals() {
           /* @__PURE__ */ jsxRuntimeExports.jsx(ArchiveRestore, { size: 14 }),
           " Unarchive"
         ] }),
-        /* @__PURE__ */ jsxRuntimeExports.jsxs("button", { onClick: handleExportSelected, disabled: selectedIds.size === 0, className: "flex items-center gap-1.5 px-3 py-1.5 bg-background border border-border rounded-xl text-sm font-bold hover:bg-card disabled:opacity-50", children: [
+        /* @__PURE__ */ jsxRuntimeExports.jsxs("button", { onClick: handleExportSelected, disabled: selectedIds.size === 0, className: "flex items-center gap-1.5 px-3 py-1.5 bg-blue-500/10 text-blue-500 rounded-xl text-sm font-bold hover:bg-blue-500/20 disabled:opacity-50", children: [
           /* @__PURE__ */ jsxRuntimeExports.jsx(Download, { size: 14 }),
           " Export"
         ] }),
@@ -116848,7 +117321,7 @@ function Goals() {
         onKeyDown: handleKeyDown2,
         tabIndex: 0,
         children: [
-          /* @__PURE__ */ jsxRuntimeExports.jsx(GoalsStatistics, { goals, setFilters }),
+          /* @__PURE__ */ jsxRuntimeExports.jsx(GoalsStatistics, { goals: projectGoals, setFilters }),
           isAdding ? /* @__PURE__ */ jsxRuntimeExports.jsxs("div", { className: "bg-slate-50/80 dark:bg-slate-900/50 backdrop-blur-md border border-border rounded-xl p-6 shadow-sm mb-8 animate-in slide-in-from-top-4", children: [
             /* @__PURE__ */ jsxRuntimeExports.jsxs("div", { className: "flex justify-between items-center mb-6", children: [
               /* @__PURE__ */ jsxRuntimeExports.jsx("h2", { className: "text-xl font-bold", children: editingId ? "Edit Goal" : "Add Goal" }),
@@ -116858,6 +117331,13 @@ function Goals() {
               /* @__PURE__ */ jsxRuntimeExports.jsxs("div", { className: "md:col-span-2", children: [
                 /* @__PURE__ */ jsxRuntimeExports.jsx("label", { className: "block text-sm font-medium mb-1", children: "Goal Title" }),
                 /* @__PURE__ */ jsxRuntimeExports.jsx("input", { autoFocus: true, type: "text", value: form.title, onChange: (e3) => setForm({ ...form, title: e3.target.value }), className: "w-full p-2 bg-background border border-border rounded-md", placeholder: "e.g. Learn React, Get Internship" })
+              ] }),
+              /* @__PURE__ */ jsxRuntimeExports.jsxs("div", { className: "md:col-span-2", children: [
+                /* @__PURE__ */ jsxRuntimeExports.jsx("label", { className: "block text-sm font-medium mb-1", children: "Project" }),
+                /* @__PURE__ */ jsxRuntimeExports.jsxs("select", { value: form.projectId || "none", onChange: (e3) => setForm({ ...form, projectId: e3.target.value === "none" ? null : e3.target.value }), className: "w-full p-2 bg-background border border-border rounded-md", children: [
+                  /* @__PURE__ */ jsxRuntimeExports.jsx("option", { value: "none", children: "None" }),
+                  projects.map((p2) => /* @__PURE__ */ jsxRuntimeExports.jsx("option", { value: p2._id, children: p2.title }, p2._id))
+                ] })
               ] }),
               /* @__PURE__ */ jsxRuntimeExports.jsxs("div", { children: [
                 /* @__PURE__ */ jsxRuntimeExports.jsxs("label", { className: "block text-sm font-medium mb-1", children: [

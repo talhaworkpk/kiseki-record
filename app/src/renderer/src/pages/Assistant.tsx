@@ -113,6 +113,22 @@ export default function Assistant() {
   const [showSettingsModal, setShowSettingsModal] = useState(false)
   const [showSuccessOverlay, setShowSuccessOverlay] = useState(false)
   const [convToDelete, setConvToDelete] = useState<string | null>(null)
+
+  useEffect(() => {
+    // @ts-ignore
+    if (window.api && window.api.settings) {
+      // @ts-ignore
+      window.api.settings.getAll().then(all => {
+        if (all.aiChatBg) { setChatBg(all.aiChatBg); localStorage.setItem('aiChatBg', all.aiChatBg); }
+        if (all.aiChatBgOpacity) { setChatBgOpacity(Number(all.aiChatBgOpacity)); localStorage.setItem('aiChatBgOpacity', all.aiChatBgOpacity); }
+        if (all.aiUserMsgColor) { setUserMsgColor(all.aiUserMsgColor); localStorage.setItem('aiUserMsgColor', all.aiUserMsgColor); }
+        if (all.aiAiMsgColor) { setAiMsgColor(all.aiAiMsgColor); localStorage.setItem('aiAiMsgColor', all.aiAiMsgColor); }
+        if (all.aiUserTextColor) { setUserTextColor(all.aiUserTextColor); localStorage.setItem('aiUserTextColor', all.aiUserTextColor); }
+        if (all.aiAiTextColor) { setAiTextColor(all.aiAiTextColor); localStorage.setItem('aiAiTextColor', all.aiAiTextColor); }
+        if (all.aiMsgOpacity) { setMsgOpacity(Number(all.aiMsgOpacity)); localStorage.setItem('aiMsgOpacity', all.aiMsgOpacity); }
+      }).catch(console.error)
+    }
+  }, [])
   
   const [searchQuery, setSearchQuery] = useState('')
   const [showMenu, setShowMenu] = useState(false)

@@ -85,6 +85,32 @@ export default function UserProfileDialog({ isOpen, onClose }: UserProfileDialog
         // @ts-ignore
         await window.api.db.insert('userProfile', profileData)
       }
+
+      // Sync with "Self" Relationship profile
+      // @ts-ignore
+      const currentProfile = await window.api.profile.getCurrent()
+      const selfId = `self_${currentProfile}`
+      
+      // @ts-ignore
+      const selfRel = await window.api.db.find('relationships', { _id: selfId })
+      const selfPerson = {
+        name: profileData.fullName,
+        profilePicture: profileData.photoPath || '',
+        gender: profileData.gender || '',
+        birthday: profileData.dateOfBirth || '',
+        phone: profileData.phone || '',
+        email: profileData.email || '',
+        address: profileData.address || '',
+        relationshipType: 'Myself',
+        updatedAt: Date.now()
+      }
+      if (selfRel && selfRel.length > 0) {
+        // @ts-ignore
+        await window.api.db.update('relationships', { _id: selfId }, { $set: selfPerson }, {})
+      } else {
+        // @ts-ignore
+        await window.api.db.insert('relationships', { _id: selfId, ...selfPerson, tags: [], notes: [], createdAt: Date.now() })
+      }
       onClose()
       // Trigger profile reload in parent component
       window.dispatchEvent(new CustomEvent('profileUpdated'))

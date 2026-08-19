@@ -394,7 +394,7 @@ function AppShell() {
             </TooltipContent>
           </Tooltip>
           <span className="font-bold text-lg tracking-tight whitespace-nowrap opacity-0 group-hover:opacity-100 transition-opacity duration-300">
-            {currentProfile === 'private' ? `👤 ${userProfile?.fullName?.split(' ')[0] || 'Private'}` : 'Kiseki Record'}
+            {currentProfile === 'private' ? `${userProfile?.fullName?.split(' ')[0] || 'Private'}` : 'Kiseki Record'}
           </span>
         </div>
         

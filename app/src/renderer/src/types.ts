@@ -347,3 +347,34 @@ export interface CalendarMemory {
   originalCreatedAt: number
   updatedAt: number
 }
+
+export interface StorageSection {
+  name: string
+  size: number
+  count: number
+  items: { name: string; size: number }[]
+}
+
+export interface StorageFileType {
+  type: string
+  size: number
+  count: number
+}
+
+export interface DriveInfo {
+  path: string
+  total: number
+  free: number
+  used: number
+  percentUsed: number
+}
+
+export interface AppStorageInfo {
+  totalAppSize: number
+  maxAppSize: number | null
+  fileCount: number
+  sections: StorageSection[]
+  fileTypes: StorageFileType[]
+  drive: DriveInfo
+  cacheSize: number
+}

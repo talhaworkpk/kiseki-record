@@ -66,6 +66,18 @@ if (process.contextIsolated) {
       },
       app: {
         restart: () => electron.ipcRenderer.invoke("app:restart")
+      },
+      storage: {
+        getInfo: (mode) => electron.ipcRenderer.invoke("storage:getInfo", mode),
+        clearCache: () => electron.ipcRenderer.invoke("storage:clearCache"),
+        setMaxAppSize: (size) => electron.ipcRenderer.invoke("storage:setMaxAppSize", size),
+        checkLimits: (expectedBytes) => electron.ipcRenderer.invoke("storage:checkLimits", expectedBytes)
+      },
+      settings: {
+        get: (key, defaultValue) => electron.ipcRenderer.invoke("settings:get", key, defaultValue),
+        set: (key, value) => electron.ipcRenderer.invoke("settings:set", key, value),
+        delete: (key) => electron.ipcRenderer.invoke("settings:delete", key),
+        getAll: () => electron.ipcRenderer.invoke("settings:getAll")
       }
     });
   } catch (error) {
@@ -136,6 +148,18 @@ if (process.contextIsolated) {
     },
     app: {
       restart: () => electron.ipcRenderer.invoke("app:restart")
+    },
+    storage: {
+      getInfo: (mode) => electron.ipcRenderer.invoke("storage:getInfo", mode),
+      clearCache: () => electron.ipcRenderer.invoke("storage:clearCache"),
+      setMaxAppSize: (size) => electron.ipcRenderer.invoke("storage:setMaxAppSize", size),
+      checkLimits: (expectedBytes) => electron.ipcRenderer.invoke("storage:checkLimits", expectedBytes)
+    },
+    settings: {
+      get: (key, defaultValue) => electron.ipcRenderer.invoke("settings:get", key, defaultValue),
+      set: (key, value) => electron.ipcRenderer.invoke("settings:set", key, value),
+      delete: (key) => electron.ipcRenderer.invoke("settings:delete", key),
+      getAll: () => electron.ipcRenderer.invoke("settings:getAll")
     }
   };
 }

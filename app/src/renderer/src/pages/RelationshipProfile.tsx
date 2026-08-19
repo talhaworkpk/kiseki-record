@@ -134,6 +134,18 @@ export default function RelationshipProfile() {
     try {
       // @ts-ignore
       await window.api.db.update('relationships', { _id: person._id }, { $set: { profilePicture: picPath, updatedAt: Date.now() } }, {})
+      
+      if (person._id?.startsWith('self_')) {
+        // @ts-ignore
+        const existingProfile = await window.api.db.find('userProfile', {})
+        if (existingProfile && existingProfile.length > 0) {
+          // @ts-ignore
+          await window.api.db.update('userProfile', { _id: existingProfile[0]._id }, { $set: { photoPath: picPath } }, {})
+          // Trigger profile reload in parent component
+          window.dispatchEvent(new CustomEvent('profileUpdated'))
+        }
+      }
+
       setPerson({ ...person, profilePicture: picPath })
       setShowChangePicture(false)
       setShowProfilePicManager(false)
@@ -240,6 +252,29 @@ export default function RelationshipProfile() {
     try {
       // @ts-ignore
       await window.api.db.update('relationships', { _id: person._id }, { $set: { ...editForm, updatedAt: Date.now() } }, {})
+      
+      // Sync back to User Profile if this is "Myself"
+      if (person._id?.startsWith('self_')) {
+        const userProfileUpdates: any = {}
+        if (editForm.name !== undefined) userProfileUpdates.fullName = editForm.name
+        if (editForm.profilePicture !== undefined) userProfileUpdates.photoPath = editForm.profilePicture
+        if (editForm.gender !== undefined) userProfileUpdates.gender = editForm.gender
+        if (editForm.birthday !== undefined) userProfileUpdates.dateOfBirth = editForm.birthday
+        if (editForm.phone !== undefined) userProfileUpdates.phone = editForm.phone
+        if (editForm.email !== undefined) userProfileUpdates.email = editForm.email
+        if (editForm.address !== undefined) userProfileUpdates.address = editForm.address
+        if (editForm.bio !== undefined) userProfileUpdates.bio = editForm.bio
+
+        // @ts-ignore
+        const existingProfile = await window.api.db.find('userProfile', {})
+        if (existingProfile && existingProfile.length > 0) {
+          // @ts-ignore
+          await window.api.db.update('userProfile', { _id: existingProfile[0]._id }, { $set: userProfileUpdates }, {})
+          // Trigger profile reload in parent component so App header updates
+          window.dispatchEvent(new CustomEvent('profileUpdated'))
+        }
+      }
+
       setPerson({ ...person, ...editForm } as Person)
       setShowEditModal(false)
     } catch(err) { console.error(err) }
@@ -661,9 +696,50 @@ Provide a brief, insightful summary of this relationship's health and suggest 1-
       NotificationEngine.notify('info', 'Not Found', 'Attachment not found in any memory or event', 'Relationships')
     }
   }
+  const handleMouseDown = (e: React.MouseEvent) => {
+    if (e.button === 2) {
+      e.preventDefault()
+      
+      let scrollable: Element | null = e.target as Element
+      while (scrollable) {
+        if (scrollable.scrollHeight > scrollable.clientHeight) {
+          const overflowY = window.getComputedStyle(scrollable).overflowY
+          if (overflowY === 'auto' || overflowY === 'scroll') {
+             break
+          }
+        }
+        scrollable = scrollable.parentElement
+      }
+      if (!scrollable) scrollable = document.querySelector('main') || document.documentElement
+      
+      const startY = e.clientY
+      const startScrollY = scrollable.scrollTop || window.scrollY
+      
+      const onMouseMove = (moveEvent: MouseEvent) => {
+        const deltaY = moveEvent.clientY - startY
+        if (scrollable === document.documentElement) {
+          window.scrollTo(window.scrollX, startScrollY - deltaY)
+        } else {
+          scrollable!.scrollTop = startScrollY - deltaY
+        }
+      }
+      
+      const onMouseUp = () => {
+        window.removeEventListener('mousemove', onMouseMove)
+        window.removeEventListener('mouseup', onMouseUp)
+      }
+      
+      window.addEventListener('mousemove', onMouseMove)
+      window.addEventListener('mouseup', onMouseUp)
+    }
+  }
 
   return (
-    <div className="flex flex-col h-full bg-background animate-in fade-in duration-500 relative">
+    <div 
+      className="flex flex-col h-full bg-background animate-in fade-in duration-500 relative cursor-default"
+      onMouseDown={handleMouseDown}
+      onContextMenu={(e) => e.preventDefault()}
+    >
       
       {/* Header */}
       <div className="bg-card border-b border-border p-6 shrink-0 flex items-center justify-between">
