@@ -17,8 +17,8 @@ export const features: Feature[] = [
   },
   {
     icon: 'Bot',
-    title: 'AI Chat',
-    description: 'Integrated AI assistant powered by local Ollama for intelligent conversations and insights.',
+    title: 'Kiseki Agent',
+    description: 'Now AI knows everything about you that you have written. You can ask what you have right now. Kiseki has built a "Kiseki agent" that is only for you.',
   },
   {
     icon: 'Users',
