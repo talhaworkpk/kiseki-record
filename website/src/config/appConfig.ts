@@ -22,9 +22,9 @@ export const appConfig = {
   
   // Latest release information - update this when releasing new versions
   latestRelease: {
-    version: '1.2.0',
-    downloadUrl: 'https://github.com/talhaworkpk/kiseki-record/releases/download/v1.2.0/Kiseki.Record.Setup.1.0.0.exe',
-    fileSize: '92.3 MB',
+    version: '1.5.0',
+    downloadUrl: 'https://github.com/talhaworkpk/kiseki-record/releases/download/ver.(window)1.5.0/Kiseki.Record.Setup.1.5.0.exe',
+    fileSize: '113.49 MB',
     releaseDate: new Date().toISOString().split('T')[0],
     sha256: 'placeholder-sha256-hash-will-be-added-on-release',
     portableUrl: undefined,
