@@ -90,6 +90,21 @@ export const appConfig = {
   // Changelog history
   changelog: [
     {
+      version: '1.5.0',
+      date: '2026-09-10',
+      changes: [
+        'Introduced the "Dreams" and "Build & Grow" sections to map out and track long-term life aspirations and personal growth',
+        'Added Clock Studio: A comprehensive time-management suite featuring Stopwatch, Timer, Custom Alarms, and personalized clock appearances',
+        'Advanced Habit Analytics: Track missed habit reasons and view detailed monthly progress heatmaps',
+        'Integrated Kiseki Action Engine allowing the AI Assistant to autonomously execute complex background tasks and planning',
+        'Enhanced UI with custom cursors, overscroll containers, and global floating achievement celebrations'
+      ],
+      tips: [
+        'Missing a habit is part of the journey. You can now log the reason why you missed it to discover actionable insights in your Habit Analytics.',
+        'Check out the new Clock Studio to completely customize the appearance of your desktop timers and alarms.'
+      ]
+    },
+    {
       version: '1.4.0',
       date: '2026-08-19',
       changes: [

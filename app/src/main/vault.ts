@@ -2,6 +2,7 @@ import { ipcMain, dialog, app } from 'electron'
 import JSZip from 'jszip'
 import fs from 'fs'
 import path from 'path'
+import { settingsStore } from './database'
 
 const userDataPath = app.getPath('userData')
 const dataPath = path.join(userDataPath, 'data')
@@ -36,13 +37,36 @@ export function setupVaultHandlers() {
         }
       }
 
+      // Add Clock Assets
+      const clockPath = path.join(userDataPath, 'clock')
+      if (fs.existsSync(clockPath)) {
+        const checkAndAddDir = (subDir: string) => {
+          const dirPath = path.join(clockPath, subDir)
+          if (fs.existsSync(dirPath)) {
+            const files = fs.readdirSync(dirPath)
+            for (const file of files) {
+              const fullPath = path.join(dirPath, file)
+              if (fs.statSync(fullPath).isFile()) {
+                zip.file(`clock/${subDir}/${file}`, fs.readFileSync(fullPath))
+              }
+            }
+          }
+        }
+        checkAndAddDir('backgrounds')
+        checkAndAddDir('cursors')
+      }
+
       // Add Settings
       const settingsPath = path.join(userDataPath, 'config.json')
       if (fs.existsSync(settingsPath)) {
         zip.file('config.json', fs.readFileSync(settingsPath))
       }
 
-      const backupsDir = path.join(userDataPath, 'backups')
+      let backupsDir = settingsStore.get('backupLocation') as string
+      if (!backupsDir) {
+        backupsDir = path.join(userDataPath, 'backups')
+      }
+      
       if (!fs.existsSync(backupsDir)) {
         fs.mkdirSync(backupsDir, { recursive: true })
       }
@@ -96,7 +120,7 @@ export function setupVaultHandlers() {
             const buffer = await fileData.async('nodebuffer')
             if (filename === 'config.json') {
               fs.writeFileSync(path.join(userDataPath, filename), buffer)
-            } else if (filename.startsWith('data/')) {
+            } else if (filename.startsWith('data/') || filename.startsWith('clock/')) {
               const destPath = path.join(userDataPath, filename)
               
               // Ensure directory exists
@@ -105,20 +129,11 @@ export function setupVaultHandlers() {
                 fs.mkdirSync(destDir, { recursive: true })
               }
 
-              if (filename.startsWith('data/attachments/')) {
+              if (filename.startsWith('data/attachments/') || filename.startsWith('clock/')) {
                 fs.writeFileSync(destPath, buffer)
               } else {
                 const patchLine = (line: string) => {
-                  try {
-                    const obj = JSON.parse(line)
-                    if (obj && !obj.$$indexCreated) {
-                      // Force everything imported to go into the private profile
-                      obj.profile = 'private'
-                    }
-                    return JSON.stringify(obj)
-                  } catch (e) {
-                    return line
-                  }
+                  return line
                 }
 
                 if (mode === 'replace' || !fs.existsSync(destPath)) {
@@ -223,7 +238,11 @@ export function setupVaultHandlers() {
 
   ipcMain.handle('vault:listBackups', async () => {
     try {
-      const backupsDir = path.join(userDataPath, 'backups')
+      let backupsDir = settingsStore.get('backupLocation') as string
+      if (!backupsDir) {
+        backupsDir = path.join(userDataPath, 'backups')
+      }
+      
       if (!fs.existsSync(backupsDir)) return { success: true, backups: [] }
       
       const files = fs.readdirSync(backupsDir)
@@ -245,4 +264,26 @@ export function setupVaultHandlers() {
       return { success: false, error: err.message }
     }
   })
+
+  ipcMain.handle('vault:getBackupLocation', async () => {
+    const loc = settingsStore.get('backupLocation') as string
+    return loc || path.join(userDataPath, 'backups')
+  })
+
+  ipcMain.handle('vault:setBackupLocation', async () => {
+    try {
+      const { filePaths } = await dialog.showOpenDialog({
+        title: 'Select Backup Location',
+        properties: ['openDirectory', 'createDirectory']
+      })
+      if (filePaths && filePaths.length > 0) {
+        settingsStore.set('backupLocation', filePaths[0])
+        return { success: true, path: filePaths[0] }
+      }
+      return { success: false, cancelled: true }
+    } catch (err: any) {
+      return { success: false, error: err.message }
+    }
+  })
 }
+
