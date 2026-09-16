@@ -1,4 +1,5 @@
 import { useState, useEffect } from 'react'
+import { createPortal } from 'react-dom'
 import { FileText, ZoomIn, ZoomOut, RotateCcw, Settings, Plus, Trash2, ChevronUp, ChevronDown, Copy, Sparkles, Undo, Redo, Printer, RefreshCw } from 'lucide-react'
 import TipTapEditor from '../../components/ResumeEditor/TipTapEditor'
 import RecordSelector from '../../components/ResumeEditor/RecordSelector'
@@ -1020,8 +1021,8 @@ export default function ResumeBuilder() {
       </div>
       
       {/* Error Dialog */}
-      {errorDialog && (
-        <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50">
+      {errorDialog && createPortal(
+        <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-[9999]">
           <div className="bg-background rounded-lg shadow-lg p-6 max-w-lg w-full mx-4">
             <h2 className="text-xl font-bold mb-4 text-red-500">Export Failed</h2>
             <div className="mb-4">
@@ -1062,11 +1063,11 @@ export default function ResumeBuilder() {
             </div>
           </div>
         </div>
-      )}
+      , document.body)}
       
       {/* Save Dialog */}
-      {saveDialog && (
-        <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50">
+      {saveDialog && createPortal(
+        <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-[9999]">
           <div className="bg-background rounded-lg shadow-lg p-6 max-w-md w-full mx-4">
             <h2 className="text-xl font-bold mb-4">Save Changes</h2>
             <p className="text-sm mb-4">Where do you want to save these changes?</p>
@@ -1092,11 +1093,11 @@ export default function ResumeBuilder() {
             </div>
           </div>
         </div>
-      )}
+      , document.body)}
       
       {/* Sync Confirmation Dialog */}
-      {syncDialog && (
-        <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50">
+      {syncDialog && createPortal(
+        <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-[9999]">
           <div className="bg-background rounded-lg shadow-lg p-6 max-w-md w-full mx-4">
             <h2 className="text-xl font-bold mb-4">Sync with Kiseki Record</h2>
             <p className="text-sm mb-4">Sync this section with Kiseki Record?</p>
@@ -1120,11 +1121,11 @@ export default function ResumeBuilder() {
             </div>
           </div>
         </div>
-      )}
+      , document.body)}
       
       {/* Reset Confirmation Dialog */}
-      {resetDialog && (
-        <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50">
+      {resetDialog && createPortal(
+        <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-[9999]">
           <div className="bg-background rounded-lg shadow-lg p-6 max-w-md w-full mx-4">
             <h2 className="text-xl font-bold mb-4">Reset Section</h2>
             <p className="text-sm mb-4">Reset this section to the original Kiseki Record version?</p>
@@ -1157,11 +1158,11 @@ export default function ResumeBuilder() {
             </div>
           </div>
         </div>
-      )}
+      , document.body)}
       
       {/* AI Improvement Menu */}
-      {aiMenuOpen && (
-        <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50" onClick={() => setAiMenuOpen(null)}>
+      {aiMenuOpen && createPortal(
+        <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-[9999]" onClick={() => setAiMenuOpen(null)}>
           <div className="bg-background rounded-lg shadow-lg p-4 max-w-sm w-full mx-4" onClick={(e) => e.stopPropagation()}>
             <h3 className="text-lg font-bold mb-3">Improve with AI</h3>
             <div className="space-y-1">
@@ -1176,11 +1177,11 @@ export default function ResumeBuilder() {
             </div>
           </div>
         </div>
-      )}
+      , document.body)}
       
       {/* PDF Preview Dialog */}
-      {pdfPreview && (
-        <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50">
+      {pdfPreview && createPortal(
+        <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-[9999]">
           <div className="bg-background rounded-lg shadow-lg p-6 max-w-5xl w-full mx-4 h-[90vh] flex flex-col">
             <div className="flex justify-between items-center mb-4">
               <h2 className="text-xl font-bold">PDF Preview</h2>
@@ -1235,7 +1236,7 @@ export default function ResumeBuilder() {
             </div>
           </div>
         </div>
-      )}
+      , document.body)}
     </div>
   )
 }

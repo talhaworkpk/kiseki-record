@@ -51,12 +51,27 @@ export const isHabitActiveOnDay = (habit: Habit, date: Date = new Date()): boole
   return true
 }
 
-// Helper to determine the effective deadline for a habit
+// Helper to determine the effective deadline for a habit (when it's officially missed)
 export const getEffectiveDeadline = (h: Habit, elapsed: number = 0): Date => {
-  const deadlineStr = h.deadlineTime || h.preferredTime || '23:59'
+  const deadlineStr = h.deadlineTime || '23:59'
   const [hh, mm] = deadlineStr.split(':')
   const baseTime = new Date()
   baseTime.setHours(parseInt(hh), parseInt(mm), 59, 999)
+  
+  if (h.isTimerEnabled && h.targetDuration) {
+    const remainingDuration = Math.max(0, h.targetDuration - elapsed)
+    return new Date(baseTime.getTime() - (remainingDuration * 1000))
+  }
+  
+  return baseTime
+}
+
+// Helper to determine the preferred deadline for a habit (when to notify, but not miss)
+export const getPreferredDeadline = (h: Habit, elapsed: number = 0): Date | null => {
+  if (!h.preferredTime) return null
+  const [hh, mm] = h.preferredTime.split(':')
+  const baseTime = new Date()
+  baseTime.setHours(parseInt(hh), parseInt(mm), 0, 0)
   
   if (h.isTimerEnabled && h.targetDuration) {
     const remainingDuration = Math.max(0, h.targetDuration - elapsed)

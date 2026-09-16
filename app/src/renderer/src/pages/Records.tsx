@@ -1,7 +1,9 @@
 import { useState, useEffect, useMemo, useRef } from 'react'
+import { createPortal } from 'react-dom'
+import { OverscrollContainer } from '../components/ui/OverscrollContainer'
 import { useLocation } from 'react-router-dom'
 import { RecordItem, Person } from '../types'
-import { Search, LayoutGrid, List, Filter, FileText, CheckSquare, Square, Trash2, Download, Copy, Archive, ArrowDownUp, X, ArchiveRestore } from 'lucide-react'
+import { Search, LayoutGrid, List, Filter, FileText, CheckSquare, Square, Trash2, Download, Copy, Archive, ArrowDownUp, X, ArchiveRestore, Plus, Minus } from 'lucide-react'
 import TipTapEditor from '../components/ResumeEditor/TipTapEditor'
 import { NotificationEngine } from '../lib/NotificationEngine'
 
@@ -12,16 +14,23 @@ import RecordsStatistics from '../components/records/RecordsStatistics'
 import RecordFilterDrawer, { RecordFilters } from '../components/records/RecordFilterDrawer'
 import { normalizeUrl } from '../lib/utils'
 import { Paperclip, ImagePlus } from 'lucide-react'
+import { useOnboarding } from '../hooks/useOnboarding'
+import { SectionWelcome } from '../components/onboarding/SectionWelcome'
+import { ONBOARDING_CONFIGS } from '../lib/onboardingConfig'
 
 export default function Records() {
   const [loading, setLoading] = useState(true)
   const [records, setRecords] = useState<RecordItem[]>([])
   const [relationships, setRelationships] = useState<Person[]>([])
+  const { showWelcome, completeWelcome } = useOnboarding('records')
   
   // View & UI State
   const [viewMode, setViewMode] = useState<'grid' | 'list'>('grid')
   const [isSelectionMode, setIsSelectionMode] = useState(false)
   const [selectedIds, setSelectedIds] = useState<Set<string>>(new Set())
+  const [selectionMode, setSelectionMode] = useState<'select' | 'deselect' | null>(null)
+  const cursorPosRef = useRef({ x: 0, y: 0 })
+  const cursorDomRef = useRef<HTMLDivElement>(null)
   const [searchQuery, setSearchQuery] = useState('')
   const [sortBy, setSortBy] = useState<'newest' | 'oldest' | 'updated' | 'alpha' | 'mood' | 'type'>('newest')
   
@@ -40,11 +49,16 @@ export default function Records() {
   // Preview State
   const [previewRecord, setPreviewRecord] = useState<RecordItem | null>(null)
 
+  // Delete Confirm State
+  const [deleteConfirm, setDeleteConfirm] = useState<{show: boolean, recordId?: string, isPermanent: boolean, isBulk: boolean}>({ show: false, isPermanent: false, isBulk: false })
+  const [showDeleteSuccess, setShowDeleteSuccess] = useState(false)
+
   // Scroll State
   const scrollRef = useRef<HTMLDivElement>(null)
   const [isDragging, setIsDragging] = useState(false)
   const [startY, setStartY] = useState(0)
   const [scrollTop, setScrollTop] = useState(0)
+  const hasDraggedRef = useRef(false)
 
   const fetchRecords = async () => {
     try {
@@ -92,85 +106,6 @@ export default function Records() {
     }
   }, [location.search, loading, records.length])
 
-  // Keyboard Shortcuts
-  useEffect(() => {
-    const handleKeyDown = (e: KeyboardEvent) => {
-      // Don't trigger if typing in an input or contenteditable
-      const tag = document.activeElement?.tagName.toLowerCase()
-      const isInput = tag === 'input' || tag === 'textarea' || document.activeElement?.getAttribute('contenteditable') === 'true'
-      if (isInput) return
-
-      if (e.key === 'Escape') {
-        if (isSelectionMode) {
-          setIsSelectionMode(false)
-          setSelectedIds(new Set())
-        }
-      }
-      if (e.ctrlKey && e.key === 'a') {
-        e.preventDefault()
-        if (!isSelectionMode) setIsSelectionMode(true)
-        if (selectedIds.size === filteredRecords.length && filteredRecords.length > 0) {
-          setSelectedIds(new Set())
-        } else {
-          setSelectedIds(new Set(filteredRecords.map(r => r._id!)))
-        }
-      }
-      if (e.key === 'Delete' && selectedIds.size > 0) {
-        bulkAction('delete')
-      }
-      if (e.ctrlKey && e.key === 'e' && selectedIds.size > 0) {
-        e.preventDefault()
-        bulkAction('export')
-      }
-      if (e.ctrlKey && e.key === 'd' && selectedIds.size > 0) {
-        e.preventDefault()
-        bulkAction('duplicate')
-      }
-      
-      // Page Scrolling with Arrows
-      if (!isFilterOpen && !isEditing && !previewRecord) {
-        if (e.key === 'ArrowUp') {
-          e.preventDefault()
-          if (scrollRef.current) scrollRef.current.scrollTop -= 60
-        }
-        if (e.key === 'ArrowDown') {
-          e.preventDefault()
-          if (scrollRef.current) scrollRef.current.scrollTop += 60
-        }
-      }
-    }
-    window.addEventListener('keydown', handleKeyDown, { passive: false })
-    return () => window.removeEventListener('keydown', handleKeyDown)
-  })
-
-  // Mouse Drag to Scroll Handlers
-  const handleMouseDown = (e: React.MouseEvent) => {
-    if (e.button === 2) {
-      if (!scrollRef.current) return
-      e.preventDefault()
-      setIsDragging(true)
-      setStartY(e.pageY - scrollRef.current.offsetTop)
-      setScrollTop(scrollRef.current.scrollTop)
-    }
-  }
-
-  const handleMouseLeave = () => setIsDragging(false)
-  const handleMouseUp = () => setIsDragging(false)
-
-  const handleContextMenu = (e: React.MouseEvent) => {
-    if (isDragging) {
-      e.preventDefault()
-    }
-  }
-
-  const handleMouseMove = (e: React.MouseEvent) => {
-    if (!isDragging || !scrollRef.current) return
-    e.preventDefault()
-    const y = e.pageY - scrollRef.current.offsetTop
-    const walk = (y - startY) * 1.5
-    scrollRef.current.scrollTop = scrollTop - walk
-  }
-
   // Filtering & Sorting Logic
   const filteredRecords = useMemo(() => {
     let result = records
@@ -195,8 +130,15 @@ export default function Records() {
     if (filters.type !== 'all') result = result.filter(r => r.type === filters.type)
     if (filters.mood) result = result.filter(r => r.mood?.toLowerCase().includes(filters.mood.toLowerCase()))
     if (filters.isFavorite) result = result.filter(r => r.isFavorite)
-    if (filters.hasAttachments) result = result.filter(r => r.attachments && r.attachments.length > 0)
-    if (filters.hasImages) result = result.filter(r => r.attachments && r.attachments.some(a => a.match(/\.(jpeg|jpg|gif|png|webp|gfif|bmp|tiff|svg|ico|heic|heif|raw|cr2|nef|orf|sr2)$/i)))
+    if (filters.hasAttachments) {
+      result = result.filter(r => (r.attachments && r.attachments.length > 0) || (r.audio && r.audio.length > 0) || (r.video && r.video.length > 0))
+    }
+    if (filters.hasImages) {
+      result = result.filter(r => 
+        (r.photos && r.photos.length > 0) || 
+        (r.attachments && r.attachments.some(a => a.match(/\.(jpeg|jpg|gif|png|webp|gfif|bmp|tiff|svg|ico|heic|heif|raw|cr2|nef|orf|sr2)$/i)))
+      )
+    }
     
     if (filters.dateRange !== 'all') {
       const now = Date.now()
@@ -226,6 +168,214 @@ export default function Records() {
 
     return result
   }, [records, searchQuery, filters, sortBy])
+
+  // Keyboard Shortcuts
+  useEffect(() => {
+    const handleKeyDown = (e: KeyboardEvent) => {
+      if (e.key === 'Escape') {
+        if (isEditing) {
+          setIsEditing(false)
+          setEditForm({})
+        }
+        if (isSelectionMode) {
+          setIsSelectionMode(false)
+          setSelectedIds(new Set())
+        }
+      }
+
+      // Don't trigger if typing in an input or contenteditable
+      const tag = document.activeElement?.tagName.toLowerCase()
+      const isInput = tag === 'input' || tag === 'textarea' || document.activeElement?.getAttribute('contenteditable') === 'true'
+      if (isInput) return
+      if (e.ctrlKey && e.key === 'a') {
+        e.preventDefault()
+        if (!isSelectionMode) setIsSelectionMode(true)
+        if (selectedIds.size === filteredRecords.length && filteredRecords.length > 0) {
+          setSelectedIds(new Set())
+        } else {
+          setSelectedIds(new Set(filteredRecords.map(r => r._id!)))
+        }
+      }
+      if (e.key === 'Delete' && selectedIds.size > 0) {
+        bulkAction('delete')
+      }
+      if (e.ctrlKey && e.key === 'e' && selectedIds.size > 0) {
+        e.preventDefault()
+        bulkAction('export')
+      }
+      if (e.ctrlKey && e.key.toLowerCase() === 'd' && selectedIds.size > 0) {
+        e.preventDefault()
+        bulkAction('delete')
+      }
+      
+      if (e.ctrlKey && e.key.toLowerCase() === 'c' && selectedIds.size > 0) {
+        e.preventDefault()
+        bulkAction('duplicate')
+      }
+      
+      // Page Scrolling with Arrows
+      if (!isFilterOpen && !isEditing && !previewRecord) {
+        if (e.key === 'ArrowUp') {
+          e.preventDefault()
+          if (scrollRef.current) scrollRef.current.scrollTop -= 60
+        }
+        if (e.key === 'ArrowDown') {
+          e.preventDefault()
+          if (scrollRef.current) scrollRef.current.scrollTop += 60
+        }
+      }
+    }
+    const handleKeyUp = (e: KeyboardEvent) => {
+      if (e.key === 'Control') {
+        setSelectionMode(null)
+      }
+    }
+    window.addEventListener('keydown', handleKeyDown, { passive: false })
+    window.addEventListener('keyup', handleKeyUp)
+    return () => {
+      window.removeEventListener('keydown', handleKeyDown)
+      window.removeEventListener('keyup', handleKeyUp)
+    }
+  }, [isFilterOpen, isEditing, previewRecord, isSelectionMode, selectedIds, records, filters, searchQuery, sortBy])
+
+  // Auto-scroll when dragging near edges in multi-select mode
+  useEffect(() => {
+    let animationFrameId: number;
+    let lastTime = performance.now();
+
+    const loop = (time: number) => {
+      const delta = time - lastTime;
+      lastTime = time;
+
+      if (selectionMode !== null && scrollRef.current) {
+        const container = scrollRef.current;
+        const rect = container.getBoundingClientRect();
+        const y = cursorPosRef.current.y;
+        
+        const EDGE_THRESHOLD = 80;
+        const MAX_SPEED = 1.0; 
+        
+        const distTop = y - rect.top;
+        const distBottom = rect.bottom - y;
+        
+        let scrollAmount = 0;
+        
+        if (distTop >= 0 && distTop < EDGE_THRESHOLD) {
+          scrollAmount = -MAX_SPEED * delta * (1 - distTop / EDGE_THRESHOLD);
+        } else if (distBottom >= 0 && distBottom < EDGE_THRESHOLD) {
+          scrollAmount = MAX_SPEED * delta * (1 - distBottom / EDGE_THRESHOLD);
+        }
+        
+        if (scrollAmount !== 0) {
+          container.scrollTop += scrollAmount;
+          
+          // Auto-select items as we scroll over them
+          const element = document.elementFromPoint(cursorPosRef.current.x, y);
+          const itemEl = element?.closest('[data-record-id]');
+          if (itemEl) {
+            const id = itemEl.getAttribute('data-record-id');
+            if (id) {
+              setSelectedIds(prev => {
+                if (selectionMode === 'deselect' && prev.has(id)) {
+                  const next = new Set(prev)
+                  next.delete(id)
+                  return next
+                } else if (selectionMode === 'select' && !prev.has(id)) {
+                  const next = new Set(prev)
+                  next.add(id)
+                  return next
+                }
+                return prev
+              })
+            }
+          }
+        }
+      }
+      animationFrameId = requestAnimationFrame(loop);
+    };
+    
+    if (selectionMode !== null) {
+      animationFrameId = requestAnimationFrame(loop);
+    }
+    
+    return () => {
+      if (animationFrameId) cancelAnimationFrame(animationFrameId);
+    };
+  }, [selectionMode]);
+
+  // Mouse Drag to Scroll Handlers
+  const handleMouseDown = (e: React.MouseEvent) => {
+    if (e.button === 2) {
+      if (!scrollRef.current) return
+      e.preventDefault()
+      setIsDragging(true)
+      hasDraggedRef.current = false
+      setStartY(e.pageY - scrollRef.current.offsetTop)
+      setScrollTop(scrollRef.current.scrollTop)
+    }
+  }
+
+  const handleMouseLeave = () => {
+    setIsDragging(false)
+  }
+  const handleMouseUp = () => {
+    setIsDragging(false)
+  }
+
+  const handleContextMenu = (e: React.MouseEvent) => {
+    if (hasDraggedRef.current || isDragging) {
+      e.preventDefault()
+    }
+  }
+
+  const handleMouseMove = (e: React.MouseEvent) => {
+    if (e.ctrlKey) {
+      e.preventDefault()
+      cursorPosRef.current = { x: e.clientX, y: e.clientY }
+      if (cursorDomRef.current) {
+        cursorDomRef.current.style.transform = `translate(${e.clientX - 14}px, ${e.clientY - 14}px)`
+      }
+      
+      const newMode = e.shiftKey ? 'deselect' : 'select'
+      setSelectionMode(prev => prev !== newMode ? newMode : prev)
+      
+      if (!isSelectionMode) {
+        setIsSelectionMode(true)
+      }
+      
+      const element = document.elementFromPoint(e.clientX, e.clientY)
+      const itemEl = element?.closest('[data-record-id]')
+      if (itemEl) {
+        const id = itemEl.getAttribute('data-record-id')
+        if (id) {
+          setSelectedIds(prev => {
+            if (newMode === 'deselect' && prev.has(id)) {
+              const next = new Set(prev)
+              next.delete(id)
+              return next
+            } else if (newMode === 'select' && !prev.has(id)) {
+              const next = new Set(prev)
+              next.add(id)
+              return next
+            }
+            return prev
+          })
+        }
+      }
+      return
+    } else if (selectionMode !== null) {
+      setSelectionMode(null)
+    }
+
+    if (!isDragging || !scrollRef.current) return
+    e.preventDefault()
+    hasDraggedRef.current = true
+    const y = e.pageY - scrollRef.current.offsetTop
+    const walk = (y - startY) * 1.5
+    scrollRef.current.scrollTop = scrollTop - walk
+  }
+
+
 
 
   // Handlers
@@ -262,20 +412,8 @@ export default function Records() {
         fetchRecords()
       }
       if (action === 'delete') {
-        if (filters.isArchived || record.deletedAt) {
-          if(confirm('Permanently delete?')) {
-            // @ts-ignore
-            await window.api.db.remove('records', { _id: record._id })
-            NotificationEngine.notify('warning', 'Record Deleted', `"${record.title}" was permanently deleted.`, 'Records')
-          }
-        } else {
-          // Soft delete
-          // @ts-ignore
-          await window.api.db.update('records', { _id: record._id }, { $set: { deletedAt: Date.now() } })
-          NotificationEngine.notify('info', 'Record Trashed', `"${record.title}" moved to trash.`, 'Records')
-        }
-        if (previewRecord?._id === record._id) setPreviewRecord(null)
-        fetchRecords()
+        const isPermanent = !!(filters.isArchived || record.deletedAt)
+        setDeleteConfirm({ show: true, recordId: record._id, isPermanent, isBulk: false })
       }
       if (action === 'duplicate') {
         const copy = { ...record, title: `${record.title} (Copy)`, createdAt: Date.now(), updatedAt: Date.now(), views: 0 }
@@ -303,17 +441,8 @@ export default function Records() {
     const ids = Array.from(selectedIds)
     try {
       if (action === 'delete') {
-        if (!confirm(`Delete ${ids.length} records?`)) return
-        for (const id of ids) {
-          if (filters.isArchived) {
-            // @ts-ignore
-            await window.api.db.remove('records', { _id: id })
-          } else {
-            // @ts-ignore
-            await window.api.db.update('records', { _id: id }, { $set: { deletedAt: Date.now() } })
-          }
-          NotificationEngine.notify('info', 'Records Trashed', `${selectedIds.size} records moved to trash.`, 'Records')
-        }
+        const isPermanent = !!filters.isArchived
+        setDeleteConfirm({ show: true, isPermanent, isBulk: true })
       }
       if (action === 'archive') {
         for (const id of ids) {
@@ -444,7 +573,63 @@ export default function Records() {
     return () => window.removeEventListener('keydown', down)
   }, [isEditing, editForm])
 
+  const confirmDelete = async () => {
+    try {
+      const { isPermanent, isBulk, recordId } = deleteConfirm
+      
+      if (isBulk) {
+        const ids = Array.from(selectedIds)
+        for (const id of ids) {
+          if (isPermanent) {
+            // @ts-ignore
+            await window.api.db.remove('records', { _id: id })
+          } else {
+            // @ts-ignore
+            await window.api.db.update('records', { _id: id }, { $set: { deletedAt: Date.now() } })
+          }
+        }
+        NotificationEngine.notify(isPermanent ? 'warning' : 'info', isPermanent ? 'Records Deleted' : 'Records Trashed', `${selectedIds.size} records ${isPermanent ? 'permanently deleted' : 'moved to trash'}.`, 'Records')
+        setSelectedIds(new Set())
+        setIsSelectionMode(false)
+      } else if (recordId) {
+        const record = records.find(r => r._id === recordId)
+        if (isPermanent) {
+          // @ts-ignore
+          await window.api.db.remove('records', { _id: recordId })
+          if (record) NotificationEngine.notify('warning', 'Record Deleted', `"${record.title}" was permanently deleted.`, 'Records')
+        } else {
+          // @ts-ignore
+          await window.api.db.update('records', { _id: recordId }, { $set: { deletedAt: Date.now() } })
+          if (record) NotificationEngine.notify('info', 'Record Trashed', `"${record.title}" moved to trash.`, 'Records')
+        }
+        if (previewRecord?._id === recordId) setPreviewRecord(null)
+      }
+      
+      setDeleteConfirm({ show: false, isPermanent: false, isBulk: false })
+      setShowDeleteSuccess(true)
+      setTimeout(() => setShowDeleteSuccess(false), 3000)
+      fetchRecords()
+    } catch (e) {
+      console.error(e)
+    }
+  }
+
+  useEffect(() => {
+    if (!deleteConfirm.show) return
+    const handleKeyDown = (e: KeyboardEvent) => {
+      if (e.key === 'Escape') {
+        setDeleteConfirm({ show: false, isPermanent: false, isBulk: false })
+      } else if (e.key === 'Enter') {
+        confirmDelete()
+      }
+    }
+    window.addEventListener('keydown', handleKeyDown)
+    return () => window.removeEventListener('keydown', handleKeyDown)
+  })
+
   return (
+    <>
+      {showWelcome && <SectionWelcome config={ONBOARDING_CONFIGS.records} onComplete={completeWelcome} />}
     <div className="flex flex-col h-full bg-background animate-in fade-in duration-500 relative overflow-hidden">
       
       {/* 3D Ambient Background */}
@@ -560,8 +745,18 @@ export default function Records() {
         onMouseUp={handleMouseUp}
         onMouseMove={handleMouseMove}
         onContextMenu={handleContextMenu}
-        className={`flex-1 overflow-y-auto p-6 relative z-10 scrollbar-custom ${isDragging ? 'cursor-grabbing select-none' : ''}`}
+        className={`flex-1 overflow-y-auto p-6 relative z-10 scrollbar-custom ${isDragging ? 'cursor-grabbing select-none' : ''} ${selectionMode ? '!cursor-none select-none' : ''}`}
       >
+        {selectionMode && (
+          <div 
+            ref={cursorDomRef}
+            className="fixed left-0 top-0 pointer-events-none z-[200] animate-in zoom-in-95 flex items-center justify-center w-7 h-7 rounded-full bg-primary text-primary-foreground shadow-lg backdrop-blur will-change-transform"
+            style={{ transform: `translate(${cursorPosRef.current.x - 14}px, ${cursorPosRef.current.y - 14}px)` }}
+          >
+            {selectionMode === 'deselect' ? <Minus size={14} strokeWidth={3} /> : <Plus size={14} strokeWidth={3} />}
+          </div>
+        )}
+
         {/* Statistics Bar */}
         {!loading && records.length > 0 && !isSelectionMode && (
           <RecordsStatistics records={records} setFilters={setFilters} />
@@ -580,7 +775,7 @@ export default function Records() {
         ) : (
           <div className={`gap-6 ${viewMode === 'grid' ? 'grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 2xl:grid-cols-4' : 'flex flex-col'}`}>
             {filteredRecords.map(record => (
-              <div key={record._id} id={`record-${record._id}`} className="transition-all duration-1000 rounded-2xl">
+              <div key={record._id} id={`record-${record._id}`} data-record-id={record._id} className="transition-all duration-1000 rounded-2xl">
                 <RecordCard 
                   record={record}
                   viewMode={viewMode}
@@ -619,8 +814,8 @@ export default function Records() {
       />
 
       {/* Editor Modal */}
-      {isEditing && (
-        <div className="fixed inset-0 z-[100] bg-background/80 backdrop-blur-sm flex items-center justify-center p-4">
+      {isEditing && createPortal(
+        <div className="fixed inset-0 z-[9999] bg-background/80 backdrop-blur-sm flex items-center justify-center p-4">
           {showSuccessOverlay ? (
             <div className="fixed inset-0 z-[110] flex items-center justify-center bg-[radial-gradient(ellipse_at_center,_var(--tw-gradient-stops))] from-cyan-500/30 via-background/80 to-background/95 backdrop-blur-sm animate-in fade-in duration-300">
               <style>{`
@@ -723,7 +918,8 @@ export default function Records() {
               <button type="button" onClick={() => setIsEditing(false)} className="p-2 hover:bg-accent rounded-full text-muted-foreground transition-colors"><X size={20}/></button>
             </div>
             
-            <form id="recordForm" onSubmit={saveRecord} className="flex-1 overflow-y-auto p-8 space-y-6">
+            <OverscrollContainer absolute={false} className="flex-1 min-h-0" containerClassName="p-8">
+              <form id="recordForm" onSubmit={saveRecord} className="space-y-6">
               <div>
                 <label className="block text-xs font-bold uppercase tracking-widest text-muted-foreground mb-2">Title <span className="text-destructive">*</span></label>
                 <input autoFocus type="text" required value={editForm.title || ''} onChange={e => setEditForm({...editForm, title: e.target.value})} className="w-full p-3 rounded-xl border border-border bg-background focus:ring-2 focus:ring-primary outline-none text-lg font-bold" placeholder="e.g. Vacation in Kyoto" />
@@ -852,7 +1048,8 @@ export default function Records() {
                   )}
                 </div>
               </div>
-            </form>
+              </form>
+            </OverscrollContainer>
 
             <div className="px-8 py-5 border-t border-border flex justify-end gap-3 bg-card shrink-0">
               <button type="button" onClick={() => setIsEditing(false)} className="px-6 py-2.5 rounded-xl font-bold hover:bg-accent transition-colors">Cancel</button>
@@ -862,9 +1059,121 @@ export default function Records() {
             </div>
           </div>
           )}
+        </div>,
+        document.body
+      )}
+
+      {deleteConfirm.show && !showDeleteSuccess && (
+        <div className="fixed inset-0 z-[150] flex items-center justify-center p-4 bg-background/60 backdrop-blur-md animate-in fade-in duration-300">
+          <div className="bg-card text-card-foreground p-0 rounded-2xl shadow-[0_0_50px_-12px_rgba(14,165,233,0.25)] border border-sky-500/20 w-full max-w-md flex flex-col overflow-hidden scale-in-center animate-in zoom-in-95 duration-300">
+            <div className="bg-sky-500/10 p-6 flex flex-col items-center justify-center text-center border-b border-sky-500/10 relative overflow-hidden">
+              <div className="absolute inset-0 bg-gradient-to-b from-sky-500/5 to-transparent"></div>
+              <div className="w-16 h-16 bg-background rounded-full flex items-center justify-center shadow-inner mb-4 relative z-10 border border-sky-500/20">
+                <Trash2 size={32} className="text-sky-500 drop-shadow-md animate-pulse" />
+              </div>
+              <h3 className="text-xl font-bold text-foreground relative z-10">{deleteConfirm.isPermanent ? 'Permanently Delete' : 'Move to Trash'}?</h3>
+            </div>
+            
+            <div className="p-6">
+              <p className="text-center text-muted-foreground mb-6">
+                {deleteConfirm.isBulk 
+                  ? `Are you sure you want to ${deleteConfirm.isPermanent ? 'permanently delete' : 'trash'} ${selectedIds.size} records?` 
+                  : `Are you sure you want to ${deleteConfirm.isPermanent ? 'permanently delete' : 'trash'} this record?`}
+                {deleteConfirm.isPermanent && " This cannot be undone."}
+              </p>
+
+              <div className="flex justify-end gap-3">
+                <button 
+                  onClick={() => setDeleteConfirm({ show: false, isPermanent: false, isBulk: false })}
+                  className="px-5 py-2.5 rounded-xl text-sm font-semibold text-foreground bg-accent hover:bg-accent/80 border border-transparent hover:border-border transition-all active:scale-95"
+                >
+                  Cancel
+                </button>
+                <button 
+                  onClick={confirmDelete}
+                  className={`px-5 py-2.5 rounded-xl text-sm font-semibold text-white shadow-lg transition-all active:scale-95 flex items-center gap-2 ${deleteConfirm.isPermanent ? 'bg-gradient-to-r from-red-600 to-destructive hover:shadow-destructive/50' : 'bg-gradient-to-r from-sky-500 to-blue-600 hover:shadow-sky-500/50'}`}
+                >
+                  <Trash2 size={16} />
+                  {deleteConfirm.isPermanent ? 'Delete Permanently' : 'Move to Trash'}
+                </button>
+              </div>
+            </div>
+          </div>
         </div>
       )}
 
+      {showDeleteSuccess && (
+        <div className="fixed inset-0 z-[200] flex items-center justify-center bg-black/95 backdrop-blur-xl overflow-hidden animate-in fade-in duration-300">
+          <style>{`
+            @keyframes ring-spin-1 {
+              0% { transform: rotateX(60deg) rotateY(0deg) rotateZ(0deg) scale(1); opacity: 1; filter: hue-rotate(0deg); }
+              50% { transform: rotateX(60deg) rotateY(360deg) rotateZ(180deg) scale(1.4); opacity: 1; filter: hue-rotate(90deg); }
+              100% { transform: rotateX(60deg) rotateY(720deg) rotateZ(360deg) scale(0); opacity: 0; filter: hue-rotate(180deg); }
+            }
+            @keyframes ring-spin-2 {
+              0% { transform: rotateX(45deg) rotateY(90deg) rotateZ(0deg) scale(1); opacity: 1; filter: hue-rotate(0deg); }
+              50% { transform: rotateX(45deg) rotateY(450deg) rotateZ(-180deg) scale(1.1); opacity: 1; filter: hue-rotate(90deg); }
+              100% { transform: rotateX(45deg) rotateY(810deg) rotateZ(-360deg) scale(0); opacity: 0; filter: hue-rotate(180deg); }
+            }
+            @keyframes ring-spin-3 {
+              0% { transform: rotateX(75deg) rotateY(45deg) rotateZ(0deg) scale(1); opacity: 1; filter: hue-rotate(0deg); }
+              50% { transform: rotateX(75deg) rotateY(405deg) rotateZ(90deg) scale(1.7); opacity: 1; filter: hue-rotate(90deg); }
+              100% { transform: rotateX(75deg) rotateY(765deg) rotateZ(180deg) scale(0); opacity: 0; filter: hue-rotate(180deg); }
+            }
+            @keyframes core-collapse {
+              0% { transform: scale(1); opacity: 1; filter: hue-rotate(0deg); }
+              50% { transform: scale(1.5); opacity: 1; filter: hue-rotate(90deg); }
+              100% { transform: scale(0); opacity: 0; filter: hue-rotate(180deg); }
+            }
+            @keyframes shockwave {
+              0% { transform: scale(0); opacity: 0; }
+              45% { transform: scale(0); opacity: 0; }
+              55% { transform: scale(0.5); opacity: 1; }
+              100% { transform: scale(10); opacity: 0; }
+            }
+            @keyframes text-reveal {
+              0% { transform: scale(0.5) translateY(50px); opacity: 0; filter: blur(20px); }
+              50% { transform: scale(0.5) translateY(50px); opacity: 0; filter: blur(20px); }
+              60% { transform: scale(1.3) translateY(0); opacity: 1; filter: blur(0px) drop-shadow(0 0 30px rgba(14, 165, 233, 1)); }
+              100% { transform: scale(1) translateY(0); opacity: 1; filter: drop-shadow(0 0 10px rgba(14, 165, 233, 0.5)); }
+            }
+            @keyframes scanline {
+              0% { transform: translateY(-100vh); }
+              100% { transform: translateY(100vh); }
+            }
+          `}</style>
+          
+          {/* Perspective 3D Grid Floor */}
+          <div className="absolute inset-0 bg-[linear-gradient(rgba(14,165,233,0.15)_1px,transparent_1px),linear-gradient(90deg,rgba(14,165,233,0.15)_1px,transparent_1px)] bg-[size:40px_40px] [transform:perspective(500px)_rotateX(75deg)] origin-bottom" />
+          
+          {/* Laser Scanline */}
+          <div className="absolute w-full h-1 bg-sky-400/50 shadow-[0_0_20px_#38bdf8] animate-[scanline_3s_linear_infinite]" />
+
+          <div className="relative z-10 flex flex-col items-center justify-center h-full w-full [perspective:1000px]">
+            <div className="relative w-64 h-64 flex items-center justify-center mb-12 [transform-style:preserve-3d]">
+              
+              {/* Gyroscope Rings */}
+              <div className="absolute w-40 h-40 rounded-full border-4 border-t-sky-400 border-r-transparent border-b-sky-400 border-l-transparent" style={{ animation: 'ring-spin-1 1.2s cubic-bezier(0.5, 0, 0.5, 1) forwards' }} />
+              <div className="absolute w-48 h-48 rounded-full border-4 border-t-transparent border-r-sky-300 border-b-transparent border-l-sky-300" style={{ animation: 'ring-spin-2 1.2s cubic-bezier(0.5, 0, 0.5, 1) forwards' }} />
+              <div className="absolute w-56 h-56 rounded-full border-4 border-t-sky-200 border-r-transparent border-b-sky-200 border-l-transparent" style={{ animation: 'ring-spin-3 1.2s cubic-bezier(0.5, 0, 0.5, 1) forwards' }} />
+              
+              {/* Core Implosion Dot */}
+              <div className="absolute w-4 h-4 bg-white rounded-full shadow-[0_0_30px_15px_#fff]" style={{ animation: 'core-collapse 1.2s cubic-bezier(0.5, 0, 0.5, 1) reverse forwards' }} />
+
+              {/* Shockwave Blast */}
+              <div className="absolute w-32 h-32 rounded-full border border-sky-400 shadow-[0_0_50px_20px_rgba(14,165,233,1),inset_0_0_50px_20px_rgba(14,165,233,1)]" style={{ animation: 'shockwave 1.5s ease-out forwards' }} />
+            </div>
+            
+            <h2 className="text-5xl font-black text-transparent bg-clip-text bg-gradient-to-r from-sky-300 to-indigo-400 uppercase drop-shadow-xl tracking-widest" style={{ animation: 'text-reveal 2s cubic-bezier(0.1, 0.9, 0.2, 1) forwards' }}>
+              Record{deleteConfirm.isBulk ? 's' : ''} Purged
+            </h2>
+            <p className="mt-4 text-sky-200/80 text-xl font-bold uppercase tracking-[0.5em]" style={{ animation: 'text-reveal 2.2s cubic-bezier(0.1, 0.9, 0.2, 1) forwards' }}>
+              System Wiped
+            </p>
+          </div>
+        </div>
+      )}
     </div>
+    </>
   )
 }

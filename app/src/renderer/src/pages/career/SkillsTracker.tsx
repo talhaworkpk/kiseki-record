@@ -1,6 +1,7 @@
 import { useState, useEffect, useRef } from 'react'
+import { createPortal } from 'react-dom'
 import { useLocation } from 'react-router-dom'
-import { Trash2, Search, Filter, Plus, Edit2, X, Star, Archive, MoreVertical, BrainCircuit, TrendingUp, Award, ImageIcon, Sparkles, FolderDown, ArrowDownUp, CheckSquare, Square, Archive as ArchiveIcon, ArchiveRestore, Download, Upload } from 'lucide-react'
+import { Trash2, Search, Filter, Plus, Edit2, X, Star, Archive, MoreVertical, BrainCircuit, TrendingUp, Award, ImageIcon, Sparkles, FolderDown, ArrowDownUp, CheckSquare, Square, Archive as ArchiveIcon, ArchiveRestore, Download, Upload, AlertTriangle } from 'lucide-react'
 import { NotificationEngine } from '../../lib/NotificationEngine'
 import { SkillRecord } from '../../types'
 import { normalizeUrl } from '../../lib/utils'
@@ -32,6 +33,10 @@ export default function SkillsTracker() {
   const [isDragging, setIsDragging] = useState(false)
   const [dragStartY, setDragStartY] = useState(0)
   const [scrollTop, setScrollTop] = useState(0)
+  const [showDeleteConfirm, setShowDeleteConfirm] = useState<{show: boolean, id: string, name: string}>({ show: false, id: '', name: '' })
+  const [showBulkDeleteModal, setShowBulkDeleteModal] = useState(false)
+  const [showDeleteSuccess, setShowDeleteSuccess] = useState(false)
+  const [deletedTitle, setDeletedTitle] = useState('')
   const scrollContainerRef = useRef<HTMLDivElement>(null)
 
   const [searchQuery, setSearchQuery] = useState('')
@@ -60,6 +65,23 @@ export default function SkillsTracker() {
   useEffect(() => {
     loadData()
   }, [])
+
+  useEffect(() => {
+    const handleKeyDown = (e: KeyboardEvent) => {
+      if (e.key === 'Escape') {
+        if (isAdding) {
+          setIsAdding(false)
+          setForm({})
+        }
+        if (editingId) {
+          setEditingId(null)
+          setForm({})
+        }
+      }
+    }
+    window.addEventListener('keydown', handleKeyDown)
+    return () => window.removeEventListener('keydown', handleKeyDown)
+  }, [isAdding, editingId])
 
   const handleExportSelected = () => {
     const dataToExport = skills.filter(s => selectedIds.has(s._id!))
@@ -228,23 +250,36 @@ export default function SkillsTracker() {
     return 0
   })
 
-  const bulkAction = async (action: 'delete' | 'archive' | 'unarchive' | 'favorite') => {
-    if (action === 'delete' && !confirm(`Delete ${selectedIds.size} skills?`)) return
+  const confirmBulkDelete = async () => {
     try {
       for (const id of selectedIds) {
-        if (action === 'delete') {
-          // @ts-ignore
-          await window.api.db.remove('skills', { _id: id }, {})
-        } else {
-          const updateData = action === 'favorite' ? { isFavorite: true } 
-                           : action === 'archive' ? { isArchived: true }
-                           : { isArchived: false }
-          // @ts-ignore
-          await window.api.db.update('skills', { _id: id }, { $set: { ...updateData, updatedAt: Date.now() } }, {})
-        }
+        // @ts-ignore
+        await window.api.db.remove('skills', { _id: id }, {})
       }
       setSelectedIds(new Set())
-      if (action === 'delete') setIsSelectionMode(false)
+      setIsSelectionMode(false)
+      loadData()
+      
+      setShowBulkDeleteModal(false)
+      setShowDeleteSuccess(true)
+      setTimeout(() => setShowDeleteSuccess(false), 2500)
+    } catch (err) { console.error(err) }
+  }
+
+  const bulkAction = async (action: 'delete' | 'archive' | 'unarchive' | 'favorite') => {
+    if (action === 'delete') {
+      setShowBulkDeleteModal(true)
+      return
+    }
+    try {
+      for (const id of selectedIds) {
+        const updateData = action === 'favorite' ? { isFavorite: true } 
+                         : action === 'archive' ? { isArchived: true }
+                         : { isArchived: false }
+        // @ts-ignore
+        await window.api.db.update('skills', { _id: id }, { $set: { ...updateData, updatedAt: Date.now() } }, {})
+      }
+      setSelectedIds(new Set())
       loadData()
     } catch (err) { console.error(err) }
   }
@@ -307,17 +342,40 @@ export default function SkillsTracker() {
     return () => window.removeEventListener('keydown', down)
   }, [isAdding, form, editingId])
 
-  const handleDelete = async (id: string, e: React.MouseEvent) => {
+  const handleDelete = async (id: string, e: React.MouseEvent, name?: string) => {
     e.stopPropagation()
-    if (confirm('Delete this skill?')) {
-      try {
-        const skill = skills.find(s => s._id === id)
-        // @ts-ignore
-        await window.api.db.remove('skills', { _id: id })
-        if (skill) NotificationEngine.notify('info', 'Skill Deleted', `"${skill.name}" was removed.`, 'Skills')
-        loadData()
-      } catch (err) { console.error(err) }
+    const skillName = name || skills.find(s => s._id === id)?.name || 'Unknown'
+    setShowDeleteConfirm({ show: true, id, name: skillName })
+  }
+
+  useEffect(() => {
+    if (!showDeleteConfirm.show && !showBulkDeleteModal) return
+    const handleKeyDown = (e: KeyboardEvent) => {
+      if (e.key === 'Escape') {
+        setShowDeleteConfirm({ show: false, id: '', name: '' })
+        setShowBulkDeleteModal(false)
+      } else if (e.key === 'Enter') {
+        if (showBulkDeleteModal) confirmBulkDelete()
+        else confirmDelete()
+      }
     }
+    window.addEventListener('keydown', handleKeyDown)
+    return () => window.removeEventListener('keydown', handleKeyDown)
+  })
+
+  const confirmDelete = async () => {
+    const { id, name } = showDeleteConfirm
+    try {
+      // @ts-ignore
+      await window.api.db.remove('skills', { _id: id })
+      NotificationEngine.notify('info', 'Skill Deleted', `"${name}" was removed.`, 'Skills')
+      
+      setDeletedTitle(name)
+      setShowDeleteConfirm({ show: false, id: '', name: '' })
+      setShowDeleteSuccess(true)
+      setTimeout(() => setShowDeleteSuccess(false), 3000)
+      loadData()
+    } catch (err) { console.error(err) }
   }
 
   const handleAttachBgImage = async () => {
@@ -532,7 +590,7 @@ export default function SkillsTracker() {
             </button>
             {isMenuOpen && (
               <>
-                <div className="fixed inset-0 z-40" onClick={() => setIsMenuOpen(false)}></div>
+                <div className="fixed inset-0 z-[9999]" onClick={() => setIsMenuOpen(false)}></div>
                 <div className="absolute right-0 top-full mt-2 w-48 bg-card border border-border rounded-xl shadow-lg z-50 overflow-hidden animate-in slide-in-from-top-2">
                   <button onClick={handleImport} className="w-full text-left px-4 py-3 hover:bg-accent flex items-center gap-2 text-sm font-medium transition-colors">
                     <Upload size={16} /> Import Skills
@@ -674,7 +732,19 @@ export default function SkillsTracker() {
 
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
           {filteredSkills.map(record => (
-            <div key={record._id} id={`skill-${record._id}`} className="bg-card/70 backdrop-blur-md border border-border p-6 rounded-2xl shadow-sm relative group hover:border-purple-500/50 transition-all duration-1000 flex flex-col overflow-hidden">
+            <div 
+              key={record._id} 
+              id={`skill-${record._id}`} 
+              onClick={() => {
+                if (isSelectionMode) {
+                  const s = new Set(selectedIds)
+                  if (s.has(record._id!)) s.delete(record._id!)
+                  else s.add(record._id!)
+                  setSelectedIds(s)
+                }
+              }}
+              className={`bg-card/70 backdrop-blur-md border border-border p-6 rounded-2xl shadow-sm relative group hover:border-purple-500/50 transition-all duration-1000 flex flex-col overflow-hidden ${isSelectionMode ? 'cursor-pointer' : ''}`}
+            >
               {record.backgroundImage && (
                 <div 
                   className="absolute inset-0 bg-cover bg-center pointer-events-none transition-all duration-300 z-0 group-hover:scale-105 group-hover:brightness-110"
@@ -711,9 +781,9 @@ export default function SkillsTracker() {
                   </div>
 
                   <div className="flex items-center gap-1 opacity-0 group-hover:opacity-100 transition-opacity bg-background/80 backdrop-blur rounded-md p-1 border border-border shadow-sm">
-                    <button onClick={() => toggleFavorite(record._id!, !!record.isFavorite)} className={`p-1.5 rounded-md hover:bg-yellow-500/20 hover:text-yellow-500 transition-colors ${record.isFavorite ? 'text-yellow-500 bg-yellow-500/10' : 'text-foreground'}`} title={record.isFavorite ? "Unfavorite" : "Favorite"}><Star size={14} className={record.isFavorite ? "fill-yellow-500" : ""}/></button>
-                    <button onClick={() => toggleArchive(record._id!, !!record.isArchived)} className={`p-1.5 rounded-md hover:bg-gray-500/20 hover:text-gray-500 transition-colors ${record.isArchived ? 'text-gray-500 bg-gray-500/10' : 'text-foreground'}`} title={record.isArchived ? "Unarchive" : "Archive"}><ArchiveIcon size={14}/></button>
-                    <button onClick={() => openEdit(record)} className="p-1.5 rounded-md hover:bg-accent text-foreground" title="Edit"><Edit2 size={14} /></button>
+                    <button onClick={(e) => { e.stopPropagation(); toggleFavorite(record._id!, !!record.isFavorite) }} className={`p-1.5 rounded-md hover:bg-yellow-500/20 hover:text-yellow-500 transition-colors ${record.isFavorite ? 'text-yellow-500 bg-yellow-500/10' : 'text-foreground'}`} title={record.isFavorite ? "Unfavorite" : "Favorite"}><Star size={14} className={record.isFavorite ? "fill-yellow-500" : ""}/></button>
+                    <button onClick={(e) => { e.stopPropagation(); toggleArchive(record._id!, !!record.isArchived) }} className={`p-1.5 rounded-md hover:bg-gray-500/20 hover:text-gray-500 transition-colors ${record.isArchived ? 'text-gray-500 bg-gray-500/10' : 'text-foreground'}`} title={record.isArchived ? "Unarchive" : "Archive"}><ArchiveIcon size={14}/></button>
+                    <button onClick={(e) => { e.stopPropagation(); openEdit(record) }} className="p-1.5 rounded-md hover:bg-accent text-foreground" title="Edit"><Edit2 size={14} /></button>
                     <button onClick={(e) => handleDelete(record._id!, e)} className="p-1.5 text-destructive rounded-md hover:bg-destructive/10" title="Delete"><Trash2 size={14} /></button>
                   </div>
                 </div>
@@ -766,8 +836,8 @@ export default function SkillsTracker() {
         </div>
       </div>
 
-      {importConflicts.length > 0 && currentConflictIndex < importConflicts.length && (
-        <div className="fixed inset-0 bg-background/80 backdrop-blur-sm z-50 flex items-center justify-center p-4">
+      {importConflicts.length > 0 && currentConflictIndex < importConflicts.length && createPortal(
+        <div className="fixed inset-0 bg-background/80 backdrop-blur-sm z-[9999] flex items-center justify-center p-4">
           <div className="bg-card border border-border w-full max-w-lg rounded-2xl shadow-2xl overflow-hidden animate-in zoom-in-95 duration-200">
             <div className="p-6 border-b border-border bg-amber-500/10">
               <h2 className="text-xl font-bold flex items-center gap-2 text-amber-500">
@@ -803,7 +873,7 @@ export default function SkillsTracker() {
             </div>
           </div>
         </div>
-      )}
+      , document.body)}
       
       {celebrationLevel !== null && (
         <div className="absolute inset-0 overflow-hidden pointer-events-none z-50 animate-in fade-in duration-300">
@@ -856,6 +926,164 @@ export default function SkillsTracker() {
           </div>
         </div>
       )}
+      {showDeleteConfirm.show && createPortal(
+        <div className="fixed inset-0 z-[9999] flex items-center justify-center p-4 bg-background/60 backdrop-blur-md animate-in fade-in duration-300">
+          <div className="bg-card text-card-foreground p-0 rounded-2xl shadow-[0_0_50px_-12px_rgba(168,85,247,0.25)] border border-purple-500/20 w-full max-w-md flex flex-col overflow-hidden scale-in-center animate-in zoom-in-95 duration-300">
+            {/* Header Section */}
+            <div className="bg-purple-500/10 p-6 flex flex-col items-center justify-center text-center border-b border-purple-500/10 relative overflow-hidden">
+              <div className="absolute inset-0 bg-gradient-to-b from-purple-500/5 to-transparent"></div>
+              <div className="w-16 h-16 bg-background rounded-full flex items-center justify-center shadow-inner mb-4 relative z-10 border border-purple-500/20">
+                <Trash2 size={32} className="text-purple-500 drop-shadow-md animate-pulse" />
+              </div>
+              <h3 className="text-xl font-bold text-foreground relative z-10">Delete Skill?</h3>
+            </div>
+            
+            {/* Body Section */}
+            <div className="p-6">
+              <p className="text-center text-muted-foreground mb-4">
+                You are about to permanently delete the skill <br/>
+                <span className="font-bold text-foreground text-lg block mt-1">"{showDeleteConfirm.name}"</span>
+              </p>
+              
+              <div className="bg-accent/50 p-3 rounded-lg border border-border flex items-start gap-3">
+                <AlertTriangle size={18} className="text-amber-500 shrink-0 mt-0.5" />
+                <p className="text-xs text-muted-foreground text-left">
+                  This action cannot be undone. Any progress or mastery tracked will be lost.
+                </p>
+              </div>
+
+              {/* Action Buttons */}
+              <div className="flex justify-end gap-3 mt-6">
+                <button 
+                  onClick={() => setShowDeleteConfirm({ show: false, id: '', name: '' })}
+                  className="px-5 py-2.5 rounded-xl text-sm font-semibold text-foreground bg-accent hover:bg-accent/80 border border-transparent hover:border-border transition-all active:scale-95"
+                >
+                  Cancel
+                </button>
+                <button 
+                  onClick={confirmDelete}
+                  className="px-5 py-2.5 rounded-xl text-sm font-semibold bg-gradient-to-r from-purple-600 to-purple-500 text-white shadow-lg shadow-purple-500/30 hover:shadow-purple-500/50 hover:from-purple-500 hover:to-purple-600 transition-all active:scale-95 flex items-center gap-2"
+                >
+                  <Trash2 size={16} />
+                  Delete Skill
+                </button>
+              </div>
+            </div>
+          </div>
+        </div>
+      , document.body)}
+
+      {showBulkDeleteModal && !showDeleteSuccess && createPortal(
+        <div className="fixed inset-0 z-[9999] flex items-center justify-center p-4 bg-background/60 backdrop-blur-md animate-in fade-in duration-300">
+          <div className="bg-card text-card-foreground p-0 rounded-2xl shadow-[0_0_50px_-12px_rgba(168,85,247,0.25)] border border-purple-500/20 w-full max-w-md flex flex-col overflow-hidden scale-in-center animate-in zoom-in-95 duration-300">
+            <div className="bg-purple-500/10 p-6 flex flex-col items-center justify-center text-center border-b border-purple-500/10 relative overflow-hidden">
+              <div className="absolute inset-0 bg-gradient-to-b from-purple-500/5 to-transparent"></div>
+              <div className="w-16 h-16 bg-background rounded-full flex items-center justify-center shadow-inner mb-4 relative z-10 border border-purple-500/20">
+                <Trash2 size={32} className="text-purple-500 drop-shadow-md animate-pulse" />
+              </div>
+              <h3 className="text-xl font-bold text-foreground relative z-10">Delete {selectedIds.size} Skills?</h3>
+            </div>
+            
+            <div className="p-6">
+              <p className="text-center text-muted-foreground mb-4">
+                You are about to permanently delete {selectedIds.size} skills.
+              </p>
+              
+              <div className="bg-accent/50 p-3 rounded-lg border border-border flex items-start gap-3">
+                <AlertTriangle size={18} className="text-amber-500 shrink-0 mt-0.5" />
+                <p className="text-xs text-muted-foreground text-left">
+                  This action cannot be undone. Any progress or mastery tracked will be lost.
+                </p>
+              </div>
+
+              <div className="flex justify-end gap-3 mt-6">
+                <button 
+                  onClick={() => setShowBulkDeleteModal(false)}
+                  className="px-5 py-2.5 rounded-xl text-sm font-semibold text-foreground bg-accent hover:bg-accent/80 border border-transparent hover:border-border transition-all active:scale-95"
+                >
+                  Cancel
+                </button>
+                <button 
+                  onClick={confirmBulkDelete}
+                  className="px-5 py-2.5 rounded-xl text-sm font-semibold bg-gradient-to-r from-purple-600 to-purple-500 text-white shadow-lg shadow-purple-500/30 hover:shadow-purple-500/50 hover:from-purple-500 hover:to-purple-600 transition-all active:scale-95 flex items-center gap-2"
+                >
+                  <Trash2 size={16} />
+                  Delete All
+                </button>
+              </div>
+            </div>
+          </div>
+        </div>
+      , document.body)}
+
+      {showDeleteSuccess && createPortal(
+        <div className="fixed inset-0 z-[9999] pointer-events-none flex items-center justify-center bg-[radial-gradient(ellipse_at_center,_var(--tw-gradient-stops))] from-blue-900/30 via-background/90 to-background/95 backdrop-blur-md animate-in fade-in duration-300">
+          <style>{`
+            @keyframes dissolveAtom {
+              0% { transform: scale(0) rotate(0deg); opacity: 0; }
+              20% { transform: scale(1.2) rotate(45deg); opacity: 1; filter: brightness(1); }
+              40% { transform: scale(1) rotate(90deg); opacity: 1; filter: brightness(1.5); }
+              50% { transform: scale(1.1) rotate(135deg); opacity: 1; filter: brightness(2); }
+              100% { transform: scale(3) rotate(270deg); opacity: 0; filter: blur(20px); }
+            }
+            @keyframes flyParticle {
+              0% { transform: translate(0, 0) scale(1) rotate(0); opacity: 0; }
+              45% { transform: translate(0, 0) scale(1) rotate(0); opacity: 0; }
+              50% { opacity: 1; filter: blur(0px); }
+              100% { transform: translate(var(--tx), var(--ty)) scale(0) rotate(var(--rot)); opacity: 0; filter: blur(5px); }
+            }
+            @keyframes floatingEnergy {
+              0% { transform: scale(0); opacity: 0; }
+              50% { opacity: 0.8; scale: 1.5; }
+              100% { transform: scale(0); opacity: 0; }
+            }
+          `}</style>
+          <div className="relative flex flex-col items-center justify-center gap-8">
+            <div className="relative w-64 h-64 flex items-center justify-center">
+              {/* Main Atom/Brain - Dissolves */}
+              <svg viewBox="0 0 100 100" fill="none" className="absolute w-40 h-40 drop-shadow-2xl" style={{ animation: 'dissolveAtom 1.5s cubic-bezier(0.34, 1.56, 0.64, 1) forwards' }}>
+                <circle cx="50" cy="50" r="10" fill="#3b82f6" />
+                <ellipse cx="50" cy="50" rx="40" ry="15" stroke="#1d4ed8" strokeWidth="4" />
+                <ellipse cx="50" cy="50" rx="40" ry="15" stroke="#2563eb" strokeWidth="4" transform="rotate(60 50 50)" />
+                <ellipse cx="50" cy="50" rx="40" ry="15" stroke="#60a5fa" strokeWidth="4" transform="rotate(120 50 50)" />
+              </svg>
+              
+              {/* Flying Particles (energy sparks) */}
+              {[...Array(24)].map((_, i) => {
+                const angle = (i * 15 * Math.PI) / 180;
+                const dist = 100 + Math.random() * 200;
+                const tx = `${Math.cos(angle) * dist}px`;
+                const ty = `${Math.sin(angle) * dist}px`;
+                const rot = `${Math.random() * 720 - 360}deg`;
+                return (
+                  <svg key={`particle-${i}`} width="16" height="16" viewBox="0 0 16 16" className="absolute" style={{
+                    '--tx': tx,
+                    '--ty': ty,
+                    '--rot': rot,
+                    animation: `flyParticle 1.5s ease-out forwards`
+                  } as React.CSSProperties}>
+                    <path d="M8 0 L10 6 L16 8 L10 10 L8 16 L6 10 L0 8 L6 6 Z" fill={i % 3 === 0 ? '#3b82f6' : i % 3 === 1 ? '#60a5fa' : '#93c5fd'} opacity={Math.random() * 0.5 + 0.5} />
+                  </svg>
+                )
+              })}
+
+              {/* Energy pulses */}
+              {[...Array(6)].map((_, i) => (
+                <div key={`energy-${i}`} className="absolute rounded-full bg-blue-400/30 blur-xl border border-blue-200/50" style={{
+                  width: `${Math.random() * 100 + 40}px`,
+                  height: `${Math.random() * 100 + 40}px`,
+                  animation: `floatingEnergy 1s ease-out forwards ${0.4 + Math.random() * 0.4}s`
+                }} />
+              ))}
+            </div>
+            
+            <h2 className="text-4xl font-extrabold text-blue-500 drop-shadow-lg tracking-tight text-center z-50 animate-in slide-in-from-bottom-5 fade-in duration-500 delay-500 fill-mode-both">
+              Skill Erased!
+            </h2>
+          </div>
+        </div>
+      , document.body)}
+
     </div>
   )
 }

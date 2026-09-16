@@ -1,14 +1,24 @@
 import { useState, useEffect, useRef } from 'react'
+import { createPortal } from 'react-dom'
 import { useNavigate } from 'react-router-dom'
 import { Person } from '../types'
-import { Search, Plus, User, Calendar, Heart, MoreVertical, Upload, Download } from 'lucide-react'
+import { Search, Plus, User, Calendar, Heart, MoreVertical, Upload, Download, Globe } from 'lucide-react'
 import { normalizeUrl } from '../lib/utils'
 import { NotificationEngine } from '../lib/NotificationEngine'
+import ConnectKisekiModal from '../components/relationships/ConnectKisekiModal'
+import useOnlineWarning from '../components/relationships/OnlineWarningModal'
+import { useKisekiHiddenFeatures } from '../hooks/useKisekiHiddenFeatures'
+import { useOnboarding } from '../hooks/useOnboarding'
+import { SectionWelcome } from '../components/onboarding/SectionWelcome'
+import { ONBOARDING_CONFIGS } from '../lib/onboardingConfig'
 
 export default function Relationships() {
+  const showKiseki = useKisekiHiddenFeatures()
   const navigate = useNavigate()
   const [people, setPeople] = useState<Person[]>([])
   const [loading, setLoading] = useState(true)
+  const { showWelcome, completeWelcome } = useOnboarding('relationships')
+  
   const [isDragging, setIsDragging] = useState(false)
   const [dragStartY, setDragStartY] = useState(0)
   const [scrollTop, setScrollTop] = useState(0)
@@ -19,9 +29,11 @@ export default function Relationships() {
   const [sortBy, setSortBy] = useState('Updated')
   
   const [showAddModal, setShowAddModal] = useState(false)
+  const [showConnectModal, setShowConnectModal] = useState(false)
   const [showSuccessOverlay, setShowSuccessOverlay] = useState(false)
   const [showGlobalMenu, setShowGlobalMenu] = useState(false)
   const [form, setForm] = useState<Partial<Person>>({})
+  const { checkAndShow, WarningModal } = useOnlineWarning()
 
   const [importConflicts, setImportConflicts] = useState<{imported: Person, existing: Person}[]>([])
   const [currentConflictIndex, setCurrentConflictIndex] = useState(0)
@@ -66,6 +78,9 @@ export default function Relationships() {
           data.push(selfPerson)
         }
       }
+
+      // Filter out 'Myself' relationships that don't belong to the current profile
+      data = data.filter((p: any) => p.relationshipType !== 'Myself' || p._id === selfId)
 
       setPeople(data)
     } catch (err) {
@@ -384,6 +399,8 @@ export default function Relationships() {
   }
 
   return (
+    <>
+      {showWelcome && <SectionWelcome config={ONBOARDING_CONFIGS.relationships} onComplete={completeWelcome} />}
     <div className="flex flex-col h-full bg-background animate-in fade-in duration-500 relative overflow-hidden">
       <style>{`
         @keyframes float-heart {
@@ -492,6 +509,12 @@ export default function Relationships() {
             <Plus size={20} /> Add Person
           </button>
           
+          {showKiseki && (
+            <button onClick={() => { if (!checkAndShow()) setShowConnectModal(true); }} className="px-4 py-2 bg-secondary text-secondary-foreground rounded-lg font-medium flex items-center gap-2">
+              <Globe size={20} /> Connect Kiseki
+            </button>
+          )}
+
           <button onClick={() => setShowGlobalMenu(true)} className="p-2 bg-card border border-border rounded-lg hover:bg-accent"><MoreVertical size={20}/></button>
         </div>
       </div>
@@ -555,8 +578,8 @@ export default function Relationships() {
         )}
       </div>
 
-      {showAddModal && (
-        <div className="fixed inset-0 z-50 bg-background/80 backdrop-blur-sm flex items-center justify-center p-4">
+      {showAddModal && createPortal(
+        <div className="fixed inset-0 z-[9999] bg-background/80 backdrop-blur-sm flex items-center justify-center p-4">
           {showSuccessOverlay ? (
             <div className="fixed inset-0 z-[100] flex items-center justify-center bg-[radial-gradient(ellipse_at_center,_var(--tw-gradient-stops))] from-rose-500/30 via-background/80 to-background/95 backdrop-blur-sm animate-in fade-in duration-300">
               <style>{`
@@ -726,12 +749,13 @@ export default function Relationships() {
             </div>
           </div>
           )}
-        </div>
+        </div>,
+        document.body
       )}
 
       {/* GLOBAL MENU MODAL */}
-      {showGlobalMenu && (
-        <div className="fixed inset-0 bg-background/80 backdrop-blur-sm z-50 flex items-center justify-center p-4">
+      {showGlobalMenu && createPortal(
+        <div className="fixed inset-0 bg-background/80 backdrop-blur-sm z-[9999] flex items-center justify-center p-4">
           <div className="bg-card border border-border w-full max-w-sm rounded-2xl shadow-2xl p-6 animate-in zoom-in-95 duration-200">
             <h2 className="text-xl font-bold mb-4 text-center">Relationships Menu</h2>
             <div className="space-y-3">
@@ -747,11 +771,12 @@ export default function Relationships() {
             </div>
             <button onClick={() => setShowGlobalMenu(false)} className="w-full mt-4 px-4 py-2 text-muted-foreground hover:text-foreground transition-colors">Cancel</button>
           </div>
-        </div>
+        </div>,
+        document.body
       )}
       {/* CONFLICT RESOLUTION MODAL */}
-      {importConflicts.length > 0 && currentConflictIndex < importConflicts.length && (
-        <div className="fixed inset-0 bg-background/80 backdrop-blur-sm z-50 flex items-center justify-center p-4">
+      {importConflicts.length > 0 && currentConflictIndex < importConflicts.length && createPortal(
+        <div className="fixed inset-0 bg-background/80 backdrop-blur-sm z-[9999] flex items-center justify-center p-4">
           <div className="bg-card border border-border w-full max-w-lg rounded-2xl shadow-2xl overflow-hidden animate-in zoom-in-95 duration-200">
             <div className="p-6 border-b border-border bg-amber-500/10">
               <h2 className="text-xl font-bold flex items-center gap-2 text-amber-500">
@@ -789,9 +814,50 @@ export default function Relationships() {
               )}
             </div>
           </div>
-        </div>
+        </div>,
+        document.body
       )}
+      {showConnectModal && (
+        <ConnectKisekiModal 
+          onClose={() => setShowConnectModal(false)}
+          onConnect={async (kisekiId, name) => {
+            setShowConnectModal(false);
+            
+            // 1. Check if we already have a relationship with this Kiseki ID
+            const existingWithId = people.find(p => p.kisekiId === kisekiId);
+            if (existingWithId) {
+              NotificationEngine.notify('info', 'Already Connected', `You are already connected to ${existingWithId.name}.`, 'Relationships');
+              return;
+            }
+
+            // 2. Add new relationship with the ID
+            const newPerson: Person = {
+              _id: `rel_${Date.now()}`,
+              name: name,
+              relationshipType: 'Friend',
+              kisekiId: kisekiId,
+              tags: [],
+              notes: [],
+              relationshipScore: 50,
+              lastInteraction: Date.now(),
+              createdAt: Date.now(),
+              updatedAt: Date.now()
+            };
+
+            try {
+              // @ts-ignore
+              await window.api.db.insert('relationships', newPerson);
+              NotificationEngine.notify('success', 'Connected on Kiseki', `You are now connected to ${name}.`, 'Relationships');
+              fetchPeople();
+            } catch (err) {
+              console.error(err);
+            }
+          }}
+        />
+      )}
+      {WarningModal}
 
     </div>
+    </>
   )
 }

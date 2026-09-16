@@ -115,6 +115,18 @@ export function setupVaultHandlers() {
 
         const mode = options.mode || 'replace'
 
+        // Pre-fetch userProfile data
+        let importedUserProfile: any = null
+        if (zip.files['data/userProfile.db']) {
+          const upBuffer = await zip.files['data/userProfile.db'].async('nodebuffer')
+          const upLines = upBuffer.toString('utf8').split('\n').filter(l => l.trim())
+          if (upLines.length > 0) {
+            try {
+              importedUserProfile = JSON.parse(upLines[upLines.length - 1])
+            } catch (e) {}
+          }
+        }
+
         for (const [filename, fileData] of Object.entries(zip.files)) {
           if (!fileData.dir) {
             const buffer = await fileData.async('nodebuffer')
@@ -132,8 +144,26 @@ export function setupVaultHandlers() {
               if (filename.startsWith('data/attachments/') || filename.startsWith('clock/')) {
                 fs.writeFileSync(destPath, buffer)
               } else {
+                const patchLineObj = (obj: any) => {
+                  if (filename === 'data/relationships.db' && importedUserProfile && obj.relationshipType === 'Myself') {
+                    obj.name = importedUserProfile.fullName || 'Myself'
+                    obj.profilePicture = importedUserProfile.photoPath || ''
+                    obj.gender = importedUserProfile.gender || ''
+                    obj.birthday = importedUserProfile.dateOfBirth || ''
+                    obj.phone = importedUserProfile.phone || ''
+                    obj.email = importedUserProfile.email || ''
+                    obj.address = importedUserProfile.address || ''
+                  }
+                  return obj
+                }
+
                 const patchLine = (line: string) => {
-                  return line
+                  try {
+                    const obj = JSON.parse(line)
+                    return JSON.stringify(patchLineObj(obj))
+                  } catch (e) {
+                    return line
+                  }
                 }
 
                 if (mode === 'replace' || !fs.existsSync(destPath)) {
@@ -147,7 +177,30 @@ export function setupVaultHandlers() {
                   
                   const mergedMap = new Map()
                   
+                  const myselfNotesMap = new Map()
+                  const myselfTags = new Set<string>()
+                  const myselfAttachments = new Set<string>()
+                  const myselfPhotos = new Set<string>()
+                  const myselfVideo = new Set<string>()
+                  const myselfAudio = new Set<string>()
+
                   const processObj = (obj: any) => {
+                    if (filename === 'data/relationships.db' && obj.relationshipType === 'Myself') {
+                      if (Array.isArray(obj.notes)) {
+                        obj.notes.forEach((n: any) => {
+                          if (n._id) {
+                            const ex = myselfNotesMap.get(n._id)
+                            if (!ex || (n.createdAt && ex.createdAt && n.createdAt > ex.createdAt)) myselfNotesMap.set(n._id, n)
+                          }
+                        })
+                      }
+                      if (Array.isArray(obj.tags)) obj.tags.forEach((t: string) => myselfTags.add(t))
+                      if (Array.isArray(obj.attachments)) obj.attachments.forEach((a: string) => myselfAttachments.add(a))
+                      if (Array.isArray(obj.photos)) obj.photos.forEach((p: string) => myselfPhotos.add(p))
+                      if (Array.isArray(obj.video)) obj.video.forEach((v: string) => myselfVideo.add(v))
+                      if (Array.isArray(obj.audio)) obj.audio.forEach((a: string) => myselfAudio.add(a))
+                    }
+
                     if (obj._id) {
                       const existing = mergedMap.get(obj._id)
                       if (!existing || (obj.updatedAt && (!existing.updatedAt || obj.updatedAt > existing.updatedAt))) {
@@ -159,13 +212,32 @@ export function setupVaultHandlers() {
                   }
                   
                   existingLines.forEach(line => {
-                    try { processObj(JSON.parse(line)) } catch(e) {}
+                    try { 
+                      const obj = JSON.parse(line)
+                      processObj(patchLineObj(obj)) 
+                    } catch(e) {}
                   })
                   
                   newLines.forEach(line => {
-                    try { processObj(JSON.parse(patchLine(line))) } catch(e) {}
+                    try { 
+                      const obj = JSON.parse(line)
+                      processObj(patchLineObj(obj)) 
+                    } catch(e) {}
                   })
                   
+                  if (filename === 'data/relationships.db') {
+                    for (const obj of mergedMap.values()) {
+                      if (obj.relationshipType === 'Myself') {
+                        obj.notes = Array.from(myselfNotesMap.values())
+                        obj.tags = Array.from(myselfTags)
+                        obj.attachments = Array.from(myselfAttachments)
+                        obj.photos = Array.from(myselfPhotos)
+                        obj.video = Array.from(myselfVideo)
+                        obj.audio = Array.from(myselfAudio)
+                      }
+                    }
+                  }
+
                   const outLines = Array.from(mergedMap.values()).map(obj => JSON.stringify(obj)).join('\n')
                   fs.writeFileSync(destPath, outLines + '\n')
                 }

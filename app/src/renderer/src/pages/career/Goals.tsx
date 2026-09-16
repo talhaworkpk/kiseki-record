@@ -1,5 +1,7 @@
 import { useState, useEffect, useRef } from 'react'
-import { Target, Plus, Trash2, Edit2, X, ChevronDown, ChevronUp, Search, ArrowDownUp, CheckSquare, Square, Star, Archive as ArchiveIcon, ArchiveRestore, ListTodo, CheckCircle2, LayoutGrid, List, Download, Upload, MoreVertical } from 'lucide-react'
+import { createPortal } from 'react-dom'
+import { useLocation } from 'react-router-dom'
+import { Target, Plus, Trash2, Edit2, X, ChevronDown, ChevronUp, Search, ArrowDownUp, CheckSquare, Square, Star, Archive as ArchiveIcon, ArchiveRestore, ListTodo, CheckCircle2, LayoutGrid, List, Download, Upload, MoreVertical, AlertTriangle } from 'lucide-react'
 import { Goal, SubGoal, ProjectRecord } from '../../types'
 import GoalsStatistics from '../../components/career/GoalsStatistics'
 import { NotificationEngine } from '../../lib/NotificationEngine'
@@ -7,11 +9,16 @@ import { ShootingStars } from '../../components/ShootingStars'
 import { Tooltip, TooltipContent, TooltipTrigger } from '../../components/ui/tooltip'
 
 export default function Goals() {
+  const location = useLocation()
+  const [highlightedGoalId, setHighlightedGoalId] = useState<string | null>(null)
   const [goals, setGoals] = useState<Goal[]>([])
   const [projects, setProjects] = useState<ProjectRecord[]>([])
   const [selectedProjectId, setSelectedProjectId] = useState<string | null>('all_goals')
   const [isAdding, setIsAdding] = useState(false)
   const [editingId, setEditingId] = useState<string | null>(null)
+  const [deleteConfirmId, setDeleteConfirmId] = useState<string | null>(null)
+  const [showBulkDeleteModal, setShowBulkDeleteModal] = useState(false)
+  const [showDeleteSuccess, setShowDeleteSuccess] = useState(false)
   const [showCelebration, setShowCelebration] = useState(false)
   const [expandedNotesId, setExpandedNotesId] = useState<string | null>(null)
   const [expandedSubGoalsId, setExpandedSubGoalsId] = useState<string | null>(null)
@@ -135,7 +142,37 @@ export default function Goals() {
     } catch (err) { console.error(err) }
   }
 
+  useEffect(() => {
+    const handleKeyDown = (e: KeyboardEvent) => {
+      if (e.key === 'Escape') {
+        if (isAdding) {
+          setIsAdding(false)
+          setForm({})
+        }
+        if (editingId) {
+          setEditingId(null)
+          setForm({})
+        }
+      }
+    }
+    window.addEventListener('keydown', handleKeyDown)
+    return () => window.removeEventListener('keydown', handleKeyDown)
+  }, [isAdding, editingId])
+
   useEffect(() => { loadData() }, [])
+
+  useEffect(() => {
+    const highlightId = new URLSearchParams(location.search).get('highlight')
+    if (highlightId && goals.length > 0) {
+      setHighlightedGoalId(highlightId);
+      setTimeout(() => setHighlightedGoalId(null), 3000);
+      
+      const el = document.getElementById(`goal-${highlightId}`);
+      if (el) {
+        el.scrollIntoView({ behavior: 'smooth', block: 'center' });
+      }
+    }
+  }, [goals.length, location.search])
 
   const handleExportSelected = () => {
     const dataToExport = goals.filter(g => selectedIds.has(g._id!))
@@ -294,23 +331,36 @@ export default function Goals() {
     return 0
   })
 
-  const bulkAction = async (action: 'delete' | 'archive' | 'unarchive' | 'favorite') => {
-    if (action === 'delete' && !confirm(`Delete ${selectedIds.size} goals?`)) return
+  const confirmBulkDelete = async () => {
     try {
       for (const id of selectedIds) {
-        if (action === 'delete') {
-          // @ts-ignore
-          await window.api.db.remove('goals', { _id: id }, {})
-        } else {
-          const updateData = action === 'favorite' ? { isFavorite: true } 
-                           : action === 'archive' ? { isArchived: true }
-                           : { isArchived: false }
-          // @ts-ignore
-          await window.api.db.update('goals', { _id: id }, { $set: { ...updateData, updatedAt: Date.now() } }, {})
-        }
+        // @ts-ignore
+        await window.api.db.remove('goals', { _id: id }, {})
       }
       setSelectedIds(new Set())
-      if (action === 'delete') setIsSelectionMode(false)
+      setIsSelectionMode(false)
+      loadData()
+      
+      setShowBulkDeleteModal(false)
+      setShowDeleteSuccess(true)
+      setTimeout(() => setShowDeleteSuccess(false), 2500)
+    } catch (err) { console.error(err) }
+  }
+
+  const bulkAction = async (action: 'delete' | 'archive' | 'unarchive' | 'favorite') => {
+    if (action === 'delete') {
+      setShowBulkDeleteModal(true)
+      return
+    }
+    try {
+      for (const id of selectedIds) {
+        const updateData = action === 'favorite' ? { isFavorite: true } 
+                         : action === 'archive' ? { isArchived: true }
+                         : { isArchived: false }
+        // @ts-ignore
+        await window.api.db.update('goals', { _id: id }, { $set: { ...updateData, updatedAt: Date.now() } }, {})
+      }
+      setSelectedIds(new Set())
       loadData()
     } catch (err) { console.error(err) }
   }
@@ -399,16 +449,37 @@ export default function Goals() {
     return () => window.removeEventListener('keydown', down)
   }, [isAdding, form, editingId])
 
-  const handleDelete = async (id: string) => {
-    if (confirm('Delete this goal?')) {
-      try {
-        const goal = goals.find(g => g._id === id)
-        // @ts-ignore
-        await window.api.db.remove('goals', { _id: id }, {})
-        if (goal) NotificationEngine.notify('info', 'Goal Deleted', `"${goal.title}" was removed.`, 'Goals')
-        loadData()
-      } catch (err) { console.error(err) }
+  const handleDeleteClick = (id: string) => {
+    setDeleteConfirmId(id)
+  }
+
+  useEffect(() => {
+    if (!deleteConfirmId && !showBulkDeleteModal) return
+    const handleKeyDown = (e: KeyboardEvent) => {
+      if (e.key === 'Escape') {
+        setDeleteConfirmId(null)
+        setShowBulkDeleteModal(false)
+      } else if (e.key === 'Enter') {
+        if (showBulkDeleteModal) confirmBulkDelete()
+        else confirmDelete()
+      }
     }
+    window.addEventListener('keydown', handleKeyDown)
+    return () => window.removeEventListener('keydown', handleKeyDown)
+  })
+
+  const confirmDelete = async () => {
+    if (!deleteConfirmId) return
+    try {
+      const goal = goals.find(g => g._id === deleteConfirmId)
+      // @ts-ignore
+      await window.api.db.remove('goals', { _id: deleteConfirmId }, {})
+      setDeleteConfirmId(null)
+      setShowDeleteSuccess(true)
+      if (goal) NotificationEngine.notify('info', 'Goal Deleted', `"${goal.title}" was removed.`, 'Goals')
+      loadData()
+      setTimeout(() => setShowDeleteSuccess(false), 3000)
+    } catch (err) { console.error(err) }
   }
 
   const openEdit = (record: Goal) => {
@@ -793,13 +864,26 @@ export default function Goals() {
                 --timing: cubic-bezier(0.45, 0.05, 0.55, 0.95);
               }
               
+              .stairs-wrapper {
+                position: absolute;
+                inset: 0;
+                pointer-events: none;
+                z-index: 5;
+              }
+              
+              @media (max-height: 850px), (max-width: 1366px) {
+                .stairs-wrapper {
+                  transform: scale(0.6);
+                  transform-origin: bottom left;
+                }
+              }
+              
               .stairs-container {
                 position: absolute;
                 bottom: -200px;
                 left: -100px;
                 width: 1200px;
                 height: 600px;
-                z-index: 5;
                 animation: moveStairs var(--speed) var(--timing) infinite;
               }
               
@@ -853,19 +937,21 @@ export default function Goals() {
               }
             `}</style>
             
-            <div className="stairs-container">
-              <svg viewBox="0 0 1000 600" className="w-full h-full">
-                <path d="M0,600 L0,560 L40,560 L40,520 L80,520 L80,480 L120,480 L120,440 L160,440 L160,400 L200,400 L200,360 L240,360 L240,320 L280,320 L280,280 L320,280 L320,240 L360,240 L360,200 L400,200 L400,160 L440,160 L440,120 L480,120 L480,80 L520,80 L520,40 L560,40 L560,0 L1200,0 L1200,600 Z" fill="black" />
-              </svg>
-            </div>
+            <div className="stairs-wrapper">
+              <div className="stairs-container">
+                <svg viewBox="0 0 1000 600" className="w-full h-full">
+                  <path d="M0,600 L0,560 L40,560 L40,520 L80,520 L80,480 L120,480 L120,440 L160,440 L160,400 L200,400 L200,360 L240,360 L240,320 L280,320 L280,280 L320,280 L320,240 L360,240 L360,200 L400,200 L400,160 L440,160 L440,120 L480,120 L480,80 L520,80 L520,40 L560,40 L560,0 L1200,0 L1200,600 Z" fill="black" />
+                </svg>
+              </div>
 
-            <div className="man-container">
-              <svg className="body-layer" viewBox="0 0 100 150">
-                <line className="limb arm-r" x1="50" y1="45" x2="30" y2="85" stroke="black" strokeWidth="8" />
-                <rect className="limb" x="43" y="40" width="14" height="45" rx="7" />
-                <circle className="limb" cx="50" cy="22" r="16" />
-                <line className="limb arm-l" x1="50" y1="45" x2="70" y2="85" stroke="black" strokeWidth="8" />
-              </svg>
+              <div className="man-container">
+                <svg className="body-layer" viewBox="0 0 100 150">
+                  <line className="limb arm-r" x1="50" y1="45" x2="30" y2="85" stroke="black" strokeWidth="8" />
+                  <rect className="limb" x="43" y="40" width="14" height="45" rx="7" />
+                  <circle className="limb" cx="50" cy="22" r="16" />
+                  <line className="limb arm-l" x1="50" y1="45" x2="70" y2="85" stroke="black" strokeWidth="8" />
+                </svg>
+              </div>
             </div>
           </div>
         </div>
@@ -1273,8 +1359,8 @@ export default function Goals() {
       )}
 
       {/* Top Toolbar */}
-      <div className="h-16 px-6 border-b border-border bg-card/80 backdrop-blur z-20 flex flex-wrap gap-2 items-center justify-between shrink-0 sticky top-0">
-        <div className="flex items-center gap-4">
+      <div className="min-h-16 py-3 px-6 border-b border-border bg-card/80 backdrop-blur z-20 flex flex-wrap gap-4 items-center justify-between shrink-0 sticky top-0">
+        <div className="flex items-center gap-4 flex-wrap">
           <h1 className="text-xl font-bold flex items-center gap-2">
             <Target className="text-red-500" size={20} /> Goals
           </h1>
@@ -1303,7 +1389,7 @@ export default function Goals() {
           </div>
         </div>
 
-        <div className="flex items-center gap-3">
+        <div className="flex items-center gap-3 flex-wrap">
           <div className="flex border border-border rounded-xl bg-background overflow-hidden">
             <div className="flex items-center px-2 border-r border-border bg-accent/30"><ArrowDownUp size={14} className="text-muted-foreground"/></div>
             <select value={sortBy} onChange={e=>setSortBy(e.target.value)} className="bg-transparent text-sm font-medium px-2 py-1 outline-none cursor-pointer">
@@ -1354,7 +1440,7 @@ export default function Goals() {
             </button>
             {isMenuOpen && (
               <>
-                <div className="fixed inset-0 z-40" onClick={() => setIsMenuOpen(false)}></div>
+                <div className="fixed inset-0 z-[9999]" onClick={() => setIsMenuOpen(false)}></div>
                 <div className="absolute right-0 top-full mt-2 w-56 bg-card border border-border rounded-xl shadow-lg z-50 p-2 overflow-hidden animate-in slide-in-from-top-2">
                   <div className="space-y-1">
                     <button onClick={handleImport} className="w-full text-left px-3 py-2.5 bg-background hover:bg-accent border border-border rounded-lg flex items-center gap-2.5 text-sm font-bold transition-colors">
@@ -1583,7 +1669,18 @@ export default function Goals() {
             : null;
           
           return (
-            <div key={record._id} className="bg-slate-50/80 dark:bg-slate-900/50 hover:bg-white dark:hover:bg-slate-800/80 backdrop-blur-md border border-border p-6 rounded-2xl shadow-sm hover:shadow-md relative group hover:border-red-500/50 transition-all">
+            <div 
+              key={record._id} 
+              onClick={() => {
+                if (isSelectionMode) {
+                  const s = new Set(selectedIds)
+                  if (s.has(record._id!)) s.delete(record._id!)
+                  else s.add(record._id!)
+                  setSelectedIds(s)
+                }
+              }}
+              className={`bg-slate-50/80 dark:bg-slate-900/50 hover:bg-white dark:hover:bg-slate-800/80 backdrop-blur-md border p-6 rounded-2xl shadow-sm hover:shadow-md relative group hover:border-red-500/50 transition-all ${highlightedGoalId === record._id ? 'border-red-500 ring-2 ring-red-500/50' : 'border-border'} ${isSelectionMode ? 'cursor-pointer' : ''}`}
+            >
               <div className="flex items-start gap-4">
                 {isSelectionMode && (
                   <button 
@@ -1627,13 +1724,13 @@ export default function Goals() {
                 </div>
 
                 <div className="absolute top-4 right-4 flex items-center gap-1.5 opacity-0 group-hover:opacity-100 transition-opacity">
-                  <button onClick={() => toggleFavorite(record._id!, !!record.isFavorite)} className={`p-1.5 bg-background border border-border rounded-md hover:bg-yellow-500/20 hover:text-yellow-500 hover:border-yellow-500/50 transition-colors ${record.isFavorite ? 'text-yellow-500 bg-yellow-500/10 border-yellow-500/30' : 'text-foreground'}`} title={record.isFavorite ? "Unfavorite" : "Favorite"}><Star size={16} className={record.isFavorite ? "fill-yellow-500" : ""}/></button>
-                  <button onClick={() => toggleArchive(record._id!, !!record.isArchived)} className={`p-1.5 bg-background border border-border rounded-md hover:bg-gray-500/20 hover:text-gray-500 hover:border-gray-500/50 transition-colors ${record.isArchived ? 'text-gray-500 bg-gray-500/10 border-gray-500/30' : 'text-foreground'}`} title={record.isArchived ? "Unarchive" : "Archive"}><ArchiveIcon size={16}/></button>
-                  <button onClick={() => openEdit(record)} className="p-1.5 bg-background border border-border rounded-md hover:bg-accent text-foreground" title="Edit"><Edit2 size={16}/></button>
-                  <button onClick={() => handleDelete(record._id!)} className="p-1.5 bg-background border border-border text-destructive rounded-md hover:bg-destructive/10" title="Delete"><Trash2 size={16}/></button>
+                  <button onClick={(e) => { e.stopPropagation(); toggleFavorite(record._id!, !!record.isFavorite) }} className={`p-1.5 bg-background border border-border rounded-md hover:bg-yellow-500/20 hover:text-yellow-500 hover:border-yellow-500/50 transition-colors ${record.isFavorite ? 'text-yellow-500 bg-yellow-500/10 border-yellow-500/30' : 'text-foreground'}`} title={record.isFavorite ? "Unfavorite" : "Favorite"}><Star size={16} className={record.isFavorite ? "fill-yellow-500" : ""}/></button>
+                  <button onClick={(e) => { e.stopPropagation(); toggleArchive(record._id!, !!record.isArchived) }} className={`p-1.5 bg-background border border-border rounded-md hover:bg-gray-500/20 hover:text-gray-500 hover:border-gray-500/50 transition-colors ${record.isArchived ? 'text-gray-500 bg-gray-500/10 border-gray-500/30' : 'text-foreground'}`} title={record.isArchived ? "Unarchive" : "Archive"}><ArchiveIcon size={16}/></button>
+                  <button onClick={(e) => { e.stopPropagation(); openEdit(record) }} className="p-1.5 bg-background border border-border rounded-md hover:bg-accent text-foreground" title="Edit"><Edit2 size={16}/></button>
+                  <button onClick={(e) => { e.stopPropagation(); handleDeleteClick(record._id!) }} className="p-1.5 bg-background border border-border text-destructive rounded-md hover:bg-destructive/10" title="Delete"><Trash2 size={16}/></button>
                   {(record.notes || (record.subGoals && record.subGoals.length > 0)) && record._id && (
                     <button 
-                      onClick={() => setExpandedNotesId(expandedNotesId === record._id ? null : record._id!)}
+                      onClick={(e) => { e.stopPropagation(); setExpandedNotesId(expandedNotesId === record._id ? null : record._id!) }}
                       className="p-1.5 bg-background border border-border rounded-md hover:bg-accent text-foreground"
                     >
                       <ChevronDown size={16} className={`transition-transform ${expandedNotesId === record._id ? 'rotate-180' : ''}`} />
@@ -1725,12 +1822,196 @@ export default function Goals() {
       )}
       </div>
 
+      {deleteConfirmId !== null && createPortal(
+        <div className="fixed inset-0 z-[9999] flex items-center justify-center p-4 bg-background/60 backdrop-blur-md animate-in fade-in duration-300">
+          <div className="bg-card text-card-foreground p-0 rounded-2xl shadow-[0_0_50px_-12px_rgba(239,68,68,0.25)] border border-destructive/20 w-full max-w-md flex flex-col overflow-hidden scale-in-center animate-in zoom-in-95 duration-300">
+            {/* Header Section */}
+            <div className="bg-destructive/10 p-6 flex flex-col items-center justify-center text-center border-b border-destructive/10 relative overflow-hidden">
+              <div className="absolute inset-0 bg-gradient-to-b from-destructive/5 to-transparent"></div>
+              <div className="w-16 h-16 bg-background rounded-full flex items-center justify-center shadow-inner mb-4 relative z-10 border border-destructive/20">
+                <Trash2 size={32} className="text-destructive drop-shadow-md animate-pulse" />
+              </div>
+              <h3 className="text-xl font-bold text-foreground relative z-10">Delete Career Goal?</h3>
+            </div>
+            
+            {/* Body Section */}
+            <div className="p-6">
+              <p className="text-center text-muted-foreground mb-4">
+                You are about to permanently delete this career goal.
+              </p>
+              
+              <div className="bg-accent/50 p-3 rounded-lg border border-border flex items-start gap-3">
+                <AlertTriangle size={18} className="text-amber-500 shrink-0 mt-0.5" />
+                <p className="text-xs text-muted-foreground text-left">
+                  This action cannot be undone. Any sub-goals and progress tracked will be lost.
+                </p>
+              </div>
+
+              {/* Action Buttons */}
+              <div className="flex justify-end gap-3 mt-6">
+                <button 
+                  onClick={() => setDeleteConfirmId(null)}
+                  className="px-5 py-2.5 rounded-xl text-sm font-semibold text-foreground bg-accent hover:bg-accent/80 border border-transparent hover:border-border transition-all active:scale-95"
+                >
+                  Cancel
+                </button>
+                <button 
+                  onClick={confirmDelete}
+                  className="px-5 py-2.5 rounded-xl text-sm font-semibold bg-gradient-to-r from-red-600 to-destructive text-white shadow-lg shadow-destructive/30 hover:shadow-destructive/50 hover:from-red-500 hover:to-red-600 transition-all active:scale-95 flex items-center gap-2"
+                >
+                  <Trash2 size={16} />
+                  Delete Goal
+                </button>
+              </div>
+            </div>
+          </div>
+        </div>
+      , document.body)}
+
+      {showBulkDeleteModal && !showDeleteSuccess && createPortal(
+        <div className="fixed inset-0 z-[9999] flex items-center justify-center p-4 bg-background/60 backdrop-blur-md animate-in fade-in duration-300">
+          <div className="bg-card text-card-foreground p-0 rounded-2xl shadow-[0_0_50px_-12px_rgba(239,68,68,0.25)] border border-destructive/20 w-full max-w-md flex flex-col overflow-hidden scale-in-center animate-in zoom-in-95 duration-300">
+            <div className="bg-destructive/10 p-6 flex flex-col items-center justify-center text-center border-b border-destructive/10 relative overflow-hidden">
+              <div className="absolute inset-0 bg-gradient-to-b from-destructive/5 to-transparent"></div>
+              <div className="w-16 h-16 bg-background rounded-full flex items-center justify-center shadow-inner mb-4 relative z-10 border border-destructive/20">
+                <Trash2 size={32} className="text-destructive drop-shadow-md animate-pulse" />
+              </div>
+              <h3 className="text-xl font-bold text-foreground relative z-10">Delete {selectedIds.size} Goals?</h3>
+            </div>
+            
+            <div className="p-6">
+              <p className="text-center text-muted-foreground mb-4">
+                You are about to permanently delete {selectedIds.size} goals.
+              </p>
+              
+              <div className="bg-accent/50 p-3 rounded-lg border border-border flex items-start gap-3">
+                <AlertTriangle size={18} className="text-amber-500 shrink-0 mt-0.5" />
+                <p className="text-xs text-muted-foreground text-left">
+                  This action cannot be undone. Any sub-goals and progress tracked will be lost.
+                </p>
+              </div>
+
+              <div className="flex justify-end gap-3 mt-6">
+                <button 
+                  onClick={() => setShowBulkDeleteModal(false)}
+                  className="px-5 py-2.5 rounded-xl text-sm font-semibold text-foreground bg-accent hover:bg-accent/80 border border-transparent hover:border-border transition-all active:scale-95"
+                >
+                  Cancel
+                </button>
+                <button 
+                  onClick={confirmBulkDelete}
+                  className="px-5 py-2.5 rounded-xl text-sm font-semibold bg-gradient-to-r from-red-600 to-destructive text-white shadow-lg shadow-destructive/30 hover:shadow-destructive/50 hover:from-red-500 hover:to-red-600 transition-all active:scale-95 flex items-center gap-2"
+                >
+                  <Trash2 size={16} />
+                  Delete All
+                </button>
+              </div>
+            </div>
+          </div>
+        </div>
+      , document.body)}
+
+      {showDeleteSuccess && createPortal(
+        <div className="fixed inset-0 z-[9999] pointer-events-none flex items-center justify-center bg-[radial-gradient(ellipse_at_center,_var(--tw-gradient-stops))] from-destructive/30 via-background/90 to-background/95 backdrop-blur-md animate-in fade-in duration-300">
+          <style>{`
+            @keyframes popTrash {
+              0% { transform: scale(0) translateY(50px) rotate(-15deg); opacity: 0; }
+              40% { transform: scale(1.1) translateY(-10px) rotate(5deg); opacity: 1; }
+              60% { transform: scale(0.95) translateY(5px) rotate(-2deg); }
+              80% { transform: scale(1.05) translateY(-2px) rotate(2deg); }
+              100% { transform: scale(1) translateY(0) rotate(0); opacity: 1; }
+            }
+            @keyframes floatUpFade {
+              0% { transform: translate(0, 0) scale(0); opacity: 0; }
+              20% { opacity: 1; scale: 1; }
+              100% { transform: translate(var(--tx), var(--ty)) scale(0.5); opacity: 0; }
+            }
+            @keyframes openLid {
+              0% { transform: translateY(0) rotate(0); }
+              30% { transform: translateY(-30px) rotate(-20deg); }
+              70% { transform: translateY(-30px) rotate(-20deg); }
+              100% { transform: translateY(0) rotate(0); }
+            }
+            @keyframes suckIn {
+              0% { transform: translateY(-80px) scale(1.5); opacity: 0; }
+              30% { transform: translateY(-60px) scale(1.2); opacity: 1; }
+              70% { transform: translateY(20px) scale(0); opacity: 0; }
+              100% { transform: translateY(20px) scale(0); opacity: 0; }
+            }
+          `}</style>
+          <div className="relative flex flex-col items-center justify-center gap-8" style={{ animation: 'popTrash 1.2s cubic-bezier(0.34, 1.56, 0.64, 1) forwards' }}>
+            {/* 3D Trash Can SVG */}
+            <svg width="240" height="240" viewBox="0 0 240 240" fill="none" xmlns="http://www.w3.org/2000/svg" className="drop-shadow-2xl">
+              {/* Back Shadow */}
+              <rect x="70" y="80" width="100" height="120" rx="10" fill="#7f1d1d" opacity="0.4" transform="translate(10, 15) rotate(-5 120 120)" />
+              <rect x="70" y="80" width="100" height="120" rx="10" fill="#991b1b" opacity="0.6" transform="translate(5, 8) rotate(-2 120 120)" />
+              
+              {/* Trash Can Body (Red) */}
+              <path d="M 70 80 L 170 80 L 155 200 C 155 205, 150 210, 145 210 L 95 210 C 90 210, 85 205, 85 200 Z" fill="#ef4444" />
+              <path d="M 70 80 L 120 80 L 120 210 L 95 210 C 90 210, 85 205, 85 200 Z" fill="#f87171" opacity="0.5" />
+              
+              {/* Vertical Ribs */}
+              <rect x="95" y="95" width="6" height="95" rx="3" fill="#b91c1c" />
+              <rect x="117" y="95" width="6" height="95" rx="3" fill="#b91c1c" />
+              <rect x="139" y="95" width="6" height="95" rx="3" fill="#b91c1c" />
+              
+              {/* Magical Data Sucking In */}
+              <g style={{ animation: 'suckIn 1.5s ease-in-out infinite' }}>
+                <rect x="100" y="60" width="40" height="15" rx="2" fill="#60a5fa" />
+                <rect x="110" y="40" width="20" height="10" rx="2" fill="#34d399" />
+                <rect x="90" y="20" width="60" height="10" rx="2" fill="#fbbf24" />
+              </g>
+
+              {/* Animated Lid */}
+              <g style={{ transformOrigin: '70px 80px', animation: 'openLid 2.5s infinite ease-in-out' }}>
+                <rect x="60" y="70" width="120" height="12" rx="4" fill="#dc2626" />
+                <rect x="100" y="55" width="40" height="15" rx="4" fill="#dc2626" />
+                <rect x="60" y="70" width="60" height="12" rx="4" fill="#f87171" opacity="0.5" />
+              </g>
+            </svg>
+
+            {/* Flying Particles */}
+            {[...Array(15)].map((_, i) => {
+              const angle = (i * 24 * Math.PI) / 180;
+              const dist = 100 + Math.random() * 50;
+              const tx = `${Math.cos(angle) * dist}px`;
+              const ty = `${Math.sin(angle) * dist}px`;
+              return (
+                <svg 
+                  key={`star-${i}`} 
+                  width="24" 
+                  height="24" 
+                  viewBox="0 0 24 24" 
+                  fill="none" 
+                  className={`absolute top-1/2 left-1/2 -ml-3 -mt-10 ${i % 3 === 0 ? 'text-red-300' : i % 3 === 1 ? 'text-rose-400' : 'text-orange-400'}`}
+                  style={{
+                    '--tx': tx,
+                    '--ty': ty,
+                    animation: `floatUpFade 1.5s ease-out forwards ${0.3 + Math.random() * 0.3}s`
+                  } as React.CSSProperties}
+                >
+                  {i % 2 === 0 ? (
+                    <path d="M12 21.35l-1.45-1.32C5.4 15.36 2 12.28 2 8.5 2 5.42 4.42 3 7.5 3c1.74 0 3.41.81 4.5 2.09C13.09 3.81 14.76 3 16.5 3 19.58 3 22 5.42 22 8.5c0 3.78-3.4 6.86-8.55 11.54L12 21.35z" fill="currentColor" />
+                  ) : (
+                    <rect x="8" y="8" width="8" height="8" rx="2" fill="currentColor" />
+                  )}
+                </svg>
+              )
+            })}
+            
+            <h2 className="text-4xl font-extrabold text-destructive drop-shadow-lg tracking-tight text-center z-50">
+              Goal Deleted!
+            </h2>
+          </div>
+        </div>
+      , document.body)}
+
       {showCelebration && (
         <ShootingStars />
       )}
 
-      {importConflicts.length > 0 && currentConflictIndex < importConflicts.length && (
-        <div className="fixed inset-0 bg-background/80 backdrop-blur-sm z-50 flex items-center justify-center p-4">
+      {importConflicts.length > 0 && currentConflictIndex < importConflicts.length && createPortal(
+        <div className="fixed inset-0 bg-background/80 backdrop-blur-sm z-[9999] flex items-center justify-center p-4">
           <div className="bg-card border border-border w-full max-w-lg rounded-2xl shadow-2xl overflow-hidden animate-in zoom-in-95 duration-200">
             <div className="p-6 border-b border-border bg-amber-500/10">
               <h2 className="text-xl font-bold flex items-center gap-2 text-amber-500">
@@ -1766,7 +2047,7 @@ export default function Goals() {
             </div>
           </div>
         </div>
-      )}
+      , document.body)}
 
     </div>
   )

@@ -1,4 +1,5 @@
 import React, { useEffect, useState, useRef, useMemo, useCallback } from 'react'
+import { useNavigate } from 'react-router-dom'
 import ForceGraph2D from 'react-force-graph-2d'
 import { Filter, Calendar, Maximize, Target, Book, Clock, MapPin, Heart, Briefcase, GraduationCap, Folder, Award, Star, Activity, ArrowRight, X } from 'lucide-react'
 import { buildKnowledgeGraph, GraphNode, GraphLink, CATEGORY_COLORS } from './KnowledgeGraphBuilder'
@@ -18,6 +19,7 @@ const ICONS: Record<string, React.FC<any>> = {
 }
 
 export const KnowledgeGraphWidget = () => {
+  const navigate = useNavigate()
   const [rawData, setRawData] = useState<any>(null)
   const [loading, setLoading] = useState(true)
   const [filterMode, setFilterMode] = useState<'Today' | 'Month' | 'Year'>('Today')
@@ -173,6 +175,24 @@ export const KnowledgeGraphWidget = () => {
   const fitGraph = () => {
     if (fgRef.current) fgRef.current.zoomToFit(1000, 50)
     setClickNode(null)
+  }
+
+  const handleOpenDetails = () => {
+    if (!clickNode) return
+    switch (clickNode.category) {
+      case 'Relationship': navigate(`/relationships/${clickNode.id}`); break;
+      case 'Habit': navigate(`/habits/${clickNode.id}`); break;
+      case 'Goal': navigate(`/build-grow/goals?highlight=${clickNode.id}`); break;
+      case 'Skill': navigate(`/build-grow/skills?highlight=${clickNode.id}`); break;
+      case 'Project': navigate(`/career/projects`); break;
+      case 'Career': navigate(`/career/career`); break;
+      case 'Education': navigate(`/career/education`); break;
+      case 'Certificate': navigate(`/career/certificates`); break;
+      case 'Achievement': navigate(`/career/achievements`); break;
+      case 'Record': navigate(`/records`); break;
+      case 'Journal': navigate(`/journal`); break;
+      default: break;
+    }
   }
 
   const [dimensions, setDimensions] = useState({ width: 800, height: 400 })
@@ -383,7 +403,9 @@ export const KnowledgeGraphWidget = () => {
           </div>
           
           <div className="p-4 border-t border-border bg-accent/20">
-            <button className="w-full flex items-center justify-center gap-2 bg-primary text-primary-foreground py-2 rounded-lg font-bold hover:opacity-90">
+            <button 
+              onClick={handleOpenDetails}
+              className="w-full flex items-center justify-center gap-2 bg-primary text-primary-foreground py-2 rounded-lg font-bold hover:opacity-90">
               Open Details <ArrowRight size={16} />
             </button>
           </div>

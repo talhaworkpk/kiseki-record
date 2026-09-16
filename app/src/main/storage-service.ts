@@ -1,4 +1,4 @@
-import { app, ipcMain } from 'electron'
+import { app, ipcMain, session } from 'electron'
 import { join } from 'path'
 import fs from 'fs'
 import path from 'path'
@@ -80,7 +80,18 @@ const SECTION_CONFIG = [
   { collection: 'skills', name: 'Skills' },
   { collection: 'achievements', name: 'Achievements' },
   { collection: 'memoryCapsules', name: 'Memory Capsules' },
-  { collection: 'calendarMemories', name: 'Calendar' }
+  { collection: 'calendarMemories', name: 'Calendar' },
+  { collection: 'actionGroups', name: 'AI Assistant Data' },
+  { collection: 'dreams', name: 'Dreams' },
+  { collection: 'dream_goals', name: 'Dream Goals' },
+  { collection: 'dream_projects', name: 'Dream Projects' },
+  { collection: 'dream_skills', name: 'Dream Skills' },
+  { collection: 'dream_certificates', name: 'Dream Certificates' },
+  { collection: 'clockAppearance', name: 'Clock Appearance' },
+  { collection: 'clockAssets', name: 'Clock Assets' },
+  { collection: 'clockAlarms', name: 'Clock Alarms' },
+  { collection: 'clockEvents', name: 'Clock Events' },
+  { collection: 'relationshipConversations', name: 'Relationship Conversations' }
 ]
 
 export const storageService = {
@@ -149,8 +160,63 @@ export const storageService = {
           }
 
           if (itemSize > 0) {
+            let itemName = doc.title || doc.name || doc.label || doc.company || doc.school || doc.degree;
+            
+            if (config.collection === 'clockAssets') {
+              itemName = `Asset: ${doc.originalName || doc.storedName || doc._id}`;
+            } else if (config.collection === 'clockEvents') {
+              const eventType = doc.type ? doc.type.split('_').map((w: string) => w.charAt(0).toUpperCase() + w.slice(1)).join(' ') : 'Event';
+              itemName = `${eventType}${doc.label ? ` - ${doc.label}` : ''}`;
+            } else if (config.collection === 'clockAlarms') {
+              itemName = `Alarm: ${doc.time || ''} ${doc.label ? `(${doc.label})` : ''}`.trim() || `Alarm (${doc._id})`;
+            }
+
+            if (!itemName) {
+              if (config.collection === 'journal') {
+                const preview = doc.content ? doc.content.replace(/<[^>]*>?/gm, '').trim().substring(0, 25) : '';
+                itemName = preview ? `"${preview}..."` : `Journal on ${doc.date || 'Unknown'}`;
+              } else if (config.collection === 'actionGroups') {
+                itemName = `Agent Task (${doc.actionGroupId ? doc.actionGroupId.replace('group_', '').substring(0, 6) : (doc._id ? doc._id.substring(0,6) : 'Unknown')})`;
+              } else if (config.collection === 'relationshipConversations') {
+                if (doc.personId === 'self_p' || doc.personId?.startsWith('self_')) itemName = 'Personal Notes Chat';
+                else {
+                  try {
+                    const persons = await dbAsync.find('relationships', { _id: doc.personId });
+                    if (persons && persons[0] && (persons[0].name || persons[0].title)) itemName = `Chat with ${persons[0].name || persons[0].title}`;
+                  } catch (e) {}
+                  if (!itemName) itemName = `Chat (${doc.personId ? doc.personId.replace('rel_', '').substring(0, 6) : 'Unknown'})`;
+                }
+              } else if (config.collection === 'dream_goals') {
+                try {
+                  const goals = await dbAsync.find('goals', { _id: doc.goalId });
+                  if (goals && goals[0] && (goals[0].title || goals[0].name)) itemName = `Goal: ${goals[0].title || goals[0].name}`;
+                } catch (e) {}
+              } else if (config.collection === 'dream_projects') {
+                try {
+                  const projs = await dbAsync.find('projects', { _id: doc.projectId });
+                  if (projs && projs[0] && (projs[0].title || projs[0].name)) itemName = `Project: ${projs[0].title || projs[0].name}`;
+                } catch (e) {}
+              } else if (config.collection === 'dream_skills') {
+                try {
+                  const skills = await dbAsync.find('skills', { _id: doc.skillId });
+                  if (skills && skills[0] && (skills[0].title || skills[0].name)) itemName = `Skill: ${skills[0].title || skills[0].name}`;
+                } catch (e) {}
+              } else if (config.collection === 'dream_certificates') {
+                try {
+                  const certs = await dbAsync.find('certificates', { _id: doc.certificateId });
+                  if (certs && certs[0] && (certs[0].title || certs[0].name)) itemName = `Cert: ${certs[0].title || certs[0].name}`;
+                } catch (e) {}
+              } else if (config.collection === 'clockAppearance') {
+                itemName = 'Custom Clock Appearance';
+              }
+              
+              if (!itemName) {
+                itemName = `${config.name} Item (${doc._id ? doc._id.substring(0,6) : 'Unknown'})`;
+              }
+            }
+            
             section.items.push({
-              name: doc.title || doc.name || doc.company || doc.school || doc.degree || 'Untitled',
+              name: itemName,
               size: itemSize
             })
           }
@@ -186,14 +252,15 @@ export const storageService = {
     sections.sort((a, b) => b.size - a.size)
     const cacheStats = getFolderSize(cachePath)
     
-    let driveInfo: DriveInfo = { path: userDataPath.substring(0, 3) || 'C:\\', total: 0, free: 0, used: 0, percentUsed: 0 }
+    const drivePath = process.platform === 'win32' ? userDataPath.substring(0, 3).toUpperCase() : '/'
+    let driveInfo: DriveInfo = { path: drivePath, total: 0, free: 0, used: 0, percentUsed: 0 }
     try {
       const stat = fs.statfsSync(userDataPath)
       const total = stat.bsize * stat.blocks
       const free = stat.bsize * stat.bfree
       const used = total - free
       driveInfo = {
-        path: userDataPath.substring(0, 3).toUpperCase(),
+        path: drivePath,
         total,
         free,
         used,
@@ -217,16 +284,33 @@ export const storageService = {
   },
 
   async clearCache(): Promise<number> {
-    const stats = getFolderSize(cachePath)
+    const beforeStats = getFolderSize(cachePath)
+    
     try {
-      if (fs.existsSync(cachePath)) {
-        fs.rmSync(cachePath, { recursive: true, force: true })
-        fs.mkdirSync(cachePath, { recursive: true })
+      if (session.defaultSession) {
+        await session.defaultSession.clearCache()
+        await session.defaultSession.clearStorageData({ storages: ['cache', 'shadercache'] })
       }
     } catch (e) {
-      console.error('Failed to clear cache', e)
+      console.error('Failed to clear electron cache', e)
     }
-    return stats.size
+
+    try {
+      if (fs.existsSync(cachePath)) {
+        const files = fs.readdirSync(cachePath)
+        for (const file of files) {
+          try {
+            fs.rmSync(join(cachePath, file), { recursive: true, force: true })
+          } catch(e) {} // skip locked files
+        }
+      }
+    } catch (e) {
+      console.error('Failed to manually clear cache folder', e)
+    }
+    
+    const afterStats = getFolderSize(cachePath)
+    const freed = beforeStats.size - afterStats.size
+    return freed > 0 ? freed : 0
   },
 
   async setMaxAppSize(sizeInBytes: number | null) {
@@ -249,6 +333,22 @@ export const storageService = {
       }
     } catch (e) {}
     return { allowed: true }
+  },
+
+  async resetData(mode: 'public' | 'private' | 'both'): Promise<boolean> {
+    try {
+      for (const config of SECTION_CONFIG) {
+        if (mode === 'both') {
+          await dbAsync.remove(config.collection, {}, { multi: true });
+        } else {
+          await dbAsync.remove(config.collection, { profile: mode }, { multi: true });
+        }
+      }
+      return true;
+    } catch (err) {
+      console.error('Failed to reset data', err);
+      return false;
+    }
   }
 }
 
@@ -257,4 +357,5 @@ export function setupStorageHandlers() {
   ipcMain.handle('storage:clearCache', () => storageService.clearCache())
   ipcMain.handle('storage:setMaxAppSize', (_, size) => storageService.setMaxAppSize(size))
   ipcMain.handle('storage:checkLimits', (_, size) => storageService.checkLimitsBeforeWrite(size))
+  ipcMain.handle('storage:resetData', (_, mode) => storageService.resetData(mode))
 }

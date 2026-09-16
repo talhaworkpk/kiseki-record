@@ -1,5 +1,6 @@
 import { useState, useEffect } from 'react'
 import { createPortal } from 'react-dom'
+import { OverscrollContainer } from '../ui/OverscrollContainer'
 import { X, Calendar as CalendarIcon, MapPin, Users, Image as ImageIcon, FileText, Download, Edit2, Trash2, Folder, PlayCircle, Music, Film } from 'lucide-react'
 import { getSafeMediaUrl, normalizeUrl } from '../../lib/utils'
 
@@ -215,7 +216,7 @@ export default function MemoryPreviewModal({ isOpen, onClose, memory, relationsh
         </div>
 
         {/* Content */}
-        <div className="flex-1 overflow-y-auto p-8 flex flex-col lg:flex-row gap-12">
+        <OverscrollContainer absolute={false} className="flex-1 min-h-0" containerClassName="p-8 flex flex-col lg:flex-row gap-12">
           
           {/* Main Column */}
           <div className="flex-1 space-y-12">
@@ -398,7 +399,7 @@ export default function MemoryPreviewModal({ isOpen, onClose, memory, relationsh
             </div>
 
           </div>
-        </div>
+        </OverscrollContainer>
 
       </div>
     </div>,

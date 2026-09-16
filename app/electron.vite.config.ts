@@ -16,6 +16,10 @@ export default defineConfig({
         '@': resolve('src/renderer/src')
       }
     },
-    plugins: [react()]
+    plugins: [react()],
+    server: {
+      port: 5473,
+      host: '127.0.0.1'
+    }
   }
 })

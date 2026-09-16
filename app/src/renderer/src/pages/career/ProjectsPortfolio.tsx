@@ -1,7 +1,7 @@
 import { useState, useEffect, useRef } from 'react'
 import { createPortal } from 'react-dom'
 import { useLocation } from 'react-router-dom'
-import { FolderGit2, Plus, Trash2, Edit2, X, Github, ExternalLink, Image as ImageIcon, Eye, PlayCircle, Target, CheckCircle2, ListTodo, Circle } from 'lucide-react'
+import { FolderGit2, Plus, Trash2, Edit2, X, Github, ExternalLink, Image as ImageIcon, Eye, PlayCircle, Target, CheckCircle2, ListTodo, Circle, AlertTriangle } from 'lucide-react'
 import { NotificationEngine } from '../../lib/NotificationEngine'
 import { ProjectRecord, Goal } from '../../types'
 import { normalizeUrl } from '../../lib/utils'
@@ -17,6 +17,9 @@ export default function ProjectsPortfolio() {
   const [dragStartY, setDragStartY] = useState(0)
   const [scrollTop, setScrollTop] = useState(0)
   const [showSuccessOverlay, setShowSuccessOverlay] = useState(false)
+  const [showDeleteConfirm, setShowDeleteConfirm] = useState<{show: boolean, id: string, title: string}>({ show: false, id: '', title: '' })
+  const [showDeleteSuccess, setShowDeleteSuccess] = useState(false)
+  const [deletedTitle, setDeletedTitle] = useState('')
   const scrollContainerRef = useRef<HTMLDivElement>(null)
 
   const [slideshowActive, setSlideshowActive] = useState(false)
@@ -163,8 +166,25 @@ export default function ProjectsPortfolio() {
     return () => window.removeEventListener('keydown', down)
   }, [isAdding, form, editingId])
 
-  const handleDelete = async (id: string, title: string) => {
-    if (!confirm('Delete this project?')) return
+  const handleDelete = (id: string, title: string) => {
+    setShowDeleteConfirm({ show: true, id, title })
+  }
+
+  useEffect(() => {
+    if (!showDeleteConfirm.show) return
+    const handleKeyDown = (e: KeyboardEvent) => {
+      if (e.key === 'Escape') {
+        setShowDeleteConfirm({ show: false, id: '', title: '' })
+      } else if (e.key === 'Enter') {
+        confirmDelete()
+      }
+    }
+    window.addEventListener('keydown', handleKeyDown)
+    return () => window.removeEventListener('keydown', handleKeyDown)
+  })
+
+  const confirmDelete = async () => {
+    const { id, title } = showDeleteConfirm
     try {
       // Find all linked goals
       const linkedGoals = goals.filter(g => g.projectId === id)
@@ -176,6 +196,11 @@ export default function ProjectsPortfolio() {
       // @ts-ignore
       await window.api.db.remove('projects', { _id: id }, {})
       NotificationEngine.notify('info', 'Project Deleted', `"${title}" was removed and ${linkedGoals.length} goals were unlinked.`, 'Career')
+      
+      setDeletedTitle(title)
+      setShowDeleteConfirm({ show: false, id: '', title: '' })
+      setShowDeleteSuccess(true)
+      setTimeout(() => setShowDeleteSuccess(false), 3000)
       loadData()
     } catch (err) { console.error(err) }
   }
@@ -421,8 +446,8 @@ export default function ProjectsPortfolio() {
       </div>
 
       {/* Project Details Modal */}
-      {viewingProject && (
-        <div className="fixed inset-0 z-[100] flex items-center justify-center p-4 sm:p-6 md:p-12">
+      {viewingProject && createPortal(
+        <div className="fixed inset-0 z-[9999] flex items-center justify-center p-4 sm:p-6 md:p-12">
           <div className="absolute inset-0 bg-background/80 backdrop-blur-sm animate-in fade-in duration-200" onClick={() => setViewingProject(null)}></div>
           <div className="relative bg-card border border-border w-full max-w-4xl max-h-full rounded-2xl shadow-2xl flex flex-col overflow-hidden animate-in zoom-in-95 duration-200">
             {viewingProject.screenshots && viewingProject.screenshots.length > 0 && (
@@ -580,11 +605,11 @@ export default function ProjectsPortfolio() {
             </div>
           </div>
         </div>
-      )}
+      , document.body)}
 
       {/* 3D Success Overlay */}
-      {showSuccessOverlay && (
-        <div className="fixed inset-0 z-[200] flex items-center justify-center bg-[radial-gradient(ellipse_at_center,_var(--tw-gradient-stops))] from-pink-500/30 via-background/80 to-background/95 backdrop-blur-sm animate-in fade-in duration-300">
+      {showSuccessOverlay && createPortal(
+        <div className="fixed inset-0 z-[9999] flex items-center justify-center bg-[radial-gradient(ellipse_at_center,_var(--tw-gradient-stops))] from-pink-500/30 via-background/80 to-background/95 backdrop-blur-sm animate-in fade-in duration-300">
           <style>{`
             @keyframes popAndRotateRocket {
               0% { transform: scale(0) rotate(-45deg); opacity: 0; }
@@ -669,7 +694,7 @@ export default function ProjectsPortfolio() {
             </h2>
           </div>
         </div>
-      )}
+      , document.body)}
 
       {/* Slideshow Overlay */}
       {slideshowActive && viewingProject && viewingProject.screenshots && viewingProject.screenshots.length > 0 && createPortal(
@@ -699,6 +724,124 @@ export default function ProjectsPortfolio() {
         </div>,
         document.body
       )}
+
+      {showDeleteConfirm.show && createPortal(
+        <div className="fixed inset-0 z-[9999] flex items-center justify-center p-4 bg-background/60 backdrop-blur-md animate-in fade-in duration-300">
+          <div className="bg-card text-card-foreground p-0 rounded-2xl shadow-[0_0_50px_-12px_rgba(239,68,68,0.25)] border border-destructive/20 w-full max-w-md flex flex-col overflow-hidden scale-in-center animate-in zoom-in-95 duration-300">
+            {/* Header Section */}
+            <div className="bg-destructive/10 p-6 flex flex-col items-center justify-center text-center border-b border-destructive/10 relative overflow-hidden">
+              <div className="absolute inset-0 bg-gradient-to-b from-destructive/5 to-transparent"></div>
+              <div className="w-16 h-16 bg-background rounded-full flex items-center justify-center shadow-inner mb-4 relative z-10 border border-destructive/20">
+                <Trash2 size={32} className="text-destructive drop-shadow-md animate-pulse" />
+              </div>
+              <h3 className="text-xl font-bold text-foreground relative z-10">Delete Project?</h3>
+            </div>
+            
+            {/* Body Section */}
+            <div className="p-6">
+              <p className="text-center text-muted-foreground mb-4">
+                You are about to permanently delete the project <br/>
+                <span className="font-bold text-foreground text-lg block mt-1">"{showDeleteConfirm.title}"</span>
+              </p>
+              
+              <div className="bg-accent/50 p-3 rounded-lg border border-border flex items-start gap-3">
+                <AlertTriangle size={18} className="text-amber-500 shrink-0 mt-0.5" />
+                <p className="text-xs text-muted-foreground text-left">
+                  This will also unlink any goals associated with this project. This action cannot be undone.
+                </p>
+              </div>
+
+              {/* Action Buttons */}
+              <div className="flex justify-end gap-3 mt-6">
+                <button 
+                  onClick={() => setShowDeleteConfirm({ show: false, id: '', title: '' })}
+                  className="px-5 py-2.5 rounded-xl text-sm font-semibold text-foreground bg-accent hover:bg-accent/80 border border-transparent hover:border-border transition-all active:scale-95"
+                >
+                  Cancel
+                </button>
+                <button 
+                  onClick={confirmDelete}
+                  className="px-5 py-2.5 rounded-xl text-sm font-semibold bg-gradient-to-r from-red-600 to-destructive text-white shadow-lg shadow-destructive/30 hover:shadow-destructive/50 hover:from-red-500 hover:to-red-600 transition-all active:scale-95 flex items-center gap-2"
+                >
+                  <Trash2 size={16} />
+                  Delete Project
+                </button>
+              </div>
+            </div>
+          </div>
+        </div>
+      , document.body)}
+
+      {showDeleteSuccess && createPortal(
+        <div className="fixed inset-0 z-[9999] pointer-events-none flex items-center justify-center bg-[radial-gradient(ellipse_at_center,_var(--tw-gradient-stops))] from-blue-900/30 via-background/90 to-background/95 backdrop-blur-md animate-in fade-in duration-300">
+          <style>{`
+            @keyframes explodeBox {
+              0% { transform: scale(0) rotateX(20deg) rotateY(-20deg); opacity: 0; }
+              20% { transform: scale(1.2) rotateX(10deg) rotateY(-10deg); opacity: 1; }
+              40% { transform: scale(1) rotateX(0) rotateY(0); opacity: 1; filter: brightness(1); }
+              45% { transform: scale(1.1); opacity: 1; filter: brightness(2); }
+              50% { transform: scale(0.9); opacity: 0; }
+              100% { transform: scale(0); opacity: 0; }
+            }
+            @keyframes shatterPiece {
+              0% { transform: translate(0, 0) scale(1) rotate(0); opacity: 0; }
+              45% { transform: translate(0, 0) scale(1) rotate(0); opacity: 0; }
+              50% { opacity: 1; }
+              100% { transform: translate(var(--tx), var(--ty)) scale(0) rotate(var(--rot)); opacity: 0; }
+            }
+            @keyframes floatingDust {
+              0% { transform: translateY(0) scale(0); opacity: 0; }
+              50% { opacity: 0.5; scale: 1; }
+              100% { transform: translateY(-100px) scale(0); opacity: 0; }
+            }
+          `}</style>
+          <div className="relative flex flex-col items-center justify-center gap-8">
+            <div className="relative w-64 h-64 flex items-center justify-center">
+              {/* Main Box - Explodes */}
+              <svg viewBox="0 0 200 200" fill="none" className="absolute w-48 h-48 drop-shadow-2xl" style={{ animation: 'explodeBox 1.5s cubic-bezier(0.34, 1.56, 0.64, 1) forwards' }}>
+                <path d="M100 30 L170 65 L100 100 L30 65 Z" fill="#3b82f6" />
+                <path d="M30 65 L100 100 L100 170 L30 135 Z" fill="#1d4ed8" />
+                <path d="M100 100 L170 65 L170 135 L100 170 Z" fill="#2563eb" />
+                <path d="M100 50 L140 70 L100 90 L60 70 Z" fill="#60a5fa" opacity="0.5" />
+              </svg>
+              
+              {/* Shattered Pieces */}
+              {[...Array(20)].map((_, i) => {
+                const angle = (i * 18 * Math.PI) / 180;
+                const dist = 100 + Math.random() * 150;
+                const tx = `${Math.cos(angle) * dist}px`;
+                const ty = `${Math.sin(angle) * dist}px`;
+                const rot = `${Math.random() * 720 - 360}deg`;
+                return (
+                  <svg key={`piece-${i}`} width="20" height="20" viewBox="0 0 20 20" className="absolute" style={{
+                    '--tx': tx,
+                    '--ty': ty,
+                    '--rot': rot,
+                    animation: `shatterPiece 1.5s ease-out forwards`
+                  } as React.CSSProperties}>
+                    <polygon points="10,0 20,10 10,20 0,10" fill={i % 3 === 0 ? '#3b82f6' : i % 3 === 1 ? '#1d4ed8' : '#60a5fa'} opacity={Math.random() * 0.5 + 0.5} />
+                  </svg>
+                )
+              })}
+
+              {/* Dust / Smoke */}
+              {[...Array(10)].map((_, i) => (
+                <div key={`dust-${i}`} className="absolute rounded-full bg-blue-500/20 blur-md" style={{
+                  width: `${Math.random() * 60 + 20}px`,
+                  height: `${Math.random() * 60 + 20}px`,
+                  left: `${Math.random() * 100 - 50}%`,
+                  top: `${Math.random() * 100 - 50}%`,
+                  animation: `floatingDust 2s ease-out forwards ${0.5 + Math.random() * 0.5}s`
+                }} />
+              ))}
+            </div>
+            
+            <h2 className="text-4xl font-extrabold text-blue-500 drop-shadow-lg tracking-tight text-center z-50 animate-in slide-in-from-bottom-5 fade-in duration-500 delay-500 fill-mode-both">
+              Project Destroyed!
+            </h2>
+          </div>
+        </div>
+      , document.body)}
 
     </div>
   )

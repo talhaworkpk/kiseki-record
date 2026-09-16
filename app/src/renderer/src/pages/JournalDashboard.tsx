@@ -4,6 +4,9 @@ import { Search, Filter, Book, CheckSquare, Square, Trash2, Download, Copy, Arch
 import { Link, useNavigate } from 'react-router-dom'
 import JournalPreviewModal from '../components/journal/JournalPreviewModal'
 import { NotificationEngine } from '../lib/NotificationEngine'
+import { useOnboarding } from '../hooks/useOnboarding'
+import { SectionWelcome } from '../components/onboarding/SectionWelcome'
+import { ONBOARDING_CONFIGS } from '../lib/onboardingConfig'
 
 const MOODS = [
   { emoji: '😀', label: 'Happy', value: 'happy' },
@@ -17,10 +20,14 @@ const MOODS = [
 export default function JournalDashboard() {
   const [loading, setLoading] = useState(true)
   const [entries, setEntries] = useState<JournalEntry[]>([])
+  const { showWelcome, completeWelcome } = useOnboarding('journey')
   
   // View & UI State
   const [isSelectionMode, setIsSelectionMode] = useState(false)
   const [selectedIds, setSelectedIds] = useState<Set<string>>(new Set())
+  const [deleteConfirmId, setDeleteConfirmId] = useState<string | null>(null)
+  const [bulkDeleteConfirm, setBulkDeleteConfirm] = useState(false)
+  const [showDeleteSuccess, setShowDeleteSuccess] = useState(false)
   const [searchQuery, setSearchQuery] = useState('')
   const [sortBy, setSortBy] = useState<'newest' | 'oldest' | 'updated' | 'alpha' | 'mood'>('newest')
   const [previewEntry, setPreviewEntry] = useState<JournalEntry | null>(null)
@@ -90,6 +97,18 @@ export default function JournalDashboard() {
       const isInput = tag === 'input' || tag === 'textarea' || document.activeElement?.getAttribute('contenteditable') === 'true'
       if (isInput) return
 
+      if (deleteConfirmId || bulkDeleteConfirm) {
+        if (e.key === 'Escape') {
+          setDeleteConfirmId(null)
+          setBulkDeleteConfirm(false)
+        }
+        if (e.key === 'Enter') {
+          if (deleteConfirmId) confirmSingleDelete()
+          if (bulkDeleteConfirm) confirmBulkDelete()
+        }
+        return
+      }
+
       if (e.key === 'Escape') {
         if (isSelectionMode) {
           setIsSelectionMode(false)
@@ -112,6 +131,37 @@ export default function JournalDashboard() {
     window.addEventListener('keydown', handleKeyDown)
     return () => window.removeEventListener('keydown', handleKeyDown)
   })
+
+  const confirmSingleDelete = async () => {
+    if (!deleteConfirmId) return
+    try {
+      // @ts-ignore
+      await window.api.db.remove('journal', { _id: deleteConfirmId })
+      NotificationEngine.notify('warning', 'Entry Deleted', 'The entry was deleted.', 'Journal')
+      setDeleteConfirmId(null)
+      setShowDeleteSuccess(true)
+      fetchEntries()
+      setTimeout(() => setShowDeleteSuccess(false), 2500)
+    } catch (e) { console.error(e) }
+  }
+
+  const confirmBulkDelete = async () => {
+    if (selectedIds.size === 0) return
+    try {
+      const ids = Array.from(selectedIds)
+      for (const id of ids) {
+        // @ts-ignore
+        await window.api.db.remove('journal', { _id: id })
+      }
+      NotificationEngine.notify('warning', 'Entries Deleted', `${ids.length} entries were deleted.`, 'Journal')
+      setSelectedIds(new Set())
+      setIsSelectionMode(false)
+      setBulkDeleteConfirm(false)
+      setShowDeleteSuccess(true)
+      fetchEntries()
+      setTimeout(() => setShowDeleteSuccess(false), 2500)
+    } catch (e) { console.error(e) }
+  }
 
   // Filtering & Sorting Logic
   const filteredEntries = useMemo(() => {
@@ -180,12 +230,7 @@ export default function JournalDashboard() {
         fetchEntries()
       }
       if (action === 'delete') {
-        if(confirm('Permanently delete?')) {
-          // @ts-ignore
-          await window.api.db.remove('journal', { _id: entry._id })
-          NotificationEngine.notify('warning', 'Entry Deleted', `"${entry.title}" was deleted.`, 'Journal')
-          fetchEntries()
-        }
+        setDeleteConfirmId(entry._id!)
       }
     } catch (e) {
       console.error(e)
@@ -197,12 +242,8 @@ export default function JournalDashboard() {
     const ids = Array.from(selectedIds)
     try {
       if (action === 'delete') {
-        if (!confirm(`Permanently delete ${ids.length} journal entries?`)) return
-        for (const id of ids) {
-          // @ts-ignore
-          await window.api.db.remove('journal', { _id: id })
-        }
-        NotificationEngine.notify('warning', 'Entries Deleted', `${ids.length} entries were deleted.`, 'Journal')
+        setBulkDeleteConfirm(true)
+        return // skip the rest of bulkAction for delete
       }
       if (action === 'archive') {
         for (const id of ids) {
@@ -345,6 +386,8 @@ export default function JournalDashboard() {
   }
 
   return (
+    <>
+      {showWelcome && <SectionWelcome config={ONBOARDING_CONFIGS.journey} onComplete={completeWelcome} />}
     <div className="flex flex-col h-full bg-background animate-in fade-in duration-500 relative overflow-hidden">
       <style>{`
         @keyframes float-orb-up {
@@ -553,7 +596,120 @@ export default function JournalDashboard() {
         entry={previewEntry}
         onClose={() => setPreviewEntry(null)}
       />
+
+      {/* Delete Confirmation Modal */}
+      {(deleteConfirmId || bulkDeleteConfirm) && !showDeleteSuccess && (
+        <div className="fixed inset-0 z-[150] flex items-center justify-center p-4 bg-background/60 backdrop-blur-md animate-in fade-in duration-300">
+          <div className="bg-card text-card-foreground p-0 rounded-2xl shadow-[0_0_50px_-12px_rgba(56,189,248,0.25)] border border-sky-500/20 w-full max-w-md flex flex-col overflow-hidden scale-in-center animate-in zoom-in-95 duration-300">
+            <div className="bg-sky-500/10 p-6 flex flex-col items-center justify-center text-center border-b border-sky-500/10 relative overflow-hidden">
+              <div className="absolute inset-0 bg-gradient-to-b from-sky-500/5 to-transparent"></div>
+              <div className="w-16 h-16 bg-background rounded-full flex items-center justify-center shadow-inner mb-4 relative z-10 border border-sky-500/20">
+                <Trash2 size={32} className="text-sky-500 drop-shadow-md animate-pulse" />
+              </div>
+              <h3 className="text-xl font-bold text-foreground relative z-10">Delete Entr{bulkDeleteConfirm ? 'ies' : 'y'}?</h3>
+            </div>
+            
+            <div className="p-6">
+              <p className="text-center text-muted-foreground mb-6">
+                Are you sure you want to permanently incinerate {bulkDeleteConfirm ? `these ${selectedIds.size} entries` : 'this journal entry'}? This action cannot be undone.
+              </p>
+
+              <div className="flex justify-end gap-3">
+                <button 
+                  onClick={() => { setDeleteConfirmId(null); setBulkDeleteConfirm(false) }}
+                  className="px-5 py-2.5 rounded-xl text-sm font-semibold text-foreground bg-accent hover:bg-accent/80 border border-transparent hover:border-border transition-all active:scale-95"
+                >
+                  Cancel
+                </button>
+                <button 
+                  onClick={() => {
+                    if (deleteConfirmId) confirmSingleDelete()
+                    if (bulkDeleteConfirm) confirmBulkDelete()
+                  }}
+                  className="px-5 py-2.5 rounded-xl text-sm font-semibold text-white shadow-lg transition-all active:scale-95 flex items-center gap-2 bg-gradient-to-r from-sky-500 to-blue-600 hover:shadow-blue-500/50"
+                >
+                  <Trash2 size={16} />
+                  Incinerate
+                </button>
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Burn Animation Overlay */}
+      {showDeleteSuccess && (
+        <div className="fixed inset-0 z-[200] flex items-center justify-center bg-black/95 backdrop-blur-xl overflow-hidden animate-in fade-in duration-300">
+          <style>{`
+            @keyframes char-paper {
+              0% { transform: perspective(500px) rotateX(0deg); }
+              100% { transform: perspective(500px) rotateX(45deg) translateY(-20px); }
+            }
+            @keyframes char-paper-color {
+              0% { filter: brightness(1) sepia(0); }
+              30% { filter: brightness(0.2) sepia(0.5) hue-rotate(180deg); }
+              100% { filter: brightness(0.05) sepia(1) hue-rotate(180deg); }
+            }
+            @keyframes burn-up {
+              0% { height: 128px; opacity: 1; }
+              85% { height: 0px; opacity: 1; }
+              100% { height: 0px; opacity: 0; }
+            }
+            @keyframes heat-distortion {
+              0%, 100% { transform: scale(1); opacity: 0.5; }
+              50% { transform: scale(1.3); opacity: 0.8; }
+            }
+            @keyframes text-burn-in {
+              0% { transform: scale(0.8) translateY(20px); opacity: 0; filter: blur(10px); }
+              50% { transform: scale(0.8) translateY(20px); opacity: 0; filter: blur(10px); }
+              70% { transform: scale(1.1) translateY(0); opacity: 1; filter: blur(0px); }
+              100% { transform: scale(1) translateY(0); opacity: 1; filter: blur(0px); }
+            }
+          `}</style>
+          
+          <div className="absolute inset-0 flex items-center justify-center pointer-events-none">
+            <div className="absolute w-[800px] h-[800px] bg-[radial-gradient(circle,rgba(56,189,248,0.15)_0%,transparent_70%)] rounded-full animate-[heat-distortion_2s_ease-in-out_infinite]" />
+            <div className="absolute w-[1000px] h-[1000px] bg-[radial-gradient(circle,rgba(3,105,161,0.1)_0%,transparent_60%)] rounded-full animate-[heat-distortion_3s_ease-in-out_infinite_reverse]" />
+          </div>
+
+          <div className="relative z-10 flex flex-col items-center justify-center h-full w-full">
+            <div className="relative w-40 h-40 mb-12" style={{ animation: 'char-paper 2.5s ease-in forwards' }}>
+              
+              <div className="absolute top-4 left-0 w-full overflow-hidden flex flex-col items-center" style={{ animation: 'burn-up 2.5s ease-in forwards' }}>
+                
+                <div 
+                     className="w-24 h-32 flex-shrink-0 bg-sky-50 rounded shadow-[0_0_20px_rgba(56,189,248,0.2)] border border-sky-300 flex flex-col p-4 gap-2.5 items-start"
+                     style={{ animation: 'char-paper-color 2.5s ease-in forwards' }}>
+                  <div className="w-full h-1.5 bg-sky-300 rounded-full" />
+                  <div className="w-4/5 h-1.5 bg-sky-300 rounded-full" />
+                  <div className="w-full h-1.5 bg-sky-300 rounded-full" />
+                  <div className="w-3/4 h-1.5 bg-sky-300 rounded-full" />
+                  <div className="w-full h-1.5 bg-sky-300 rounded-full mt-auto" />
+                </div>
+
+                <div className="absolute bottom-[-10px] w-36 h-12 flex justify-center items-end opacity-90 blur-[3px]">
+                  <div className="w-32 h-10 flex justify-around items-end">
+                    <div className="w-4 h-full bg-cyan-300 rounded-t-full shadow-[0_0_15px_5px_#38bdf8] animate-pulse" />
+                    <div className="w-6 h-3/4 bg-blue-400 rounded-t-full shadow-[0_0_15px_5px_#38bdf8] animate-pulse" style={{ animationDelay: '0.1s' }} />
+                    <div className="w-5 h-5/6 bg-sky-300 rounded-t-full shadow-[0_0_15px_5px_#38bdf8] animate-pulse" style={{ animationDelay: '0.2s' }} />
+                    <div className="w-4 h-full bg-indigo-400 rounded-t-full shadow-[0_0_15px_5px_#38bdf8] animate-pulse" style={{ animationDelay: '0.15s' }} />
+                  </div>
+                  <div className="absolute bottom-2 w-28 h-4 bg-white blur-[4px] rounded-full opacity-80" />
+                </div>
+              </div>
+            </div>
+            
+            <h2 className="text-5xl font-black text-transparent bg-clip-text bg-gradient-to-r from-cyan-300 via-sky-400 to-blue-600 uppercase tracking-widest drop-shadow-[0_0_20px_rgba(56,189,248,0.6)]" style={{ animation: 'text-burn-in 2s cubic-bezier(0.1, 0.9, 0.2, 1) forwards' }}>
+              Entry Incinerated
+            </h2>
+            <p className="mt-4 text-sky-200/80 text-xl font-bold uppercase tracking-[0.4em]" style={{ animation: 'text-burn-in 2.2s cubic-bezier(0.1, 0.9, 0.2, 1) forwards' }}>
+              Reduced to Ash
+            </p>
+          </div>
+        </div>
+      )}
     </div>
+    </>
   )
 }
 

@@ -1,6 +1,6 @@
 import React, { useState, useEffect, ErrorInfo } from 'react'
 import { HashRouter as Router, Routes, Route, Link, useLocation, useNavigate } from 'react-router-dom'
-import { Book, LayoutDashboard, Settings as SettingsIcon, FileText, Target, Zap, Users, GraduationCap, BrainCircuit, Bot, AlertTriangle, FileBarChart, CheckCircle2, Info, XCircle, Award, Mail, Bell, ChevronLeft, ChevronRight } from 'lucide-react'
+import { Book, LayoutDashboard, Settings as SettingsIcon, FileText, Target, Zap, Users, GraduationCap, BrainCircuit, Bot, AlertTriangle, FileBarChart, CheckCircle2, Info, XCircle, Award, Mail, Bell, ChevronLeft, ChevronRight, FolderGit2, Stars, Rocket, Clock, ScrollText } from 'lucide-react'
 import Records from './pages/Records'
 import Journal from './pages/Journal'
 import Settings from './pages/Settings'
@@ -22,11 +22,33 @@ import { PrivateSetupModal } from './components/auth/PrivateSetupModal'
 import { PrivateAuthModal } from './components/auth/PrivateAuthModal'
 import Notifications from './pages/Notifications'
 import MemoryCapsules from './pages/MemoryCapsules'
+import ChronicleLayout from './pages/chronicle/ChronicleLayout'
+import ChronicleEntryView from './pages/chronicle/ChronicleEntryView'
+import ProjectsPortfolio from './pages/career/ProjectsPortfolio'
+import CareerGoals from './pages/career/Goals'
+import SkillsTracker from './pages/career/SkillsTracker'
+import BuildGrow from './pages/BuildGrow'
+import DreamList from './pages/dreams/DreamList'
+import DreamDetail from './pages/dreams/DreamDetail'
+import { DREAM_CATEGORIES } from './lib/constants/dreams'
 import { UserProfile } from './types'
 import { NavigationHistoryProvider, useNavigationHistory } from './contexts/NavigationHistoryContext'
 import { NotificationProvider, useNotificationContext } from './contexts/NotificationContext'
 import { useKeyboardShortcuts } from './hooks/useKeyboardShortcuts'
 import { Tooltip, TooltipTrigger, TooltipContent, TooltipProvider } from './components/ui/tooltip'
+import { ClockProvider } from './contexts/ClockContext'
+import ClockLayout from './pages/clock/ClockLayout'
+import { GlobalAlarmOverlay } from './components/GlobalAlarmOverlay'
+import { GlobalAchievementCelebration } from './components/GlobalAchievementCelebration'
+import { AchievementEngine } from './lib/AchievementEngine'
+import { MessageReceiverService } from './lib/messaging/MessageReceiverService'
+import { OnlineReminderService } from './lib/messaging/OnlineReminderService'
+import { UnknownSenderModal } from './components/relationships/UnknownSenderModal'
+import { CustomTitleBar } from './components/CustomTitleBar'
+import { CustomCursor } from './components/CustomCursor'
+import { OverscrollContainer } from './components/ui/OverscrollContainer'
+import { GlobalWelcome } from './components/onboarding/GlobalWelcome'
+import { onboardingService } from './lib/onboardingService'
 
 function NavigationButtons() {
   const { canGoBack, canGoForward, goBack, goForward } = useNavigationHistory()
@@ -49,16 +71,17 @@ function NavigationButtons() {
   }, [canGoBack, canGoForward, goBack, goForward])
 
   return (
-    <div className="flex items-center gap-2">
+    <div className="flex items-center gap-1.5 bg-background/40 backdrop-blur-xl p-1 rounded-full border border-border/10 shadow-[0_2px_12px_rgba(0,0,0,0.04)]">
       <Tooltip>
         <TooltipTrigger asChild>
           <button
             onClick={goBack}
             disabled={!canGoBack}
-            className="p-2 rounded-lg hover:bg-accent disabled:opacity-30 disabled:cursor-not-allowed transition-colors"
+            onPointerDown={(e) => e.preventDefault()}
+            className="p-1.5 rounded-full hover:bg-white/40 dark:hover:bg-white/10 hover:shadow-[0_4px_12px_rgba(0,0,0,0.1)] hover:-translate-y-0.5 active:scale-90 active:translate-y-0 active:shadow-inner disabled:opacity-30 disabled:scale-100 disabled:translate-y-0 disabled:cursor-not-allowed transition-all duration-300 text-muted-foreground hover:text-foreground disabled:hover:bg-transparent disabled:hover:shadow-none ring-1 ring-transparent hover:ring-white/20"
             title="Go Back (Ctrl + Left Arrow)"
           >
-            <ChevronLeft size={20} />
+            <ChevronLeft size={18} strokeWidth={2.5} className="transition-transform duration-300" />
           </button>
         </TooltipTrigger>
         <TooltipContent side="bottom">
@@ -70,10 +93,11 @@ function NavigationButtons() {
           <button
             onClick={goForward}
             disabled={!canGoForward}
-            className="p-2 rounded-lg hover:bg-accent disabled:opacity-30 disabled:cursor-not-allowed transition-colors"
+            onPointerDown={(e) => e.preventDefault()}
+            className="p-1.5 rounded-full hover:bg-white/40 dark:hover:bg-white/10 hover:shadow-[0_4px_12px_rgba(0,0,0,0.1)] hover:-translate-y-0.5 active:scale-90 active:translate-y-0 active:shadow-inner disabled:opacity-30 disabled:scale-100 disabled:translate-y-0 disabled:cursor-not-allowed transition-all duration-300 text-muted-foreground hover:text-foreground disabled:hover:bg-transparent disabled:hover:shadow-none ring-1 ring-transparent hover:ring-white/20"
             title="Go Forward (Ctrl + Right Arrow)"
           >
-            <ChevronRight size={20} />
+            <ChevronRight size={18} strokeWidth={2.5} className="transition-transform duration-300" />
           </button>
         </TooltipTrigger>
         <TooltipContent side="bottom">
@@ -84,40 +108,76 @@ function NavigationButtons() {
   )
 }
 
-function NavLink({ to, icon: Icon, children }: { to: string, icon: any, children: React.ReactNode }) {
+function NavLink({ to, icon: Icon, description, children }: { to: string, icon: any, description?: string, children: React.ReactNode }) {
   const location = useLocation()
   const isActive = to === '/' ? location.pathname === '/' : location.pathname.startsWith(to)
+  const linkRef = React.useRef<HTMLAnchorElement>(null)
+
+  useEffect(() => {
+    if (isActive && linkRef.current) {
+      linkRef.current.scrollIntoView({ behavior: 'smooth', block: 'nearest' })
+    }
+  }, [isActive])
+
   return (
     <Tooltip>
       <TooltipTrigger asChild>
         <Link 
+          ref={linkRef}
           to={to} 
-          className={`flex items-center gap-4 px-3 py-2.5 mx-2 rounded-md text-sm font-medium transition-colors duration-200 overflow-hidden ${isActive ? 'bg-primary/10 text-primary' : 'text-muted-foreground hover:bg-accent hover:text-accent-foreground'}`}
+          onPointerDown={(e) => e.preventDefault()}
+          className={`flex items-center gap-3.5 px-2 py-1.5 mx-2.5 rounded-xl text-sm font-medium transition-all duration-300 overflow-hidden group/link relative ${isActive ? 'text-primary' : 'text-muted-foreground hover:text-foreground'}`}
         >
-          <div className="shrink-0 flex items-center justify-center ml-0.5"><Icon size={20} /></div>
-          <span className="whitespace-nowrap opacity-0 group-hover:opacity-100 transition-opacity duration-300">
+          {isActive && (
+            <div className="absolute inset-0 bg-gradient-to-r from-primary/10 via-primary/5 to-transparent rounded-xl border-l-[3px] border-primary shadow-[inset_0_1px_1px_rgba(255,255,255,0.05)] dark:shadow-none" />
+          )}
+          <div className={`relative shrink-0 flex items-center justify-center w-[34px] h-[34px] rounded-lg transition-all duration-500 z-10 ${isActive ? 'bg-gradient-to-b from-primary to-primary/90 text-primary-foreground shadow-[0_4px_12px_rgba(var(--primary),0.4)] ring-1 ring-white/20 dark:ring-white/10 scale-100' : 'bg-transparent group-hover/link:bg-accent/80 group-hover/link:shadow-sm scale-95 group-hover/link:scale-100'}`}>
+            <Icon size={18} strokeWidth={1.75} className={`transition-transform duration-500 ${isActive ? 'scale-110 drop-shadow-sm' : ''}`} />
+          </div>
+          <span className="whitespace-nowrap opacity-0 group-hover:opacity-100 transition-all duration-300 z-10 font-semibold tracking-wide translate-x-[-8px] group-hover:translate-x-0">
             {children}
           </span>
         </Link>
       </TooltipTrigger>
-      <TooltipContent side="right" className="group-hover:hidden">
-        {children}
+      <TooltipContent side="right" sideOffset={10} className="group-hover:hidden border-none p-0 bg-transparent shadow-none">
+        <div className="bg-gradient-to-br from-sky-400 via-blue-600 to-amber-500 border border-white/20 shadow-[0_8px_30px_rgb(0,0,0,0.3)] rounded-xl p-3.5 flex flex-col gap-1.5 w-60 text-white relative overflow-hidden">
+          {/* Subtle top highlight for a premium glass-like reflection */}
+          <div className="absolute top-0 left-0 right-0 h-px bg-gradient-to-r from-transparent via-white/40 to-transparent"></div>
+          <div className="flex items-center gap-2.5 font-bold text-sm text-white relative z-10 drop-shadow-sm">
+            <div className="p-1.5 bg-white/20 rounded-md text-white backdrop-blur-sm">
+              <Icon size={16} />
+            </div>
+            {children}
+          </div>
+          {description && <p className="text-xs text-blue-50 leading-relaxed drop-shadow-sm">{description}</p>}
+        </div>
       </TooltipContent>
     </Tooltip>
   )
 }
 
-function NavGroup({ title, defaultOpen = true, children }: { title: string, defaultOpen?: boolean, children: React.ReactNode }) {
+function NavGroup({ title, defaultOpen = true, to, children }: { title: string, defaultOpen?: boolean, to?: string, children: React.ReactNode }) {
   const [isOpen, setIsOpen] = useState(defaultOpen)
+  const navigate = useNavigate()
+  
+  const handleClick = () => {
+    if (to) {
+      navigate(to)
+      setIsOpen(true)
+    } else {
+      setIsOpen(!isOpen)
+    }
+  }
+
   return (
     <div className="space-y-1 mb-4">
       <button 
-        onClick={() => setIsOpen(!isOpen)} 
-        className="w-full flex items-center px-5 py-1 text-xs font-semibold text-muted-foreground uppercase tracking-wider hover:text-foreground transition-colors group/btn outline-none overflow-hidden whitespace-nowrap h-6"
+        onClick={handleClick} 
+        className="w-full flex items-center px-5 py-2 text-[11px] font-medium text-muted-foreground/50 uppercase tracking-[0.25em] hover:text-foreground transition-all duration-300 group/btn outline-none overflow-hidden whitespace-nowrap h-8"
       >
-        <span className="opacity-0 group-hover:opacity-100 transition-opacity duration-300 flex-1 text-left flex justify-between items-center w-full">
+        <span className="opacity-0 group-hover:opacity-100 transition-all duration-300 flex-1 text-left flex justify-between items-center w-full translate-x-[-4px] group-hover:translate-x-0">
           {title}
-          <span className="opacity-50 group-hover/btn:opacity-100 transition-opacity text-[10px]">{isOpen ? '▼' : '▶'}</span>
+          <span className="opacity-0 group-hover/btn:opacity-100 transition-all duration-300 text-[9px] translate-x-2 group-hover/btn:translate-x-0">{isOpen ? '▼' : '▶'}</span>
         </span>
       </button>
       {isOpen && <div className="space-y-1 animate-in slide-in-from-top-1 duration-200">{children}</div>}
@@ -174,7 +234,10 @@ function AppShellWithNavigation() {
   return (
     <TooltipProvider delayDuration={300}>
       <NotificationProvider>
-        <AppShell />
+        <ClockProvider>
+          <CustomCursor />
+          <AppShell />
+        </ClockProvider>
       </NotificationProvider>
     </TooltipProvider>
   )
@@ -190,6 +253,14 @@ function AppShell() {
   const [currentProfile, setCurrentProfile] = useState<'public' | 'private'>('public')
   const [showPrivateSetup, setShowPrivateSetup] = useState(false)
   const [showPrivateAuth, setShowPrivateAuth] = useState(false)
+  
+  const [isSidebarHidden, setIsSidebarHidden] = useState(false)
+  const [isNavbarHidden, setIsNavbarHidden] = useState(false)
+  const [isTitleBarHidden, setIsTitleBarHidden] = useState(false)
+
+  // Global onboarding welcome
+  const [showGlobalWelcome, setShowGlobalWelcome] = useState(false)
+  const [onboardingReady, setOnboardingReady] = useState(false)
 
   // Activity tracking to prevent auto-lock while active
   useEffect(() => {
@@ -285,7 +356,7 @@ function AppShell() {
   useEffect(() => {
     const checkOllama = async () => {
       try {
-        const res = await fetch('http://127.0.0.1:11434/', { method: 'GET' })
+        const res = await fetch(`http://127.0.0.1:11434/?t=${Date.now()}`, { method: 'GET', cache: 'no-store' })
         if (res.ok) {
           setOllamaReady(true)
         } else {
@@ -299,6 +370,24 @@ function AppShell() {
     const interval = setInterval(checkOllama, 5000)
     return () => clearInterval(interval)
   }, [])
+
+  useEffect(() => {
+    MessageReceiverService.initialize();
+    OnlineReminderService.init();
+    AchievementEngine.reconcileAchievements();
+  }, []);
+
+  // Initialize onboarding system
+  useEffect(() => {
+    const initOnboarding = async () => {
+      await onboardingService.initializeForExistingUser()
+      if (!onboardingService.isGlobalCompleted()) {
+        setShowGlobalWelcome(true)
+      }
+      setOnboardingReady(true)
+    }
+    initOnboarding()
+  }, []);
 
   // In a real app we'd load devModeEnabled from a store. For now, checking local storage as a quick workaround until we link settings
   useEffect(() => {
@@ -335,10 +424,51 @@ function AppShell() {
     const mediaQuery = window.matchMedia('(prefers-color-scheme: dark)')
     mediaQuery.addEventListener('change', applyTheme)
     
+    const handleKeyDown = (e: KeyboardEvent) => {
+      if (e.ctrlKey && e.key.toLowerCase() === 't') {
+        e.preventDefault()
+        const isDark = window.document.documentElement.classList.contains('dark')
+        const newTheme = isDark ? 'light' : 'dark'
+        localStorage.setItem('theme', newTheme)
+        window.dispatchEvent(new Event('themeChanged'))
+      }
+    }
+    window.addEventListener('keydown', handleKeyDown)
+    
     return () => {
       window.removeEventListener('themeChanged', applyTheme)
       mediaQuery.removeEventListener('change', applyTheme)
+      window.removeEventListener('keydown', handleKeyDown)
     }
+  }, [])
+
+  // Focus mode state tracking
+  const focusStateRef = React.useRef({ isSidebarHidden, isNavbarHidden })
+  useEffect(() => {
+    focusStateRef.current = { isSidebarHidden, isNavbarHidden }
+  }, [isSidebarHidden, isNavbarHidden])
+
+  // Focus Mode Shortcuts
+  useEffect(() => {
+    const handleFocusShortcuts = (e: KeyboardEvent) => {
+      if (e.ctrlKey && e.key === 'F12') {
+        e.preventDefault()
+        const { isSidebarHidden: s, isNavbarHidden: n } = focusStateRef.current
+        const isFocusMode = s && n
+        setIsSidebarHidden(!isFocusMode)
+        setIsNavbarHidden(!isFocusMode)
+      }
+      if (e.key === 'F11') {
+        // Intentionally not preventing default so native fullscreen triggers
+        setIsTitleBarHidden(prev => !prev)
+      }
+      if (e.ctrlKey && e.key.toLowerCase() === 'h') {
+        e.preventDefault()
+        setIsNavbarHidden(prev => !prev)
+      }
+    }
+    window.addEventListener('keydown', handleFocusShortcuts)
+    return () => window.removeEventListener('keydown', handleFocusShortcuts)
   }, [])
 
   // Load user profile on mount and when dialog closes
@@ -366,26 +496,33 @@ function AppShell() {
   }, [])
 
   return (
-    <div className="flex h-screen bg-background text-foreground overflow-hidden">
-      {/* Sidebar */}
-      <aside className="group w-[72px] hover:w-64 transition-all duration-300 ease-in-out border-r border-border bg-card flex flex-col shadow-sm z-50 flex-shrink-0 overflow-hidden relative">
-        <div className="h-16 px-5 border-b border-border flex items-center gap-4 shrink-0 overflow-hidden">
+    <div className="flex flex-col h-screen bg-background text-foreground overflow-hidden">
+      {!isTitleBarHidden && <CustomTitleBar />}
+      <div className="flex flex-1 overflow-hidden relative">
+        {/* Sidebar */}
+      {!isSidebarHidden && (
+        <div className="w-[74px] shrink-0 z-50 relative">
+          <aside className="absolute top-0 bottom-0 left-0 group w-[74px] hover:w-64 transition-all duration-500 ease-out border-r border-border/10 bg-background/50 backdrop-blur-3xl flex flex-col shadow-[4px_0_24px_-4px_rgba(0,0,0,0.05)] dark:shadow-[4px_0_32px_-4px_rgba(0,0,0,0.4)] z-50 flex-shrink-0 overflow-hidden">
+        <div className="h-20 px-5 flex items-center gap-3.5 shrink-0 overflow-hidden relative">
+          {/* Premium Ambient Profile Background */}
+          <div className="absolute inset-0 bg-[radial-gradient(ellipse_at_top_left,_var(--tw-gradient-stops))] from-sky-400/30 via-sky-100/5 to-transparent dark:from-sky-400/20 dark:via-sky-900/5 dark:to-transparent pointer-events-none" />
+          <div className="absolute -top-10 -left-10 w-40 h-40 bg-sky-500/20 rounded-full blur-2xl pointer-events-none" />
           <Tooltip>
             <TooltipTrigger asChild>
               <button 
                 onClick={() => setIsProfileOpen(true)}
-                className="w-8 h-8 shrink-0 bg-gradient-to-br from-primary to-blue-600 rounded-lg flex items-center justify-center text-white font-bold shadow-md hover:opacity-80 transition-opacity cursor-pointer"
+                className="relative w-10 h-10 shrink-0 bg-gradient-to-tr from-blue-600 via-primary to-indigo-500 rounded-full flex items-center justify-center text-white font-bold shadow-[0_6px_16px_rgba(0,0,0,0.15)] hover:shadow-[0_8px_24px_rgba(var(--primary),0.4)] hover:scale-105 transition-all duration-500 cursor-pointer ring-[1.5px] ring-white/30 dark:ring-white/10 z-10 overflow-hidden before:absolute before:inset-0 before:rounded-full before:shadow-[inset_0_2px_4px_rgba(255,255,255,0.4)]"
               >
                 {userProfile?.photoPath ? (
                   <img 
                     src={userProfile.photoPath} 
                     alt="Profile" 
-                    className="w-full h-full rounded-lg object-cover"
+                    className="w-full h-full object-cover z-10"
                   />
                 ) : userProfile?.fullName ? (
-                  userProfile.fullName.split(' ').map(n => n[0]).join('').substring(0, 2).toUpperCase()
+                  <span className="z-10">{userProfile.fullName.split(' ').map(n => n[0]).join('').substring(0, 2).toUpperCase()}</span>
                 ) : (
-                  'K'
+                  <span className="z-10">K</span>
                 )}
               </button>
             </TooltipTrigger>
@@ -393,112 +530,160 @@ function AppShell() {
               Profile & Settings
             </TooltipContent>
           </Tooltip>
-          <span className="font-bold text-lg tracking-tight whitespace-nowrap opacity-0 group-hover:opacity-100 transition-opacity duration-300">
-            {currentProfile === 'private' ? `${userProfile?.fullName?.split(' ')[0] || 'Private'}` : 'Kiseki Record'}
+          <span className="font-bold text-[15px] tracking-tight opacity-0 group-hover:opacity-100 transition-opacity duration-300 flex-1 min-w-0 truncate">
+            {currentProfile === 'private' ? `${userProfile?.fullName?.split(' ')[0] || 'Private'}` : userProfile?.fullName?.split(' ').slice(0, 2).join(' ') || 'Kiseki Record'}
           </span>
         </div>
-        
-        <div className="flex-1 overflow-y-auto overflow-x-hidden py-4 scrollbar-none custom-scrollbar-sidebar">
+
+        <OverscrollContainer className="flex-1 relative z-40">
           <NavGroup title="Overview">
-            <NavLink to="/" icon={LayoutDashboard}>Dashboard</NavLink>
-            <NavLink to="/reports" icon={FileBarChart}>Reports</NavLink>
+            <NavLink to="/" icon={LayoutDashboard} description="View your daily summary, quick stats, and overall progress at a glance.">Dashboard</NavLink>
+            <NavLink to="/reports" icon={FileBarChart} description="Detailed analytics and insights across all your activities and areas of life.">Reports</NavLink>
           </NavGroup>
           
           <NavGroup title="Core" defaultOpen={true}>
-            <NavLink to="/records" icon={FileText}>Records</NavLink>
-            <NavLink to="/journal" icon={Book}>Journal</NavLink>
-            <NavLink to="/memory-capsules" icon={Mail}>Memory Capsules</NavLink>
+            <NavLink to="/records" icon={FileText} description="Store and manage your personal documents, notes, and essential data.">Records</NavLink>
+            <NavLink to="/journal" icon={Book} description="Write daily entries, track your mood, and reflect on your experiences.">Journal</NavLink>
+            <NavLink to="/memory-capsules" icon={Mail} description="Create time capsules with messages and files to be unlocked in the future.">Memory Capsules</NavLink>
+            <NavLink to="/clock" icon={Clock} description="Manage your time, run focused sessions, and review your activity timeline.">Clock</NavLink>
+            <NavLink to="/chronicle" icon={ScrollText} description="Your personal chronological timeline and event log.">Chronicle</NavLink>
+          </NavGroup>
+
+          <NavGroup title="Build & Grow" defaultOpen={true}>
+            <NavLink to="/build-grow/overview" icon={Rocket} description="Overview of the things you're building, achieving, and developing.">Build & Grow</NavLink>
+          </NavGroup>
+
+          <NavGroup title="Dreams" defaultOpen={true}>
+            <NavLink to="/dreams" icon={Stars} description="Things you want to achieve, experience, build, or make real in your life.">Dreams</NavLink>
           </NavGroup>
 
           <NavGroup title="Life Management">
-            <NavLink to="/career/goals" icon={Target}>Goals</NavLink>
-            <NavLink to="/habits" icon={Zap}>Habits</NavLink>
-            <NavLink to="/relationships" icon={Users}>Relationships</NavLink>
-            <NavLink to="/career/skills" icon={BrainCircuit}>Skills</NavLink>
-            <NavLink to="/career" icon={GraduationCap}>Edu & Career</NavLink>
+            <NavLink to="/habits" icon={Zap} description="Build positive routines, track streaks, and analyze your daily habits.">Habits</NavLink>
+            <NavLink to="/relationships" icon={Users} description="Manage connections, set reminders, and nurture your personal network.">Relationships</NavLink>
+            <NavLink to="/career" icon={GraduationCap} description="Track your educational milestones, professional experience, and career trajectory.">Edu & Career</NavLink>
           </NavGroup>
 
           <NavGroup title="Intelligence">
-            <NavLink to="/assistant" icon={Bot}>AI Assistant</NavLink>
+            <NavLink to="/assistant" icon={Bot} description="Chat with your local AI to analyze data, get advice, and generate insights.">AI Assistant</NavLink>
           </NavGroup>
 
           {devModeEnabled && (
             <NavGroup title="Developer" defaultOpen={false}>
-              <NavLink to="/logs" icon={AlertTriangle}>Errors & Logs</NavLink>
+              <NavLink to="/logs" icon={AlertTriangle} description="System diagnostics, error tracking, and application logs for developers.">Errors & Logs</NavLink>
             </NavGroup>
           )}
 
           <NavGroup title="System">
-            <NavLink to="/notifications" icon={Bell}>
+            <NavLink to="/notifications" icon={Bell} description="View all your recent alerts, reminders, and system notifications.">
               <div className="flex items-center justify-between w-full">
                 <span>Notifications</span>
                 <NotificationBadge />
               </div>
             </NavLink>
           </NavGroup>
-        </div>
-        <div className="h-16 border-t border-border px-5 flex items-center shrink-0 bg-card/50 overflow-hidden">
+        </OverscrollContainer>
+        <div className="h-[72px] border-t border-border/10 px-5 flex items-center shrink-0 bg-background/20 backdrop-blur-xl overflow-hidden relative">
           <Tooltip>
             <TooltipTrigger asChild>
-              <Link to="/settings" className="flex items-center gap-4 text-muted-foreground hover:text-foreground transition-colors p-2 hover:bg-accent rounded-md overflow-hidden">
-                <SettingsIcon size={20} className="shrink-0" />
-                <span className="whitespace-nowrap font-medium opacity-0 group-hover:opacity-100 transition-opacity duration-300">Settings</span>
+              <Link 
+                to="/settings" 
+                onPointerDown={(e) => e.preventDefault()}
+                className="flex items-center gap-3.5 text-muted-foreground hover:text-foreground transition-all duration-300 p-1.5 hover:bg-accent/40 rounded-xl overflow-hidden group/settings w-full relative z-10 hover:shadow-[inset_0_1px_1px_rgba(255,255,255,0.05)]"
+              >
+                <div className="relative shrink-0 flex items-center justify-center w-[34px] h-[34px] rounded-lg transition-all duration-500 bg-transparent group-hover/settings:bg-accent group-hover/settings:shadow-sm">
+                  <SettingsIcon size={18} strokeWidth={1.75} className="shrink-0 transition-transform duration-700 group-hover/settings:rotate-180 group-hover/settings:text-primary" />
+                </div>
+                <span className="whitespace-nowrap font-semibold opacity-0 group-hover:opacity-100 transition-all duration-300 tracking-wide translate-x-[-8px] group-hover:translate-x-0">Settings</span>
               </Link>
             </TooltipTrigger>
-            <TooltipContent side="right" className="group-hover:hidden">
-              Application Settings
+            <TooltipContent side="right" sideOffset={10} className="group-hover:hidden border-none p-0 bg-transparent shadow-none">
+              <div className="bg-gradient-to-br from-sky-400 via-blue-600 to-amber-500 border border-white/20 shadow-[0_8px_30px_rgb(0,0,0,0.3)] rounded-xl p-3.5 flex flex-col gap-1.5 w-60 text-white relative overflow-hidden">
+                {/* Subtle top highlight for a premium glass-like reflection */}
+                <div className="absolute top-0 left-0 right-0 h-px bg-gradient-to-r from-transparent via-white/40 to-transparent"></div>
+                <div className="flex items-center gap-2.5 font-bold text-sm text-white relative z-10 drop-shadow-sm">
+                  <div className="p-1.5 bg-white/20 rounded-md text-white backdrop-blur-sm">
+                    <SettingsIcon size={16} />
+                  </div>
+                  Settings
+                </div>
+                <p className="text-xs text-blue-50 leading-relaxed drop-shadow-sm">Configure application preferences and behavior.</p>
+              </div>
             </TooltipContent>
           </Tooltip>
         </div>
       </aside>
+      </div>
+      )}
 
       {/* Main Content Area */}
-      <div className="flex-1 flex flex-col bg-background relative">
-        <header className="h-16 border-b border-border bg-card/50 backdrop-blur-sm flex items-center justify-between px-6 z-50">
-          <NavigationButtons />
-          <div className="flex items-center gap-4">
-            <NotificationDropdown devModeEnabled={devModeEnabled} />
-            <Tooltip>
-              <TooltipTrigger asChild>
-                <div className={`flex items-center gap-2 px-3 py-1.5 rounded-full border border-border text-xs font-medium transition-colors cursor-default ${ollamaReady ? 'bg-green-500/10 text-green-500' : 'bg-red-500/10 text-red-500'}`}>
-                  <div className={`w-2 h-2 rounded-full ${ollamaReady ? 'bg-green-500' : 'bg-red-500'}`}></div>
-                  {ollamaReady ? 'Ollama Ready' : 'Ollama Offline'}
-                </div>
-              </TooltipTrigger>
-              <TooltipContent side="bottom">
-                {ollamaReady ? 'Local AI is running and ready' : 'Local AI is not running. Please start Ollama.'}
-              </TooltipContent>
-            </Tooltip>
+      <div className="flex-1 flex flex-col bg-background relative overflow-hidden">
+        {/* Premium Ambient Background */}
+        <div className="absolute inset-0 z-0 pointer-events-none bg-[radial-gradient(ellipse_at_top_right,_var(--tw-gradient-stops))] from-sky-400/20 via-sky-100/5 to-transparent dark:from-sky-400/10 dark:via-sky-900/5 dark:to-transparent" />
+        <div className="absolute inset-0 z-0 pointer-events-none bg-[radial-gradient(ellipse_at_bottom_left,_var(--tw-gradient-stops))] from-blue-500/20 via-blue-100/5 to-transparent dark:from-blue-500/10 dark:via-blue-900/5 dark:to-transparent" />
+        
+        {!isNavbarHidden && (
+          <header className="h-[72px] border-b border-border/10 bg-background/40 backdrop-blur-2xl flex items-center justify-between px-8 z-40 shrink-0 relative shadow-[0_4px_24px_-8px_rgba(0,0,0,0.03)] dark:shadow-[0_4px_24px_-8px_rgba(0,0,0,0.2)]">
+          <div className="absolute inset-0 bg-gradient-to-r from-transparent via-primary/5 to-transparent pointer-events-none" />
+          <div className="relative z-10 w-full flex items-center justify-between">
+            <NavigationButtons />
+            <div className="flex items-center gap-4">
+              <NotificationDropdown devModeEnabled={devModeEnabled} />
+              <Tooltip>
+                <TooltipTrigger asChild>
+                  <div className={`flex items-center gap-2.5 px-3 py-1.5 rounded-full border text-[11px] font-bold tracking-wider uppercase transition-all duration-500 shadow-sm backdrop-blur-md cursor-default ${ollamaReady ? 'bg-green-500/10 text-green-600 dark:text-green-400 border-green-500/20' : 'bg-red-500/10 text-red-600 dark:text-red-400 border-red-500/20'}`}>
+                    <div className="relative flex h-2 w-2">
+                      {ollamaReady && <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-green-400 opacity-75"></span>}
+                      <span className={`relative inline-flex rounded-full h-2 w-2 ${ollamaReady ? 'bg-green-500' : 'bg-red-500'}`}></span>
+                    </div>
+                    {ollamaReady ? 'Ollama Ready' : 'Ollama Offline'}
+                  </div>
+                </TooltipTrigger>
+                <TooltipContent side="bottom">
+                  {ollamaReady ? 'Local AI is running and ready' : 'Local AI is not running. Please start Ollama.'}
+                </TooltipContent>
+              </Tooltip>
+            </div>
           </div>
         </header>
+        )}
         
-        <main className="flex-1 overflow-auto relative">
-          <ErrorBoundary>
-            <Routes>
-              <Route path="/" element={<Dashboard />} />
-              <Route path="/dashboard" element={<Dashboard />} />
-              <Route path="/logs" element={<Logs />} />
-              <Route path="/notifications" element={<Notifications />} />
-              <Route path="/reports/*" element={<Reports />} />
-              <Route path="/records" element={<Records />} />
-              <Route path="/journal" element={<Journal />} />
-              <Route path="/journal/dashboard" element={<JournalDashboard />} />
-              <Route path="/journal/analytics" element={<JournalAnalytics />} />
-              <Route path="/journal/timeline" element={<JournalTimeline />} />
-              <Route path="/memory-capsules" element={<MemoryCapsules />} />
-              <Route path="/goals" element={<Goals />} />
-              <Route path="/habits/*" element={<Habits />} />
-              <Route path="/relationships" element={<Relationships />} />
-              <Route path="/relationships/:id" element={<RelationshipProfile />} />
-              <Route path="/skills" element={<Skills />} />
-              <Route path="/career/*" element={<Career />} />
-              <Route path="/assistant" element={<Assistant />} />
-              <Route path="/logs" element={<Logs />} />
-              <Route path="/settings" element={<Settings />} />
-            </Routes>
-          </ErrorBoundary>
-        </main>
+        <OverscrollContainer className="flex-1 min-h-0 relative z-10" containerClassName="flex flex-col min-h-0">
+          <main className="flex-1 min-h-0 flex flex-col relative z-10">
+            <ErrorBoundary>
+              <Routes>
+                <Route path="/" element={<Dashboard />} />
+                <Route path="/dashboard" element={<Dashboard />} />
+                <Route path="/logs" element={<Logs />} />
+                <Route path="/notifications" element={<Notifications />} />
+                <Route path="/reports/*" element={<Reports />} />
+                <Route path="/records" element={<Records />} />
+                <Route path="/journal" element={<Journal />} />
+                <Route path="/journal/dashboard" element={<JournalDashboard />} />
+                <Route path="/journal/analytics" element={<JournalAnalytics />} />
+                <Route path="/journal/timeline" element={<JournalTimeline />} />
+                <Route path="/memory-capsules" element={<MemoryCapsules />} />
+                <Route path="/chronicle" element={<ChronicleLayout />} />
+                <Route path="/chronicle/:entryId" element={<ChronicleEntryView />} />
+                <Route path="/clock/*" element={<ClockLayout />} />
+                <Route path="/build-grow/*" element={<BuildGrow />} />
+                <Route path="/dreams" element={<DreamList />} />
+                <Route path="/dreams/:category" element={<DreamList />} />
+                <Route path="/dreams/view/:dreamId" element={<DreamDetail />} />
+                <Route path="/goals" element={<Goals />} />
+                <Route path="/habits/*" element={<Habits />} />
+                <Route path="/relationships" element={<Relationships />} />
+                <Route path="/relationships/:id" element={<RelationshipProfile />} />
+                <Route path="/skills" element={<Skills />} />
+                <Route path="/career/*" element={<Career />} />
+                <Route path="/assistant" element={<Assistant />} />
+                <Route path="/logs" element={<Logs />} />
+                <Route path="/settings" element={<Settings />} />
+              </Routes>
+            </ErrorBoundary>
+          </main>
+        </OverscrollContainer>
       </div>
+    </div>
 
       <UserProfileDialog isOpen={isProfileOpen} onClose={() => setIsProfileOpen(false)} />
       
@@ -512,6 +697,17 @@ function AppShell() {
         onClose={() => setShowPrivateAuth(false)} 
         onSuccess={() => setShowPrivateAuth(false)} 
       />
+      <GlobalAlarmOverlay />
+      <GlobalAchievementCelebration />
+      <UnknownSenderModal />
+      {showGlobalWelcome && (
+        <GlobalWelcome
+          onComplete={() => {
+            onboardingService.completeGlobal()
+            setShowGlobalWelcome(false)
+          }}
+        />
+      )}
     </div>
   )
 }
@@ -548,11 +744,11 @@ function NotificationDropdown({ devModeEnabled }: { devModeEnabled: boolean }) {
         <TooltipTrigger asChild>
           <button 
             onClick={() => setOpen(!open)}
-            className={`relative p-2 rounded-md transition-colors ${open ? 'bg-accent text-foreground' : 'text-muted-foreground hover:text-foreground hover:bg-accent'}`}
+            className={`relative p-2.5 rounded-full transition-all duration-300 group ${open ? 'bg-primary/10 text-primary shadow-[inset_0_2px_4px_rgba(0,0,0,0.05),0_0_12px_rgba(var(--primary),0.2)] ring-1 ring-primary/30 scale-95' : 'bg-background/40 backdrop-blur-md text-muted-foreground hover:text-foreground hover:bg-white/40 dark:hover:bg-white/10 hover:shadow-[0_6px_16px_rgba(0,0,0,0.12)] hover:-translate-y-0.5 active:scale-90 active:translate-y-0 active:shadow-inner ring-1 ring-border/10 hover:ring-white/20'}`}
           >
-            <Bell size={18} />
+            <Bell size={18} strokeWidth={1.75} className={`transition-transform duration-300 ${open ? 'scale-110' : 'group-hover:rotate-[15deg] group-hover:scale-110'}`} />
             {unreadCount > 0 && (
-              <span className="absolute top-1 right-1 w-2.5 h-2.5 bg-red-500 rounded-full border-2 border-card"></span>
+              <span className="absolute top-1 right-1 w-2.5 h-2.5 bg-red-500 rounded-full border-2 border-background shadow-[0_0_8px_rgba(239,68,68,0.6)]"></span>
             )}
           </button>
         </TooltipTrigger>
@@ -562,9 +758,10 @@ function NotificationDropdown({ devModeEnabled }: { devModeEnabled: boolean }) {
       </Tooltip>
 
       {open && (
-        <div className="absolute top-full right-0 mt-2 w-80 bg-card border border-border rounded-xl shadow-xl z-50 overflow-hidden animate-in fade-in slide-in-from-top-2 duration-200 origin-top-right">
-          <div className="p-3 border-b border-border flex items-center justify-between bg-accent/30">
-            <h3 className="font-bold text-sm">Notifications</h3>
+        <div className="absolute top-full right-0 mt-3 w-[340px] bg-background/95 backdrop-blur-xl border border-border/50 rounded-2xl shadow-[0_12px_40px_rgba(0,0,0,0.12)] dark:shadow-[0_12px_40px_rgba(0,0,0,0.5)] z-50 overflow-hidden animate-in fade-in slide-in-from-top-4 duration-300 origin-top-right ring-1 ring-white/10 dark:ring-white/5">
+          <div className="p-4 border-b border-border/10 flex items-center justify-between bg-gradient-to-b from-primary/5 to-transparent relative">
+            <div className="absolute top-0 left-0 right-0 h-[1px] bg-gradient-to-r from-transparent via-primary/30 to-transparent opacity-50"></div>
+            <h3 className="font-bold text-[12px] tracking-widest uppercase text-foreground/80">Notifications</h3>
             <div className="flex gap-2">
               {devModeEnabled && (
                 <button 
@@ -585,11 +782,14 @@ function NotificationDropdown({ devModeEnabled }: { devModeEnabled: boolean }) {
             </div>
           </div>
           
-          <div className="max-h-[300px] overflow-y-auto">
+          <div className="max-h-[360px] overflow-y-auto scrollbar-none">
             {recent.length === 0 ? (
-              <div className="p-8 text-center text-muted-foreground">
-                <Bell className="mx-auto mb-2 opacity-20" size={24}/>
-                <p className="text-xs">No notifications yet.</p>
+              <div className="p-10 text-center flex flex-col items-center justify-center relative">
+                <div className="absolute inset-0 bg-gradient-to-b from-transparent to-background/50 pointer-events-none" />
+                <div className="w-12 h-12 rounded-full bg-accent/50 flex items-center justify-center mb-3 ring-1 ring-border/20 shadow-inner">
+                  <Bell className="opacity-40" size={20}/>
+                </div>
+                <p className="text-xs font-medium text-muted-foreground/70">No notifications right now.</p>
               </div>
             ) : (
               recent.map(n => {
@@ -609,15 +809,16 @@ function NotificationDropdown({ devModeEnabled }: { devModeEnabled: boolean }) {
                       setOpen(false)
                       if (n.targetPath) navigate(n.targetPath)
                     }}
-                    className={`p-3 border-b border-border last:border-0 hover:bg-accent cursor-pointer transition-colors flex items-start gap-3 ${!n.isRead ? 'bg-primary/5' : ''}`}
+                    className={`p-4 border-b border-white/5 last:border-0 hover:bg-white/5 cursor-pointer transition-all flex items-start gap-4 ${!n.isRead ? 'bg-primary/5' : ''}`}
                   >
-                    <div className="shrink-0 mt-0.5">{icon}</div>
+                    <div className="shrink-0 mt-0.5 opacity-80">{icon}</div>
                     <div className="flex-1 min-w-0">
-                      <div className="flex items-center justify-between mb-0.5">
-                        <span className={`text-xs font-bold truncate ${!n.isRead ? 'text-foreground' : 'text-muted-foreground'}`}>{n.title}</span>
-                        {!n.isRead && <span className="w-1.5 h-1.5 rounded-full bg-primary shrink-0 ml-2"></span>}
+                      <div className="flex items-center justify-between mb-1">
+                        <span className={`text-[13px] font-bold truncate ${!n.isRead ? 'text-foreground' : 'text-muted-foreground/80'}`}>{n.title}</span>
+                        {!n.isRead && <span className="w-2 h-2 rounded-full bg-primary shrink-0 ml-2 shadow-[0_0_6px_var(--primary)]"></span>}
                       </div>
-                      <p className="text-xs text-muted-foreground line-clamp-2 leading-tight">{n.message}</p>
+                      <p className={`text-[11px] leading-relaxed line-clamp-2 ${!n.isRead ? 'text-muted-foreground' : 'text-muted-foreground/60'}`}>{n.message}</p>
+                      <span className="text-[9px] font-medium text-muted-foreground/40 mt-1.5 block uppercase tracking-wider">{new Date(n.timestamp).toLocaleTimeString([], {hour: '2-digit', minute:'2-digit'})}</span>
                     </div>
                   </div>
                 )
@@ -625,13 +826,16 @@ function NotificationDropdown({ devModeEnabled }: { devModeEnabled: boolean }) {
             )}
           </div>
           
-          <Link 
-            to="/notifications" 
-            onClick={() => setOpen(false)}
-            className="block w-full p-2 text-center text-xs font-bold text-muted-foreground hover:bg-accent hover:text-foreground transition-colors bg-accent/10 border-t border-border"
-          >
-            View all notifications
-          </Link>
+          {recent.length > 0 && (
+            <div className="p-2 bg-background/40 backdrop-blur-sm border-t border-white/5">
+              <button 
+                onClick={() => { setOpen(false); navigate('/notifications'); }}
+                className="w-full py-2 text-[11px] font-bold text-center text-muted-foreground hover:text-primary transition-colors uppercase tracking-wider rounded-lg hover:bg-white/5"
+              >
+                View all notifications
+              </button>
+            </div>
+          )}
         </div>
       )}
     </div>

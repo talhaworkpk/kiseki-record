@@ -30,6 +30,19 @@ export const db = {
   memoryCapsules: new Datastore({ filename: join(dataPath, 'memoryCapsules.db'), autoload: true }),
   systemUnlocks: new Datastore({ filename: join(dataPath, 'systemUnlocks.db'), autoload: true }),
   calendarMemories: new Datastore({ filename: join(dataPath, 'calendarMemories.db'), autoload: true }),
+  actionGroups: new Datastore({ filename: join(dataPath, 'actionGroups.db'), autoload: true }),
+  dreams: new Datastore({ filename: join(dataPath, 'dreams.db'), autoload: true }),
+  dream_goals: new Datastore({ filename: join(dataPath, 'dream_goals.db'), autoload: true }),
+  dream_projects: new Datastore({ filename: join(dataPath, 'dream_projects.db'), autoload: true }),
+  dream_skills: new Datastore({ filename: join(dataPath, 'dream_skills.db'), autoload: true }),
+  dream_certificates: new Datastore({ filename: join(dataPath, 'dream_certificates.db'), autoload: true }),
+  clockAppearance: new Datastore({ filename: join(dataPath, 'clockAppearance.db'), autoload: true }),
+  clockAssets: new Datastore({ filename: join(dataPath, 'clockAssets.db'), autoload: true }),
+  clockAlarms: new Datastore({ filename: join(dataPath, 'clockAlarms.db'), autoload: true }),
+  clockEvents: new Datastore({ filename: join(dataPath, 'clockEvents.db'), autoload: true }),
+  relationshipConversations: new Datastore({ filename: join(dataPath, 'relationshipConversations.db'), autoload: true }),
+  chronicle: new Datastore({ filename: join(dataPath, 'chronicle.db'), autoload: true }),
+  chronicleRecords: new Datastore({ filename: join(dataPath, 'chronicleRecords.db'), autoload: true }),
 }
 
 // Ensure unique constraints if needed
@@ -46,7 +59,7 @@ export const dbAsync = {
   },
   insert: (collection: string, doc: any): Promise<any> => {
     return new Promise((resolve, reject) => {
-      db[collection as keyof typeof db].insert(doc, (err: Error, newDoc: any) => {
+      db[collection as keyof typeof db].insert(doc, (err: Error | null, newDoc: any) => {
         if (err) reject(err)
         else resolve(newDoc)
       })
@@ -54,9 +67,17 @@ export const dbAsync = {
   },
   update: (collection: string, query: any, update: any, options: any = {}): Promise<number> => {
     return new Promise((resolve, reject) => {
-      db[collection as keyof typeof db].update(query, update, options, (err: Error, numReplaced: number) => {
+      db[collection as keyof typeof db].update(query, update, options, (err: Error | null, numReplaced: number) => {
         if (err) reject(err)
         else resolve(numReplaced)
+      })
+    })
+  },
+  remove: (collection: string, query: any, options: any = {}): Promise<number> => {
+    return new Promise((resolve, reject) => {
+      db[collection as keyof typeof db].remove(query, options, (err: Error | null, numRemoved: number) => {
+        if (err) reject(err)
+        else resolve(numRemoved)
       })
     })
   }

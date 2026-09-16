@@ -1,5 +1,7 @@
 import React, { useState, useRef, useEffect } from 'react'
+import { createPortal } from 'react-dom'
 import { UploadCloud, X, File as FileIcon, Image as ImageIcon, Music, Video, Loader2, User } from 'lucide-react'
+import { OverscrollContainer } from '../ui/OverscrollContainer'
 
 interface QuickAddModalProps {
   isOpen: boolean
@@ -38,6 +40,16 @@ export function QuickAddModal({ isOpen, onClose, onSuccess }: QuickAddModalProps
       window.api.db.find('relationships', {}).then(setSavedRelationships).catch(console.error)
     }
   }, [isOpen])
+
+  useEffect(() => {
+    const handleKeyDown = (e: KeyboardEvent) => {
+      if (e.key === 'Escape' && isOpen) {
+        onClose()
+      }
+    }
+    window.addEventListener('keydown', handleKeyDown)
+    return () => window.removeEventListener('keydown', handleKeyDown)
+  }, [isOpen, onClose])
 
   if (!isOpen) return null
 
@@ -240,20 +252,20 @@ export function QuickAddModal({ isOpen, onClose, onSuccess }: QuickAddModalProps
     </div>
   )
 
-  return (
-    <div className="fixed inset-0 z-[110] bg-background/80 backdrop-blur-sm flex items-center justify-center p-4">
-      <div className="bg-card border border-border rounded-2xl shadow-2xl max-w-2xl w-full max-h-[90vh] flex flex-col animate-in zoom-in-95">
-        
-        {/* Header */}
-        <div className="px-6 py-4 border-b border-border flex items-center justify-between">
-          <h3 className="font-bold text-xl">Quick Add</h3>
-          <button onClick={onClose} className="p-2 hover:bg-accent rounded-full transition-colors text-muted-foreground hover:text-foreground">
-            <X size={20} />
-          </button>
-        </div>
+  return createPortal(
+    <div className="fixed inset-0 z-[9999] bg-background/80 backdrop-blur-sm flex items-center justify-center p-4">
+      <div className="bg-card border border-border rounded-2xl shadow-2xl max-w-2xl w-full h-[90vh] flex flex-col animate-in zoom-in-95 overflow-hidden relative">
+        <OverscrollContainer className="flex-1 w-full h-full relative" containerClassName="flex flex-col">
+          {/* Header */}
+          <div className="px-6 py-4 border-b border-border flex items-center justify-between sticky top-0 bg-card z-20 shrink-0">
+            <h3 className="font-bold text-xl">Quick Add</h3>
+            <button onClick={onClose} className="p-2 hover:bg-accent rounded-full transition-colors text-muted-foreground hover:text-foreground">
+              <X size={20} />
+            </button>
+          </div>
 
-        {/* Scrollable Body */}
-        <div className="p-6 overflow-y-auto flex-1 space-y-6">
+          {/* Scrollable Body */}
+          <div className="p-6 flex-1 space-y-6">
           <div>
             <label className="text-sm font-medium text-muted-foreground mb-1 block">Type</label>
             <select 
@@ -525,14 +537,15 @@ export function QuickAddModal({ isOpen, onClose, onSuccess }: QuickAddModalProps
         </div>
 
         {/* Footer */}
-        <div className="px-6 py-4 border-t border-border flex justify-end gap-3 bg-card/50">
+        <div className="px-6 py-4 border-t border-border flex justify-end gap-3 bg-card/50 sticky bottom-0 z-20 shrink-0 backdrop-blur-xl">
           <button onClick={onClose} disabled={isSaving} className="px-5 py-2.5 bg-accent hover:bg-accent/80 rounded-xl font-medium transition-colors disabled:opacity-50">Cancel</button>
           <button onClick={handleSave} disabled={isSaving} className="px-5 py-2.5 bg-primary text-primary-foreground hover:bg-primary/90 rounded-xl font-bold shadow-lg shadow-primary/20 transition-all active:scale-95 flex items-center gap-2 disabled:opacity-75 disabled:active:scale-100">
             {isSaving ? <><Loader2 size={18} className="animate-spin" /> Saving...</> : 'Save Entry'}
           </button>
         </div>
-
+        </OverscrollContainer>
       </div>
-    </div>
+    </div>,
+    document.body
   )
 }

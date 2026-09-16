@@ -1,4 +1,6 @@
 import React, { useState, useEffect } from 'react'
+import { createPortal } from 'react-dom'
+import { OverscrollContainer } from '../ui/OverscrollContainer'
 import { CalendarMemory } from '../../types'
 import { X, Calendar as CalendarIcon, Paperclip, Edit, Trash2, Image as ImageIcon, FileText, Music, Play, Pause, Film } from 'lucide-react'
 import TipTapEditor from '../ResumeEditor/TipTapEditor'
@@ -159,12 +161,33 @@ export function CalendarMemoryModal({ isOpen, onClose, selectedDate, memories, o
     }
   }
 
+  useEffect(() => {
+    const handleKeyDown = (e: KeyboardEvent) => {
+      if (e.key === 'Escape') {
+        onClose()
+      }
+      if ((e.ctrlKey || e.metaKey) && e.key.toLowerCase() === 's') {
+        e.preventDefault()
+        if (isEditing) {
+          const dummyEvent = { preventDefault: () => {} } as React.FormEvent
+          handleSave(dummyEvent)
+        } else if (activeMemory) {
+          setIsEditing(true)
+        }
+      }
+    }
+    if (isOpen) {
+      window.addEventListener('keydown', handleKeyDown)
+    }
+    return () => window.removeEventListener('keydown', handleKeyDown)
+  }, [isOpen, onClose, isEditing, activeMemory, title, description, attachments, selectedDate])
+
   if (!isOpen) return null
 
   const monthName = selectedDate ? new Date(2024, selectedDate.month - 1).toLocaleString('default', { month: 'long' }) : ''
   const displayDate = selectedDate ? `${monthName} ${selectedDate.day}` : ''
 
-  return (
+  return createPortal(
     <div className="fixed inset-0 bg-background/80 backdrop-blur-sm z-[9999] flex items-center justify-center p-4">
       <div className="bg-card border border-border w-full max-w-2xl max-h-[90vh] rounded-3xl shadow-2xl flex flex-col overflow-hidden animate-in zoom-in-95 duration-200">
         
@@ -284,7 +307,7 @@ export function CalendarMemoryModal({ isOpen, onClose, selectedDate, memories, o
           </button>
         </div>
 
-        <div className="flex-1 overflow-y-auto flex flex-col">
+        <OverscrollContainer absolute={false} className="flex-1 min-h-0" containerClassName="flex flex-col">
           {activeMemory === null && !isEditing ? (
             // List Memories
             <div className="p-6 space-y-4">
@@ -455,7 +478,7 @@ export function CalendarMemoryModal({ isOpen, onClose, selectedDate, memories, o
               )}
             </div>
           )}
-        </div>
+        </OverscrollContainer>
 
         {/* Footer */}
         {isEditing ? (
@@ -486,6 +509,7 @@ export function CalendarMemoryModal({ isOpen, onClose, selectedDate, memories, o
         ) : null}
 
       </div>
-    </div>
+    </div>,
+    document.body
   )
 }

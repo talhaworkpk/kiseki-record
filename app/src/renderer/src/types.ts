@@ -78,12 +78,17 @@ export interface Habit {
   updatedAt: number
 }
 
+export type HabitDifficulty = 'easy' | 'slight' | 'difficult' | 'very_difficult' | 'couldnt_resist' | null
+
 export interface HabitDailyRecord {
   _id?: string
   habitId: string
+  habitTitle?: string // For deleted habits
   date: string // YYYY-MM-DD
   status: 'completed' | 'missed' | 'pending' | 'skipped' | 'not_scheduled' | 'paused'
   completionTime?: number // timestamp when marked completed
+  missReason?: string // Reason why the habit was missed
+  difficultyLevel?: HabitDifficulty
   createdAt: number
   updatedAt: number
 }
@@ -91,6 +96,7 @@ export interface HabitDailyRecord {
 export interface HabitTimerSession {
   _id?: string
   habitId: string
+  habitTitle?: string // For deleted habits
   date: string // YYYY-MM-DD
   startTime: number
   endTime: number
@@ -102,6 +108,7 @@ export interface HabitTimerSession {
 export interface HabitBreak {
   _id?: string
   habitId: string
+  habitTitle?: string // For deleted habits
   startDate: string // YYYY-MM-DD
   endDate: string // YYYY-MM-DD
   reason?: string
@@ -112,6 +119,7 @@ export interface HabitBreak {
 export interface HabitActivityLog {
   _id?: string
   habitId: string
+  habitTitle?: string // For deleted habits
   action: 'created' | 'edited' | 'completed' | 'missed' | 'auto_missed' | 'timer_started' | 'timer_paused' | 'timer_completed' | 'break_started' | 'break_ended' | 'archived' | 'restored' | 'deleted'
   timestamp: number
   details?: string
@@ -139,9 +147,15 @@ export interface JournalEntry {
 
 export interface Person {
   _id?: string
+  kisekiId?: string
+  notifyWhenOnline?: boolean
   name: string
   nickname?: string
   profilePicture?: string
+  attachments?: string[]
+  photos?: string[]
+  video?: string[]
+  audio?: string[]
   gender?: string
   birthday?: string
   phone?: string
@@ -170,11 +184,16 @@ export interface Person {
 }
 
 export interface Message {
+  id: string
   role: 'user' | 'assistant'
   content: string
   isFavorite?: boolean
   timestamp?: number
   images?: string[] // Attachment paths
+  dbContext?: string // Hidden context injected by KisekiAgent
+  generationTime?: number // Time taken to generate this message in seconds
+  actionGroupId?: string // Set by Phase 5 Action Engine
+  pendingActionPlan?: any // Store the plan for confirmation
 }
 
 export interface Conversation {
@@ -377,4 +396,116 @@ export interface AppStorageInfo {
   fileTypes: StorageFileType[]
   drive: DriveInfo
   cacheSize: number
+}
+
+export interface Dream {
+  _id?: string
+  title: string
+  description?: string
+  category: string // Allow custom categories
+  status: "Active" | "Achieved" | "Paused" | "Archived"
+  targetAmount?: number
+  currentAmount?: number
+  targetCurrency?: string
+  targetDate?: string
+  imageUrl?: string
+  notes?: string
+  createdAt: number
+  updatedAt: number
+  archivedAt?: number
+}
+
+export interface DreamGoal {
+  _id?: string
+  dreamId: string
+  goalId: string
+}
+
+export interface DreamProject {
+  _id?: string
+  dreamId: string
+  projectId: string
+}
+
+export interface DreamSkill {
+  _id?: string
+  dreamId: string
+  skillId: string
+}
+
+export interface DreamCertificate {
+  _id?: string
+  dreamId: string
+  certificateId: string
+}
+
+export interface RelationshipAttachment {
+  attachmentId: string
+  fileName: string
+  mimeType: string
+  size: number
+  localPath: string
+  thumbnailPath?: string
+  createdAt: number
+}
+
+export interface RelationshipMessage {
+  id: string
+  conversationId: string
+  senderId: string // 'self' or person._id
+  receiverId: string
+  type: 'text' | 'image' | 'video' | 'document' | 'mixed'
+  text: string
+  attachments: RelationshipAttachment[]
+  createdAt: number
+  updatedAt: number
+  status: 'pending' | 'sent' | 'failed' | 'delivered' | 'read'
+  replyToMessageId?: string
+  reactions?: { emoji: string; userId: string; createdAt: number }[]
+  isStarred?: boolean
+  starredAt?: number
+}
+
+export interface RelationshipConversation {
+  _id?: string
+  personId: string // The relationship ID
+  messages: RelationshipMessage[]
+  updatedAt: number
+  createdAt: number
+}
+
+export type ChronicleEntryType = 'Observation' | 'Event' | 'Thought' | 'Waiting' | 'Encounter' | 'Statement' | 'Note' | 'Milestone' | string
+
+export interface ChronicleAttachment {
+  id: string
+  path: string
+  type: string
+  name: string
+  size?: number
+}
+
+export interface ChronicleEntry {
+  _id?: string
+  id: string
+  title: string
+  description?: string
+  type?: ChronicleEntryType
+  tags?: string[]
+  createdAt: number
+  updatedAt?: number
+}
+
+export interface ChronicleRecord {
+  _id?: string
+  id: string
+  entryId: string
+  content: string
+  occurrenceDate: string // e.g. YYYY-MM-DD
+  startTime?: string
+  endTime?: string
+  createdAt: number
+  updatedAt?: number
+  type?: ChronicleEntryType
+  tags?: string[]
+  attachments?: ChronicleAttachment[]
 }

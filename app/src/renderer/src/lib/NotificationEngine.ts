@@ -119,6 +119,11 @@ export class NotificationEngine {
 
   static async checkHabitMilestones(habitId: string, habitName: string) {
     try {
+      // Trigger new Achievement Engine evaluation
+      const { AchievementEngine } = await import('./AchievementEngine');
+      await AchievementEngine.evaluateHabit(habitId);
+
+      // Legacy Milestone evaluation
       // @ts-ignore
       const logs = await window.api.db.find('habitLogs', { habitId, status: 'completed' })
       const completions = logs.length

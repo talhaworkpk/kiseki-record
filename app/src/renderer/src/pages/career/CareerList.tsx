@@ -5,6 +5,7 @@ import { Briefcase, Plus, Trash2, Edit2, X, Upload, MapPin, Building, Calendar, 
 import { NotificationEngine } from '../../lib/NotificationEngine'
 import { JobRecord } from '../../types'
 import { normalizeUrl } from '../../lib/utils'
+import { DraggableScroll } from '../../components/DraggableScroll'
 
 export default function CareerList() {
   const [jobs, setJobs] = useState<JobRecord[]>([])
@@ -22,6 +23,23 @@ export default function CareerList() {
   const [scrollTop, setScrollTop] = useState(0)
   const [showSuccessOverlay, setShowSuccessOverlay] = useState(false)
   const scrollContainerRef = useRef<HTMLDivElement>(null)
+
+  const [deleteConfirmId, setDeleteConfirmId] = useState<{id: string, title: string} | null>(null)
+  const [showDeleteSuccess, setShowDeleteSuccess] = useState(false)
+
+  useEffect(() => {
+    const handleKeyDown = (e: KeyboardEvent) => {
+      if (deleteConfirmId && !showDeleteSuccess) {
+        if (e.key === 'Escape') {
+          setDeleteConfirmId(null)
+        } else if (e.key === 'Enter') {
+          confirmDelete()
+        }
+      }
+    }
+    window.addEventListener('keydown', handleKeyDown)
+    return () => window.removeEventListener('keydown', handleKeyDown)
+  }, [deleteConfirmId, showDeleteSuccess])
   
   // Auto-advance slideshow
   useEffect(() => {
@@ -67,6 +85,23 @@ export default function CareerList() {
       window.removeEventListener('keyup', handleKeyUp)
     }
   }, [slideshowActive])
+
+  useEffect(() => {
+    const handleKeyDown = (e: KeyboardEvent) => {
+      if (e.key === 'Escape') {
+        if (isAdding) {
+          setIsAdding(false)
+          setForm({})
+        }
+        if (editingId) {
+          setEditingId(null)
+          setForm({})
+        }
+      }
+    }
+    window.addEventListener('keydown', handleKeyDown)
+    return () => window.removeEventListener('keydown', handleKeyDown)
+  }, [isAdding, editingId])
 
   const defaultForm: Partial<JobRecord> = {
     company: '', position: '', employmentType: 'Full-time', startDate: '', endDate: '', isCurrent: false, salary: '', responsibilities: [], skillsUsed: [], projects: [], achievements: [], references: [], attachments: [], photos: []
@@ -151,12 +186,21 @@ export default function CareerList() {
   }, [isAdding, form, editingId])
 
   const handleDelete = async (id: string, title: string) => {
-    if (!confirm('Delete this career record?')) return
+    setDeleteConfirmId({ id, title })
+  }
+
+  const confirmDelete = async () => {
+    if (!deleteConfirmId) return
     try {
       // @ts-ignore
-      await window.api.db.remove('career', { _id: id }, {})
-      NotificationEngine.notify('info', 'Career Record Deleted', `"${title}" was removed.`, 'Career')
-      loadData()
+      await window.api.db.remove('career', { _id: deleteConfirmId.id }, {})
+      NotificationEngine.notify('info', 'Career Record Deleted', `"${deleteConfirmId.title}" was removed.`, 'Career')
+      setDeleteConfirmId(null)
+      setShowDeleteSuccess(true)
+      setTimeout(() => {
+        setShowDeleteSuccess(false)
+        loadData()
+      }, 4500)
     } catch (err) { console.error(err) }
   }
 
@@ -452,11 +496,11 @@ export default function CareerList() {
               {((record.photos && record.photos.length > 0) || (record.attachments && record.attachments.length > 0)) && (
                 <div className="mt-4 pt-4 border-t border-border space-y-3">
                   {record.photos && record.photos.length > 0 && (
-                    <div className="flex gap-2 overflow-x-auto pb-2 scrollbar-custom">
+                    <DraggableScroll className="flex gap-2 overflow-x-auto pb-2 scrollbar-custom">
                       {record.photos.map((img, i) => (
                         <img key={i} src={normalizeUrl(img)} alt="Job Photo" className="h-16 w-24 object-cover rounded-md border border-border shrink-0 hover:scale-105 transition-transform cursor-pointer" onClick={() => setViewingJob(record)} />
                       ))}
-                    </div>
+                    </DraggableScroll>
                   )}
                   {record.attachments && record.attachments.length > 0 && (
                     <div className="flex flex-wrap gap-2">
@@ -481,8 +525,8 @@ export default function CareerList() {
       </div>
 
       {/* Job Details Modal */}
-      {viewingJob && (
-        <div className="fixed inset-0 z-[100] flex items-center justify-center p-4 sm:p-6 md:p-12">
+      {viewingJob && createPortal(
+        <div className="fixed inset-0 z-[9999] flex items-center justify-center p-4 sm:p-6 md:p-12">
           <div className="absolute inset-0 bg-background/80 backdrop-blur-sm animate-in fade-in duration-200" onClick={() => setViewingJob(null)}></div>
           <div className="relative bg-card border border-border w-full max-w-4xl max-h-full rounded-2xl shadow-2xl flex flex-col overflow-hidden animate-in zoom-in-95 duration-200">
             {viewingJob.photos && viewingJob.photos.length > 0 && (
@@ -638,7 +682,7 @@ export default function CareerList() {
             </div>
           </div>
         </div>
-      )}
+      , document.body)}
 
       {/* Slideshow Overlay */}
       {slideshowActive && viewingJob && viewingJob.photos && viewingJob.photos.length > 0 && createPortal(
@@ -763,6 +807,121 @@ export default function CareerList() {
           </div>
         </div>
       )}
+
+      {/* Delete Confirmation Modal */}
+      {deleteConfirmId && !showDeleteSuccess && createPortal(
+        <div className="fixed inset-0 z-[9999] flex items-center justify-center p-4 bg-background/60 backdrop-blur-md animate-in fade-in duration-300">
+          <div className="bg-card text-card-foreground p-0 rounded-2xl shadow-[0_0_50px_-12px_rgba(59,130,246,0.25)] border border-blue-500/20 w-full max-w-md flex flex-col overflow-hidden scale-in-center animate-in zoom-in-95 duration-300">
+            <div className="bg-blue-500/10 p-6 flex flex-col items-center justify-center text-center border-b border-blue-500/10 relative overflow-hidden">
+              <div className="absolute inset-0 bg-gradient-to-b from-blue-500/5 to-transparent"></div>
+              <div className="w-16 h-16 bg-background rounded-full flex items-center justify-center shadow-inner mb-4 relative z-10 border border-blue-500/20">
+                <Briefcase size={32} className="text-blue-500 drop-shadow-md animate-pulse" />
+              </div>
+              <h3 className="text-xl font-bold text-foreground relative z-10">Delete Career?</h3>
+            </div>
+            
+            <div className="p-6">
+              <p className="text-center text-muted-foreground mb-6">
+                Are you sure you want to permanently incinerate {deleteConfirmId.title}? This action cannot be undone.
+              </p>
+
+              <div className="flex justify-end gap-3">
+                <button 
+                  onClick={() => setDeleteConfirmId(null)}
+                  className="px-5 py-2.5 rounded-xl text-sm font-semibold text-foreground bg-accent hover:bg-accent/80 border border-transparent hover:border-border transition-all active:scale-95"
+                >
+                  Cancel
+                </button>
+                <button 
+                  onClick={confirmDelete}
+                  className="px-5 py-2.5 rounded-xl text-sm font-semibold text-white shadow-lg transition-all active:scale-95 flex items-center gap-2 bg-gradient-to-r from-blue-500 to-cyan-600 hover:shadow-blue-500/50"
+                >
+                  <Trash2 size={16} />
+                  Incinerate
+                </button>
+              </div>
+            </div>
+          </div>
+        </div>
+      , document.body)}
+
+      {/* Burn Animation Overlay */}
+      {showDeleteSuccess && createPortal(
+        <div className="fixed inset-0 z-[9999] flex items-center justify-center bg-black/95 backdrop-blur-xl overflow-hidden animate-in fade-in duration-300">
+          <style>{`
+            @keyframes char-paper-color {
+              0% { filter: brightness(1) sepia(0); opacity: 1; transform: scale(1); }
+              30% { filter: brightness(0.2) sepia(0.5) hue-rotate(180deg); opacity: 1; transform: scale(1); }
+              60% { filter: brightness(0.0) sepia(1) hue-rotate(180deg); opacity: 1; transform: scale(1); }
+              75% { filter: brightness(0.0) sepia(1) hue-rotate(180deg); opacity: 0; transform: scale(0.5); }
+              100% { filter: brightness(0.0) sepia(1) hue-rotate(180deg); opacity: 0; transform: scale(0); }
+            }
+            @keyframes single-fire-spread {
+              0% { transform: translateY(50px) scale(0.2); opacity: 0; }
+              15% { transform: translateY(20px) scale(0.8); opacity: 0.9; }
+              65% { transform: translateY(-30px) scale(2.5); opacity: 0.9; }
+              85% { transform: translateY(-30px) scale(0); opacity: 0; }
+              100% { transform: translateY(-30px) scale(0); opacity: 0; }
+            }
+            @keyframes pulse-flame {
+              0% { transform: scale(1); opacity: 0.8; }
+              100% { transform: scale(1.1); opacity: 1; }
+            }
+            @keyframes heat-distortion {
+              0%, 100% { transform: scale(1); opacity: 0.5; }
+              50% { transform: scale(1.3); opacity: 0.8; }
+            }
+            @keyframes text-burn-in {
+              0% { transform: scale(0.8) translateY(20px); opacity: 0; filter: blur(10px); }
+              50% { transform: scale(0.8) translateY(20px); opacity: 0; filter: blur(10px); }
+              70% { transform: scale(1.1) translateY(0); opacity: 1; filter: blur(0px); }
+              100% { transform: scale(1) translateY(0); opacity: 1; filter: blur(0px); }
+            }
+          `}</style>
+          
+          <div className="absolute inset-0 flex items-center justify-center pointer-events-none">
+            <div className="absolute w-[800px] h-[800px] bg-[radial-gradient(circle,rgba(59,130,246,0.15)_0%,transparent_70%)] rounded-full animate-[heat-distortion_2s_ease-in-out_infinite]" />
+            <div className="absolute w-[1000px] h-[1000px] bg-[radial-gradient(circle,rgba(6,182,212,0.1)_0%,transparent_60%)] rounded-full animate-[heat-distortion_3s_ease-in-out_infinite_reverse]" />
+          </div>
+
+          <div className="relative z-10 flex flex-col items-center justify-center h-full w-full">
+            <div className="relative w-48 h-48 mb-12">
+              
+              <div className="absolute top-4 left-0 w-full flex flex-col items-center">
+                
+                <div style={{ animation: 'char-paper-color 4s ease-in forwards' }} className="flex justify-center items-center">
+                  <svg width="180" height="180" viewBox="0 0 240 240" fill="none" xmlns="http://www.w3.org/2000/svg" className="drop-shadow-2xl">
+                    <rect x="25" y="65" width="190" height="140" rx="12" fill="#1e3a8a" opacity="0.4" transform="rotate(-6 120 120)" />
+                    <rect x="15" y="55" width="190" height="140" rx="12" fill="#1d4ed8" opacity="0.6" transform="rotate(-3 120 120)" />
+                    <path d="M 90 60 L 90 35 C 90 20, 150 20, 150 35 L 150 60" fill="none" stroke="#64748b" strokeWidth="12" strokeLinecap="round" />
+                    <path d="M 90 60 L 90 35 C 90 20, 150 20, 150 35 L 150 60" fill="none" stroke="#94a3b8" strokeWidth="12" strokeLinecap="round" opacity="0.5" transform="translate(2, -2)" />
+                    <rect x="20" y="60" width="200" height="150" rx="16" fill="#3b82f6" />
+                    <rect x="15" y="110" width="210" height="8" rx="4" fill="#1e40af" />
+                    <rect x="60" y="60" width="20" height="150" fill="#2563eb" />
+                    <rect x="160" y="60" width="20" height="150" fill="#2563eb" />
+                    <rect x="55" y="100" width="30" height="20" rx="4" fill="#cbd5e1" />
+                    <rect x="65" y="105" width="10" height="10" rx="2" fill="#64748b" />
+                    <rect x="155" y="100" width="30" height="20" rx="4" fill="#cbd5e1" />
+                    <rect x="165" y="105" width="10" height="10" rx="2" fill="#64748b" />
+                  </svg>
+                </div>
+
+                <div className="absolute bottom-[-10px] flex justify-center items-center w-full pointer-events-none z-20" style={{ animation: 'single-fire-spread 4s ease-in forwards', mixBlendMode: 'screen' }}>
+                  <div className="w-24 h-28 bg-[radial-gradient(ellipse_at_bottom,_var(--tw-gradient-stops))] from-cyan-300 via-blue-500 to-indigo-600 blur-md rounded-[50%] shadow-[0_0_40px_10px_rgba(59,130,246,0.8)]" style={{ animation: 'pulse-flame 0.2s infinite alternate' }} />
+                  <div className="absolute w-12 h-16 bg-[radial-gradient(ellipse_at_bottom,_var(--tw-gradient-stops))] from-white via-cyan-200 to-transparent blur-sm rounded-[50%]" style={{ animation: 'pulse-flame 0.15s infinite alternate', animationDelay: '0.1s' }} />
+                </div>
+              </div>
+            </div>
+            
+            <h2 className="text-5xl font-black text-transparent bg-clip-text bg-gradient-to-r from-cyan-400 via-blue-400 to-indigo-500 uppercase tracking-widest drop-shadow-[0_0_20px_rgba(59,130,246,0.6)]" style={{ animation: 'text-burn-in 3.5s cubic-bezier(0.1, 0.9, 0.2, 1) forwards' }}>
+              Career Incinerated
+            </h2>
+            <p className="mt-4 text-blue-200/80 text-xl font-bold uppercase tracking-[0.4em]" style={{ animation: 'text-burn-in 3.8s cubic-bezier(0.1, 0.9, 0.2, 1) forwards' }}>
+              Reduced to Ash
+            </p>
+          </div>
+        </div>
+      , document.body)}
     </div>
   )
 }

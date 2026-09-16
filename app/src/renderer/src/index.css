@@ -2,6 +2,14 @@
 @tailwind components;
 @tailwind utilities;
 
+@layer base {
+  a, button, img {
+    -webkit-user-drag: none;
+    -webkit-user-select: none;
+    user-select: none;
+  }
+}
+
 /* Global Scrollbar Override */
 ::-webkit-scrollbar {
   width: 6px;
@@ -75,9 +83,42 @@
 @layer base {
   * {
     @apply border-border;
+    caret-color: #0ea5e9; /* sky-500 */
   }
+  ::selection {
+    background-color: rgba(14, 165, 233, 0.3); /* sky-500/30 */
+  }
+  
+  /* Premium Custom React Cursor (Hides Native Cursor) */
+  body.app-pointer * {
+    cursor: none !important;
+  }
+  
+  .cursor-text {
+    cursor: text !important;
+  }
+
   body {
     @apply bg-background text-foreground;
+  }
+  
+  /* Global responsive scaling for laptops using base font-size */
+  @media (max-width: 1440px), (max-height: 900px) {
+    html {
+      font-size: 14px; /* Scales down all rem-based sizes (padding, width, fonts) to ~87.5% */
+    }
+  }
+  
+  @media (max-width: 1366px), (max-height: 800px) {
+    html {
+      font-size: 13px; /* ~81.25% */
+    }
+  }
+  
+  @media (max-width: 1280px), (max-height: 720px) {
+    html {
+      font-size: 12px; /* ~75% */
+    }
   }
 }
 
@@ -211,6 +252,52 @@
     50% { background-position: 100% 50%; }
     100% { background-position: 0% 50%; }
   }
+
+  @keyframes gradient-xy {
+    0%, 100% {
+      background-position: 0% 50%;
+    }
+    50% {
+      background-position: 100% 50%;
+    }
+  }
+
+  .animate-gradient-xy {
+    background-size: 200% 200%;
+    animation: gradient-xy 3s ease infinite;
+  }
+
+  @keyframes gradient-fluid {
+    0% { background-position: 0% 50%; }
+    25% { background-position: 100% 100%; }
+    50% { background-position: 100% 0%; }
+    75% { background-position: 0% 100%; }
+    100% { background-position: 0% 50%; }
+  }
+
+  .animate-gradient-fluid {
+    background-size: 400% 400%;
+    animation: gradient-fluid 10s ease-in-out infinite;
+  }
+
+  @keyframes blob {
+    0% { transform: translate(0px, 0px) scale(1); }
+    33% { transform: translate(150px, -40px) scale(1.1); }
+    66% { transform: translate(-100px, 40px) scale(0.9); }
+    100% { transform: translate(0px, 0px) scale(1); }
+  }
+
+  .animate-blob {
+    animation: blob 8s infinite alternate ease-in-out;
+  }
+
+  .animation-delay-2000 {
+    animation-delay: 2s;
+  }
+
+  .animation-delay-4000 {
+    animation-delay: 4s;
+  }
 }
 
 @media print {
@@ -268,3 +355,4 @@
 .custom-scrollbar::-webkit-scrollbar-thumb:hover {
   background: hsl(var(--primary));
 }
+.drag-region { -webkit-app-region: drag; } .no-drag-region { -webkit-app-region: no-drag; }

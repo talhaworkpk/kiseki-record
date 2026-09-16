@@ -181,7 +181,7 @@ export default function History() {
                   <div className="flex-1">
                     <div className="flex flex-col sm:flex-row justify-between sm:items-center mb-1">
                       <div className="font-bold text-foreground">
-                        {habit ? habit.title : <span className="text-muted-foreground italic">Deleted Habit</span>}
+                        {habit ? habit.title : (log.habitTitle ? <span className="text-muted-foreground italic">{log.habitTitle} (Deleted)</span> : <span className="text-muted-foreground italic">Deleted Habit</span>)}
                       </div>
                       <div className="text-xs font-medium text-muted-foreground whitespace-nowrap">
                         {date.toLocaleDateString()} at {date.toLocaleTimeString([], {hour: '2-digit', minute:'2-digit'})}

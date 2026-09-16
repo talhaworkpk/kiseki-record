@@ -19,6 +19,8 @@ let isQuitting = false
 
 const userDataPath = app.getPath('userData')
 const attachmentsPath = path.join(userDataPath, 'data', 'attachments')
+const clockBackgroundsPath = path.join(userDataPath, 'clock', 'backgrounds')
+const clockCursorsPath = path.join(userDataPath, 'clock', 'cursors')
 
 // Export logging
 const exportLogs: string[] = []
@@ -48,6 +50,9 @@ function createWindow(): void {
     width: 1200,
     height: 800,
     show: false,
+    frame: false,
+    titleBarStyle: 'hidden',
+    titleBarOverlay: false,
     autoHideMenuBar: true,
     webPreferences: {
       preload: join(__dirname, '../preload/index.js'),
@@ -65,6 +70,9 @@ function createWindow(): void {
       mainWindow.show()
     }
   })
+
+  mainWindow.on('maximize', () => mainWindow.webContents.send('window:maximizedChanged', true))
+  mainWindow.on('unmaximize', () => mainWindow.webContents.send('window:maximizedChanged', false))
 
   // Hook into close event for background mode
   mainWindow.on('close', (event) => {
@@ -87,7 +95,6 @@ function createWindow(): void {
     // For a strict lock, we can do it on blur. But to be safe and avoid annoying locks,
     // we can rely on minimize or powerMonitor. Let's just use minimize and power monitor for now,
     // or maybe a strict blur lock if configured.
-    const settings = profileManager.getSettings()
     // if lock immediately on blur: (we can add a setting later, but for now just minimize/power)
   })
 
@@ -108,6 +115,20 @@ function createWindow(): void {
 protocol.registerSchemesAsPrivileged([
   { scheme: 'local-media', privileges: { secure: true, supportFetchAPI: true, bypassCSP: true, stream: true } }
 ])
+
+const gotTheLock = app.requestSingleInstanceLock()
+
+if (!gotTheLock) {
+  app.quit()
+} else {
+  app.on('second-instance', () => {
+    const wins = BrowserWindow.getAllWindows()
+    if (wins.length > 0) {
+      if (wins[0].isMinimized()) wins[0].restore()
+      wins[0].show()
+      wins[0].focus()
+    }
+  })
 
 app.whenReady().then(() => {
   protocol.registerFileProtocol('local-media', (request, callback) => {
@@ -181,6 +202,8 @@ app.whenReady().then(() => {
   if (!fs.existsSync(attachmentsPath)) {
     fs.mkdirSync(attachmentsPath, { recursive: true })
   }
+  if (!fs.existsSync(clockBackgroundsPath)) fs.mkdirSync(clockBackgroundsPath, { recursive: true })
+  if (!fs.existsSync(clockCursorsPath)) fs.mkdirSync(clockCursorsPath, { recursive: true })
 
   // Attachments Handler
   ipcMain.handle('attachment:add', async (_event, options) => {
@@ -271,11 +294,78 @@ app.whenReady().then(() => {
     }
   })
 
+  ipcMain.handle("clockAssets:choose", async (_event, type: "background" | "cursor") => {
+    try {
+      const filters = type === "background" 
+        ? [{ name: "Media", extensions: ["jpg", "jpeg", "png", "webp", "mp4", "webm"] }] 
+        : [{ name: "Images", extensions: ["png", "jpg", "jpeg", "webp", "gif"] }];
+        
+      const { filePaths } = await dialog.showOpenDialog({
+        title: 'Select Asset',
+        filters,
+        properties: ['openFile']
+      });
+
+      if (!filePaths || filePaths.length === 0) return { success: false };
+      
+      const sourcePath = filePaths[0];
+      const stat = fs.statSync(sourcePath);
+      const maxSize = type === "background" ? 50 * 1024 * 1024 : 5 * 1024 * 1024;
+      
+      if (stat.size > maxSize) {
+        throw new Error(`File is too large. Maximum size is ${maxSize / (1024 * 1024)}MB.`);
+      }
+
+      const ext = path.extname(sourcePath).toLowerCase();
+      const isVideo = [".mp4", ".webm"].includes(ext);
+      const mimeType = isVideo ? `video/${ext.substring(1)}` : `image/${ext.substring(1) === "jpg" ? "jpeg" : ext.substring(1)}`;
+      const assetId = `asset-${Date.now()}`;
+      const filename = `${assetId}${ext}`;
+      const targetDir = type === "background" ? clockBackgroundsPath : clockCursorsPath;
+      
+      if (!fs.existsSync(targetDir)) {
+        fs.mkdirSync(targetDir, { recursive: true });
+      }
+
+      const destPath = path.join(targetDir, filename);
+      
+      if (type === 'cursor' && !isVideo) {
+        const image = nativeImage.createFromPath(sourcePath);
+        const resized = image.resize({ width: 32, height: 32, quality: 'best' });
+        fs.writeFileSync(destPath, resized.toPNG());
+      } else {
+        fs.copyFileSync(sourcePath, destPath);
+      }
+      
+      return {
+        success: true,
+        asset: {
+          id: assetId,
+          type: type === "background" ? (isVideo ? "video" : "image") : "cursor",
+          originalName: path.basename(sourcePath),
+          storedName: filename,
+          relativePath: `local-media://${destPath.replace(/\\/g, '/')}`,
+          mimeType,
+          size: stat.size,
+          createdAt: Date.now()
+        }
+      };
+    } catch (error: any) {
+      console.error("clockAssets:choose error:", error);
+      dialog.showErrorBox("Failed to Import Media", error?.message || "Unknown error occurred.");
+      return { success: false, error: error?.message };
+    }
+  });
+
   // Database IPC Handlers - Intercepted for Profile Separation
   ipcMain.handle('db:find', async (_, collection, query = {}) => {
+    if (!db[collection as keyof typeof db]) {
+      console.error(`db:find error: Collection '${collection}' does not exist in database.`);
+      return [];
+    }
     query.profile = profileManager.currentProfile
     return new Promise((resolve, reject) => {
-      db[collection].find(query, (err, docs) => {
+      db[collection as keyof typeof db].find(query, (err, docs) => {
         if (err) reject(err)
         else resolve(docs)
       })
@@ -283,6 +373,10 @@ app.whenReady().then(() => {
   })
 
   ipcMain.handle('db:insert', async (_, collection, doc) => {
+    if (!db[collection as keyof typeof db]) {
+      console.error(`db:insert error: Collection '${collection}' does not exist in database.`);
+      throw new Error(`Collection '${collection}' does not exist in database.`);
+    }
     const profile = profileManager.currentProfile
     if (Array.isArray(doc)) {
       doc = doc.map(d => ({ ...d, profile }))
@@ -290,7 +384,7 @@ app.whenReady().then(() => {
       doc = { ...doc, profile }
     }
     return new Promise((resolve, reject) => {
-      db[collection].insert(doc, (err, newDoc) => {
+      db[collection as keyof typeof db].insert(doc, (err, newDoc) => {
         if (err) reject(err)
         else resolve(newDoc)
       })
@@ -298,9 +392,13 @@ app.whenReady().then(() => {
   })
 
   ipcMain.handle('db:update', async (_, collection, query = {}, update, options) => {
+    if (!db[collection as keyof typeof db]) {
+      console.error(`db:update error: Collection '${collection}' does not exist in database.`);
+      return 0;
+    }
     query.profile = profileManager.currentProfile
     return new Promise((resolve, reject) => {
-      db[collection].update(query, update, options || {}, (err, numReplaced) => {
+      db[collection as keyof typeof db].update(query, update, options || {}, (err, numReplaced) => {
         if (err) reject(err)
         else resolve(numReplaced)
       })
@@ -308,9 +406,13 @@ app.whenReady().then(() => {
   })
 
   ipcMain.handle('db:remove', async (_, collection, query = {}, options) => {
+    if (!db[collection as keyof typeof db]) {
+      console.error(`db:remove error: Collection '${collection}' does not exist in database.`);
+      return 0;
+    }
     query.profile = profileManager.currentProfile
     return new Promise((resolve, reject) => {
-      db[collection].remove(query, options || {}, (err, numRemoved) => {
+      db[collection as keyof typeof db].remove(query, options || {}, (err, numRemoved) => {
         if (err) reject(err)
         else resolve(numRemoved)
       })
@@ -609,7 +711,7 @@ app.whenReady().then(() => {
       notificationService.showNotification('💌 Memory Capsule (Test)', `A Memory Capsule from your past self is ready to open.`, 'memory', '/memory-capsules')
     }
   })
-  ipcMain.handle('notifications:triggerInApp', (_, type, title, message, sourceModule, targetPath) => {
+  ipcMain.handle('notifications:triggerInApp', (_, type, title, message, _sourceModule, targetPath) => {
     // This allows renderer to tell main process to optionally show a desktop notification
     // for something that happened in-app, depending on settings
     const settings = notificationService.getSettings()
@@ -618,6 +720,10 @@ app.whenReady().then(() => {
       if (type === 'achievement' && settings.achievementsNotificationEnabled) {
         notificationService.showNotification(title, message, type, targetPath)
       } else if (type === 'milestone' && settings.achievementsNotificationEnabled) {
+        notificationService.showNotification(title, message, type, targetPath)
+      } else if (type === 'clock_alarm' && settings.alarmNotificationEnabled) {
+        notificationService.showNotification(title, message, type, targetPath)
+      } else if (type === 'ai_response' && settings.aiResponseNotificationEnabled !== false) {
         notificationService.showNotification(title, message, type, targetPath)
       }
       // Note: birthday and memory capsules are handled by background polls mostly, 
@@ -629,6 +735,35 @@ app.whenReady().then(() => {
   ipcMain.handle('app:restart', () => {
     app.relaunch()
     app.exit(0)
+  })
+
+  // --- Window Control Handlers ---
+  ipcMain.handle('window:minimize', () => {
+    const win = BrowserWindow.getAllWindows()[0]
+    if (win) win.minimize()
+  })
+
+  ipcMain.handle('window:maximize', () => {
+    const win = BrowserWindow.getAllWindows()[0]
+    if (win) {
+      if (win.isMaximized()) win.restore()
+      else win.maximize()
+    }
+  })
+
+  ipcMain.handle('window:restore', () => {
+    const win = BrowserWindow.getAllWindows()[0]
+    if (win) win.restore()
+  })
+
+  ipcMain.handle('window:close', () => {
+    const win = BrowserWindow.getAllWindows()[0]
+    if (win) win.close()
+  })
+
+  ipcMain.handle('window:isMaximized', () => {
+    const win = BrowserWindow.getAllWindows()[0]
+    return win ? win.isMaximized() : false
   })
 
   // --- Global Settings IPC Handlers ---
@@ -688,3 +823,4 @@ app.on('ready', () => {
     if (wins.length > 0) profileManager.switchToPublic(wins[0])
   })
 })
+}

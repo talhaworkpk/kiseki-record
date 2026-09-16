@@ -19,7 +19,7 @@ export function GoalsWidget({ data }: any) {
           return (
             <Tooltip key={i}>
               <TooltipTrigger asChild>
-                <div onClick={() => navigate('/career/goals')} className="group cursor-pointer">
+                <div onClick={() => navigate('/career/goals', { state: { highlightId: g._id } })} className="group cursor-pointer">
                   <div className="flex justify-between items-end mb-2">
                     <p className="font-bold text-sm group-hover:text-orange-500 transition-colors">{g.title}</p>
                     <span className="text-xs font-bold text-orange-500">{progress}%</span>

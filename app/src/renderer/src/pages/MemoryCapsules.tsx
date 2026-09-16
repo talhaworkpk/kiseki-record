@@ -1,8 +1,12 @@
 import React, { useState, useEffect, useRef } from 'react'
+import { createPortal } from 'react-dom'
 import { useLocation } from 'react-router-dom'
 import { Mail, Clock, Lock, Unlock, Send, MailOpen, FileText, CheckSquare, Square, Trash2, ArrowUp } from 'lucide-react'
 import { MemoryCapsule } from '../types'
 import { NotificationEngine } from '../lib/NotificationEngine'
+import { useOnboarding } from '../hooks/useOnboarding'
+import { SectionWelcome } from '../components/onboarding/SectionWelcome'
+import { ONBOARDING_CONFIGS } from '../lib/onboardingConfig'
 
 const CountdownTimer = ({ targetDate }: { targetDate: number }) => {
   const [timeLeft, setTimeLeft] = useState(Math.max(0, targetDate - Date.now()))
@@ -30,6 +34,7 @@ const CountdownTimer = ({ targetDate }: { targetDate: number }) => {
 export default function MemoryCapsules() {
   const [capsules, setCapsules] = useState<MemoryCapsule[]>([])
   const [loading, setLoading] = useState(true)
+  const { showWelcome, completeWelcome } = useOnboarding('memory-capsule')
   const [isCreating, setIsCreating] = useState(false)
   const [showSuccessOverlay, setShowSuccessOverlay] = useState(false)
   const [selectedCapsule, setSelectedCapsule] = useState<MemoryCapsule | null>(null)
@@ -42,6 +47,9 @@ export default function MemoryCapsules() {
   const [message, setMessage] = useState('')
   const [unlockDuration, setUnlockDuration] = useState<number>(Date.now() + 30 * 24 * 60 * 60 * 1000) // Default to 1 month from now
   const [showBackToTop, setShowBackToTop] = useState(false)
+
+  const [deleteConfirm, setDeleteConfirm] = useState<{show: boolean, ids: string[]}>({ show: false, ids: [] })
+  const [showDeleteSuccess, setShowDeleteSuccess] = useState(false)
 
   const containerRef = useRef<HTMLDivElement>(null)
   const scrollRef = useRef<HTMLDivElement>(null)
@@ -219,25 +227,50 @@ export default function MemoryCapsules() {
   const bulkAction = async (action: string) => {
     try {
       if (action === 'delete') {
-        if (!confirm(`Delete ${selectedIds.size} selected capsule(s)?`)) return
-        const ids = Array.from(selectedIds)
-        for (const id of ids) {
-          // @ts-ignore
-          await window.api.db.remove('memoryCapsules', { _id: id })
-        }
-        NotificationEngine.notify('info', 'Capsules Deleted', `${ids.length} capsule(s) deleted.`, 'Memory Capsules')
-        setSelectedIds(new Set())
-        setIsSelectionMode(false)
-        loadData()
+        setDeleteConfirm({ show: true, ids: Array.from(selectedIds) })
       }
     } catch (err) {
       console.error(err)
     }
   }
 
+  const confirmDelete = async () => {
+    try {
+      const ids = deleteConfirm.ids
+      for (const id of ids) {
+        // @ts-ignore
+        await window.api.db.remove('memoryCapsules', { _id: id })
+      }
+      NotificationEngine.notify('info', 'Capsules Deleted', `${ids.length} capsule(s) deleted.`, 'Memory Capsules')
+      setSelectedIds(new Set())
+      setIsSelectionMode(false)
+      setDeleteConfirm({ show: false, ids: [] })
+      setShowDeleteSuccess(true)
+      setTimeout(() => setShowDeleteSuccess(false), 3000)
+      loadData()
+    } catch (err) {
+      console.error(err)
+    }
+  }
+
+  useEffect(() => {
+    if (!deleteConfirm.show) return
+    const handleKeyDown = (e: KeyboardEvent) => {
+      if (e.key === 'Escape') {
+        setDeleteConfirm({ show: false, ids: [] })
+      } else if (e.key === 'Enter') {
+        confirmDelete()
+      }
+    }
+    window.addEventListener('keydown', handleKeyDown)
+    return () => window.removeEventListener('keydown', handleKeyDown)
+  })
+
   if (loading) return null
 
   return (
+    <>
+      {showWelcome && <SectionWelcome config={ONBOARDING_CONFIGS['memory-capsule']} onComplete={completeWelcome} />}
     <div 
       ref={containerRef}
       onMouseMove={(e) => {
@@ -406,10 +439,10 @@ export default function MemoryCapsules() {
       </div>
 
       {/* Creation Modal */}
-      {isCreating && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center bg-background/80 backdrop-blur-sm animate-in fade-in">
+      {isCreating && createPortal(
+        <div className="fixed inset-0 z-[9999] flex items-center justify-center bg-background/80 backdrop-blur-sm animate-in fade-in">
           {showSuccessOverlay ? (
-            <div className="fixed inset-0 z-[100] flex items-center justify-center bg-[radial-gradient(ellipse_at_center,_var(--tw-gradient-stops))] from-pink-500/30 via-background/80 to-background/95 backdrop-blur-sm animate-in fade-in duration-300">
+            <div className="fixed inset-0 z-[9999] flex items-center justify-center bg-[radial-gradient(ellipse_at_center,_var(--tw-gradient-stops))] from-pink-500/30 via-background/80 to-background/95 backdrop-blur-sm animate-in fade-in duration-300">
               <style>{`
                 @keyframes spinCapsule {
                   0% { transform: scale(0) rotate(180deg); opacity: 0; }
@@ -544,12 +577,13 @@ export default function MemoryCapsules() {
             </div>
           </div>
           )}
-        </div>
+        </div>,
+        document.body
       )}
 
       {/* Viewing Modal */}
-      {selectedCapsule && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center bg-background/80 backdrop-blur-sm animate-in fade-in" onClick={() => setSelectedCapsule(null)}>
+      {selectedCapsule && createPortal(
+        <div className="fixed inset-0 z-[9999] flex items-center justify-center bg-background/80 backdrop-blur-sm animate-in fade-in" onClick={() => setSelectedCapsule(null)}>
           <div className="bg-card w-full max-w-2xl border border-border rounded-2xl shadow-2xl flex flex-col p-8 animate-in zoom-in-95" onClick={e=>e.stopPropagation()}>
             <div className="flex items-center gap-3 mb-6 pb-4 border-b border-border">
               <div className="w-12 h-12 bg-pink-500/10 text-pink-500 rounded-xl flex items-center justify-center shrink-0">
@@ -569,7 +603,8 @@ export default function MemoryCapsules() {
               <button onClick={() => setSelectedCapsule(null)} className="px-6 py-2 rounded-xl font-bold bg-accent text-foreground hover:bg-accent/80 transition-colors">Close</button>
             </div>
           </div>
-        </div>
+        </div>,
+        document.body
       )}
       </div>
 
@@ -581,6 +616,109 @@ export default function MemoryCapsules() {
       >
         <ArrowUp size={20} />
       </button>
+
+      {deleteConfirm.show && !showDeleteSuccess && createPortal(
+        <div className="fixed inset-0 z-[9999] flex items-center justify-center p-4 bg-background/60 backdrop-blur-md animate-in fade-in duration-300">
+          <div className="bg-card text-card-foreground p-0 rounded-2xl shadow-[0_0_50px_-12px_rgba(239,68,68,0.25)] border border-destructive/20 w-full max-w-md flex flex-col overflow-hidden scale-in-center animate-in zoom-in-95 duration-300">
+            <div className="bg-destructive/10 p-6 flex flex-col items-center justify-center text-center border-b border-destructive/10 relative overflow-hidden">
+              <div className="absolute inset-0 bg-gradient-to-b from-destructive/5 to-transparent"></div>
+              <div className="w-16 h-16 bg-background rounded-full flex items-center justify-center shadow-inner mb-4 relative z-10 border border-destructive/20">
+                <Trash2 size={32} className="text-destructive drop-shadow-md animate-pulse" />
+              </div>
+              <h3 className="text-xl font-bold text-foreground relative z-10">Delete Capsule{deleteConfirm.ids.length > 1 ? 's' : ''}?</h3>
+            </div>
+            
+            <div className="p-6">
+              <p className="text-center text-muted-foreground mb-6">
+                You are about to permanently delete {deleteConfirm.ids.length} memory capsule{deleteConfirm.ids.length > 1 ? 's' : ''}. This cannot be undone.
+              </p>
+
+              <div className="flex justify-end gap-3">
+                <button 
+                  onClick={() => setDeleteConfirm({ show: false, ids: [] })}
+                  className="px-5 py-2.5 rounded-xl text-sm font-semibold text-foreground bg-accent hover:bg-accent/80 border border-transparent hover:border-border transition-all active:scale-95"
+                >
+                  Cancel
+                </button>
+                <button 
+                  onClick={confirmDelete}
+                  className="px-5 py-2.5 rounded-xl text-sm font-semibold bg-gradient-to-r from-red-600 to-destructive text-white shadow-lg shadow-destructive/30 hover:shadow-destructive/50 hover:from-red-500 hover:to-red-600 transition-all active:scale-95 flex items-center gap-2"
+                >
+                  <Trash2 size={16} />
+                  Delete {deleteConfirm.ids.length > 1 ? 'All' : ''}
+                </button>
+              </div>
+            </div>
+          </div>
+        </div>,
+        document.body
+      )}
+
+      {showDeleteSuccess && createPortal(
+        <div className="fixed inset-0 z-[9999] flex items-center justify-center bg-black/90 backdrop-blur-md overflow-hidden animate-in fade-in duration-300">
+          <style>{`
+            @keyframes float-burn {
+              0% { transform: scale(1) translateY(0); filter: drop-shadow(0 0 10px rgba(236, 72, 153, 0.5)); opacity: 1; }
+              30% { transform: scale(1.1) translateY(-20px) rotate(5deg); filter: drop-shadow(0 0 30px rgba(236, 72, 153, 0.8)); opacity: 1; }
+              60% { transform: scale(0.9) translateY(10px) rotate(-5deg); filter: drop-shadow(0 0 50px rgba(236, 72, 153, 1)); opacity: 0.8; }
+              100% { transform: scale(2) translateY(-100px) rotate(15deg); filter: blur(15px); opacity: 0; }
+            }
+            @keyframes ash-fly {
+              0% { transform: translate(0, 0) rotate(0deg) scale(1); opacity: 0; }
+              20% { opacity: 1; }
+              100% { transform: translate(var(--tx), var(--ty)) rotate(var(--rot)) scale(var(--scale)); opacity: 0; filter: blur(2px); }
+            }
+            @keyframes portal-pulse {
+              0% { transform: scale(0.5); opacity: 0; }
+              50% { transform: scale(1.2); opacity: 0.3; }
+              100% { transform: scale(2); opacity: 0; }
+            }
+          `}</style>
+          
+          <div className="absolute inset-0 flex items-center justify-center pointer-events-none">
+            <div className="w-96 h-96 bg-gradient-to-tr from-pink-600/20 to-purple-600/20 rounded-full blur-[80px] animate-[portal-pulse_1.5s_ease-out_forwards]" />
+            <div className="absolute w-[500px] h-[500px] bg-pink-500/10 rounded-full blur-[100px] animate-[portal-pulse_1.5s_ease-out_0.2s_forwards]" />
+          </div>
+
+          <div className="relative z-10 flex flex-col items-center justify-center h-full w-full">
+            <div className="relative w-40 h-40 flex items-center justify-center mb-12">
+              
+              <div className="absolute inset-0 flex items-center justify-center text-pink-500" style={{ animation: 'float-burn 1.8s cubic-bezier(0.4, 0, 0.2, 1) forwards' }}>
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round" className="w-28 h-28 opacity-90">
+                  <path d="M4 7.00005L10.2 11.65C11.2667 12.45 12.7333 12.45 13.8 11.65L20 7" />
+                  <rect x="3" y="5" width="18" height="14" rx="2" />
+                </svg>
+              </div>
+
+              {Array.from({length: 24}).map((_, i) => (
+                <div key={i} className="absolute rounded-full" 
+                     style={{ 
+                       width: `${Math.random() * 8 + 4}px`,
+                       height: `${Math.random() * 8 + 4}px`,
+                       background: Math.random() > 0.5 ? '#ec4899' : '#a855f7',
+                       boxShadow: '0 0 10px currentColor',
+                       '--tx': `${(Math.random() - 0.5) * 600}px`, 
+                       '--ty': `${(Math.random() - 0.5) * 600 - 200}px`, 
+                       '--rot': `${Math.random() * 720}deg`,
+                       '--scale': Math.random() * 1.5 + 0.5,
+                       animation: `ash-fly 1.2s cubic-bezier(0.1, 0.9, 0.2, 1) ${Math.random() * 0.4 + 0.2}s forwards`,
+                       opacity: 0
+                     } as React.CSSProperties} 
+                />
+              ))}
+            </div>
+            
+            <h2 className="text-5xl font-black text-transparent bg-clip-text bg-gradient-to-r from-pink-500 via-purple-500 to-indigo-500 tracking-widest uppercase drop-shadow-[0_5px_15px_rgba(236,72,153,0.4)] animate-in slide-in-from-bottom-10 fade-in duration-700" style={{ animationDelay: '0.3s', animationFillMode: 'both' }}>
+              Memories Erased
+            </h2>
+            <p className="mt-4 text-pink-200/60 text-lg tracking-widest uppercase font-medium animate-in slide-in-from-bottom-5 fade-in duration-700" style={{ animationDelay: '0.5s', animationFillMode: 'both' }}>
+              Lost to the void
+            </p>
+          </div>
+        </div>,
+        document.body
+      )}
     </div>
+    </>
   )
 }

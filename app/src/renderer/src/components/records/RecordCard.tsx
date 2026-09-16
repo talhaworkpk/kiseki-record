@@ -106,7 +106,12 @@ export default function RecordCard({ record, viewMode, isSelectionMode, isSelect
     <>
       <div 
         onContextMenu={handleContextMenu}
-        className={`group relative flex flex-col bg-card border rounded-2xl transition-all duration-300 hover:-translate-y-1 hover:shadow-xl hover:shadow-primary/5 ${isSelected ? 'border-primary ring-2 ring-primary/50' : 'border-border hover:border-primary/50'} ${viewMode === 'list' ? 'flex-row items-stretch' : ''}`}
+        onClick={() => {
+          if (isSelectionMode) {
+            onToggleSelect()
+          }
+        }}
+        className={`group relative flex flex-col bg-card border rounded-2xl transition-all duration-300 hover:-translate-y-1 hover:shadow-xl hover:shadow-primary/5 ${isSelected ? 'border-primary ring-2 ring-primary/50' : 'border-border hover:border-primary/50'} ${viewMode === 'list' ? 'flex-row items-stretch' : ''} ${isSelectionMode ? 'cursor-pointer' : ''}`}
       >
         
         {/* Selection Checkbox */}
@@ -174,7 +179,7 @@ export default function RecordCard({ record, viewMode, isSelectionMode, isSelect
               {cleanDesc}
             </div>
             {isLongDesc && viewMode === 'grid' && (
-              <button onClick={() => setShowMore(!showMore)} className="text-primary text-xs font-bold mt-1 hover:underline">
+              <button onClick={(e) => { e.stopPropagation(); setShowMore(!showMore); }} className="text-primary text-xs font-bold mt-1 hover:underline">
                 {showMore ? 'Show Less' : 'Show More'}
               </button>
             )}

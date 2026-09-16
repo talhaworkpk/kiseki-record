@@ -5,12 +5,15 @@ import { GraduationCap, Plus, Trash2, Edit2, X, Upload, FileText, Eye, PlayCircl
 import { NotificationEngine } from '../../lib/NotificationEngine'
 import { EducationRecord } from '../../types'
 import { normalizeUrl } from '../../lib/utils'
+import { DraggableScroll } from '../../components/DraggableScroll'
 
 export default function EducationList() {
   const [education, setEducation] = useState<EducationRecord[]>([])
   const [loading, setLoading] = useState(true)
   const [isAdding, setIsAdding] = useState(false)
   const [editingId, setEditingId] = useState<string | null>(null)
+  const [deleteConfirmId, setDeleteConfirmId] = useState<{id: string, title: string} | null>(null)
+  const [showDeleteSuccess, setShowDeleteSuccess] = useState(false)
 
   const [viewingEducation, setViewingEducation] = useState<EducationRecord | null>(null)
   const [slideshowActive, setSlideshowActive] = useState(false)
@@ -67,6 +70,23 @@ export default function EducationList() {
       window.removeEventListener('keyup', handleKeyUp)
     }
   }, [slideshowActive])
+
+  useEffect(() => {
+    const handleKeyDown = (e: KeyboardEvent) => {
+      if (e.key === 'Escape') {
+        if (isAdding) {
+          setIsAdding(false)
+          setForm({})
+        }
+        if (editingId) {
+          setEditingId(null)
+          setForm({})
+        }
+      }
+    }
+    window.addEventListener('keydown', handleKeyDown)
+    return () => window.removeEventListener('keydown', handleKeyDown)
+  }, [isAdding, editingId])
 
   const defaultForm: Partial<EducationRecord> = {
     school: '', degree: '', field: '', startDate: '', endDate: '', status: 'Current', grade: '', description: '', subjects: [], activities: [], achievements: [], attachments: [], photos: []
@@ -136,13 +156,31 @@ export default function EducationList() {
     return () => window.removeEventListener('keydown', down)
   }, [isAdding, form, editingId])
 
-  const handleDelete = async (id: string, title: string) => {
-    if (!confirm('Delete this record?')) return
+  // Keyboard Shortcuts for Delete Modal
+  useEffect(() => {
+    const handleKeyDown = (e: KeyboardEvent) => {
+      if (deleteConfirmId && !showDeleteSuccess) {
+        if (e.key === 'Escape') setDeleteConfirmId(null)
+        if (e.key === 'Enter') confirmDelete()
+      }
+    }
+    window.addEventListener('keydown', handleKeyDown)
+    return () => window.removeEventListener('keydown', handleKeyDown)
+  }, [deleteConfirmId, showDeleteSuccess])
+
+  const confirmDelete = async () => {
+    if (!deleteConfirmId) return
     try {
       // @ts-ignore
-      await window.api.db.remove('education', { _id: id }, {})
-      NotificationEngine.notify('info', 'Education Deleted', `"${title}" was removed.`, 'Career')
-      loadData()
+      await window.api.db.remove('education', { _id: deleteConfirmId.id }, {})
+      NotificationEngine.notify('info', 'Education Deleted', `"${deleteConfirmId.title}" was removed.`, 'Career')
+      
+      setDeleteConfirmId(null)
+      setShowDeleteSuccess(true)
+      setTimeout(() => {
+        setShowDeleteSuccess(false)
+        loadData()
+      }, 4500)
     } catch (err) { console.error(err) }
   }
 
@@ -335,7 +373,7 @@ export default function EducationList() {
             <div className="absolute top-6 right-6 opacity-0 group-hover:opacity-100 transition-opacity flex items-center gap-2">
               <button onClick={() => setViewingEducation(record)} className="p-2 bg-background border border-border rounded-md hover:bg-accent text-foreground" title="View Details"><Eye size={16}/></button>
               <button onClick={() => openEdit(record)} className="p-2 bg-background border border-border rounded-md hover:bg-accent"><Edit2 size={16}/></button>
-              <button onClick={() => handleDelete(record._id!, record.degree || record.school)} className="p-2 bg-background border border-border text-destructive rounded-md hover:bg-destructive/10"><Trash2 size={16}/></button>
+              <button onClick={() => setDeleteConfirmId({id: record._id!, title: record.degree || record.school || 'Education Record'})} className="p-2 bg-background border border-border text-destructive rounded-md hover:bg-destructive/10"><Trash2 size={16}/></button>
             </div>
             
             <div className="flex items-start gap-4 mb-4">
@@ -370,11 +408,11 @@ export default function EducationList() {
             {((record.photos && record.photos.length > 0) || (record.attachments && record.attachments.length > 0)) && (
               <div className="mt-6 pt-6 border-t border-border space-y-4">
                 {record.photos && record.photos.length > 0 && (
-                  <div className="flex gap-2 overflow-x-auto pb-2 scrollbar-custom">
+                  <DraggableScroll className="flex gap-2 overflow-x-auto pb-2 scrollbar-custom">
                     {record.photos.map(img => (
                       <img key={img} src={normalizeUrl(img)} alt="Education" className="h-24 w-36 object-cover rounded-md border border-border shrink-0 hover:scale-105 transition-transform cursor-pointer" onClick={() => setViewingEducation(record)} />
                     ))}
-                  </div>
+                  </DraggableScroll>
                 )}
                 {record.attachments && record.attachments.length > 0 && (
                   <div className="flex flex-wrap gap-2">
@@ -399,8 +437,8 @@ export default function EducationList() {
       </div>
 
       {/* Education Details Modal */}
-      {viewingEducation && (
-        <div className="fixed inset-0 z-[100] flex items-center justify-center p-4 sm:p-6 md:p-12">
+      {viewingEducation && createPortal(
+        <div className="fixed inset-0 z-[9999] flex items-center justify-center p-4 sm:p-6 md:p-12">
           <div className="absolute inset-0 bg-background/80 backdrop-blur-sm animate-in fade-in duration-200" onClick={() => setViewingEducation(null)}></div>
           <div className="relative bg-card border border-border w-full max-w-4xl max-h-full rounded-2xl shadow-2xl flex flex-col overflow-hidden animate-in zoom-in-95 duration-200">
             {viewingEducation.photos && viewingEducation.photos.length > 0 && (
@@ -543,7 +581,7 @@ export default function EducationList() {
             </div>
           </div>
         </div>
-      )}
+      , document.body)}
 
       {/* Slideshow Overlay */}
       {slideshowActive && viewingEducation && viewingEducation.photos && viewingEducation.photos.length > 0 && createPortal(
@@ -654,6 +692,120 @@ export default function EducationList() {
           </div>
         </div>
       )}
+
+      {/* Delete Confirmation Modal */}
+      {deleteConfirmId && !showDeleteSuccess && createPortal(
+        <div className="fixed inset-0 z-[9999] flex items-center justify-center p-4 bg-background/60 backdrop-blur-md animate-in fade-in duration-300">
+          <div className="bg-card text-card-foreground p-0 rounded-2xl shadow-[0_0_50px_-12px_rgba(239,68,68,0.25)] border border-red-500/20 w-full max-w-md flex flex-col overflow-hidden scale-in-center animate-in zoom-in-95 duration-300">
+            <div className="bg-red-500/10 p-6 flex flex-col items-center justify-center text-center border-b border-red-500/10 relative overflow-hidden">
+              <div className="absolute inset-0 bg-gradient-to-b from-red-500/5 to-transparent"></div>
+              <div className="w-16 h-16 bg-background rounded-full flex items-center justify-center shadow-inner mb-4 relative z-10 border border-red-500/20">
+                <GraduationCap size={32} className="text-red-500 drop-shadow-md animate-pulse" />
+              </div>
+              <h3 className="text-xl font-bold text-foreground relative z-10">Delete Education?</h3>
+            </div>
+            
+            <div className="p-6">
+              <p className="text-center text-muted-foreground mb-6">
+                Are you sure you want to permanently incinerate {deleteConfirmId.title}? This action cannot be undone.
+              </p>
+
+              <div className="flex justify-end gap-3">
+                <button 
+                  onClick={() => setDeleteConfirmId(null)}
+                  className="px-5 py-2.5 rounded-xl text-sm font-semibold text-foreground bg-accent hover:bg-accent/80 border border-transparent hover:border-border transition-all active:scale-95"
+                >
+                  Cancel
+                </button>
+                <button 
+                  onClick={confirmDelete}
+                  className="px-5 py-2.5 rounded-xl text-sm font-semibold text-white shadow-lg transition-all active:scale-95 flex items-center gap-2 bg-gradient-to-r from-red-500 to-rose-600 hover:shadow-red-500/50"
+                >
+                  <Trash2 size={16} />
+                  Incinerate
+                </button>
+              </div>
+            </div>
+          </div>
+        </div>
+      , document.body)}
+
+      {/* Burn Animation Overlay */}
+      {showDeleteSuccess && createPortal(
+        <div className="fixed inset-0 z-[9999] flex items-center justify-center bg-black/95 backdrop-blur-xl overflow-hidden animate-in fade-in duration-300">
+          <style>{`
+            @keyframes char-paper-color {
+              0% { filter: brightness(1) sepia(0); opacity: 1; transform: scale(1); }
+              30% { filter: brightness(0.2) sepia(0.5) hue-rotate(180deg); opacity: 1; transform: scale(1); }
+              60% { filter: brightness(0.0) sepia(1) hue-rotate(180deg); opacity: 1; transform: scale(1); }
+              75% { filter: brightness(0.0) sepia(1) hue-rotate(180deg); opacity: 0; transform: scale(0.5); }
+              100% { filter: brightness(0.0) sepia(1) hue-rotate(180deg); opacity: 0; transform: scale(0); }
+            }
+            @keyframes single-fire-spread {
+              0% { transform: translateY(50px) scale(0.2); opacity: 0; }
+              15% { transform: translateY(20px) scale(0.8); opacity: 0.9; }
+              65% { transform: translateY(-30px) scale(2.5); opacity: 0.9; }
+              85% { transform: translateY(-30px) scale(0); opacity: 0; }
+              100% { transform: translateY(-30px) scale(0); opacity: 0; }
+            }
+            @keyframes pulse-flame {
+              0% { transform: scale(1); opacity: 0.8; }
+              100% { transform: scale(1.1); opacity: 1; }
+            }
+            @keyframes heat-distortion {
+              0%, 100% { transform: scale(1); opacity: 0.5; }
+              50% { transform: scale(1.3); opacity: 0.8; }
+            }
+            @keyframes text-burn-in {
+              0% { transform: scale(0.8) translateY(20px); opacity: 0; filter: blur(10px); }
+              50% { transform: scale(0.8) translateY(20px); opacity: 0; filter: blur(10px); }
+              70% { transform: scale(1.1) translateY(0); opacity: 1; filter: blur(0px); }
+              100% { transform: scale(1) translateY(0); opacity: 1; filter: blur(0px); }
+            }
+          `}</style>
+          
+          <div className="absolute inset-0 flex items-center justify-center pointer-events-none">
+            <div className="absolute w-[800px] h-[800px] bg-[radial-gradient(circle,rgba(239,68,68,0.15)_0%,transparent_70%)] rounded-full animate-[heat-distortion_2s_ease-in-out_infinite]" />
+            <div className="absolute w-[1000px] h-[1000px] bg-[radial-gradient(circle,rgba(225,29,72,0.1)_0%,transparent_60%)] rounded-full animate-[heat-distortion_3s_ease-in-out_infinite_reverse]" />
+          </div>
+
+          <div className="relative z-10 flex flex-col items-center justify-center h-full w-full">
+            <div className="relative w-48 h-48 mb-12">
+              
+              <div className="absolute top-4 left-0 w-full flex flex-col items-center">
+                
+                <div style={{ animation: 'char-paper-color 4s ease-in forwards' }} className="flex justify-center items-center">
+                  <svg width="180" height="150" viewBox="0 0 240 200" fill="none" xmlns="http://www.w3.org/2000/svg" className="drop-shadow-2xl">
+                    <path d="M 20 80 L 120 40 L 220 80 L 120 120 Z" fill="#312e81" opacity="0.4" transform="translate(10, 20)" />
+                    <path d="M 70 100 L 170 100 L 170 140 C 170 155, 150 165, 120 165 C 90 165, 70 155, 70 140 Z" fill="#4338ca" />
+                    <path d="M 70 100 L 170 100 L 170 140 C 170 155, 150 165, 120 165 C 90 165, 70 155, 70 140 Z" fill="#3730a3" opacity="0.5" transform="translate(-2, 0)" />
+                    <path d="M 20 80 L 120 40 L 220 80 L 120 120 Z" fill="#4f46e5" />
+                    <path d="M 20 80 L 120 40 L 220 80 L 120 120 Z" fill="#6366f1" opacity="0.7" transform="scale(0.95) translate(6, 4)" />
+                    <circle cx="120" cy="80" r="8" fill="#c7d2fe" />
+                    <g>
+                      <path d="M 120 80 Q 150 100, 180 130" fill="none" stroke="#fbbf24" strokeWidth="4" />
+                      <path d="M 175 130 L 185 130 L 190 160 L 170 160 Z" fill="#f59e0b" />
+                      <path d="M 170 160 L 175 180 M 175 160 L 178 185 M 180 160 L 182 185 M 185 160 L 185 180 M 190 160 L 188 175" stroke="#fcd34d" strokeWidth="2" strokeLinecap="round" />
+                    </g>
+                  </svg>
+                </div>
+
+                <div className="absolute bottom-[-10px] flex justify-center items-center w-full pointer-events-none z-20" style={{ animation: 'single-fire-spread 4s ease-in forwards', mixBlendMode: 'screen' }}>
+                  <div className="w-24 h-28 bg-[radial-gradient(ellipse_at_bottom,_var(--tw-gradient-stops))] from-yellow-300 via-orange-500 to-red-600 blur-md rounded-[50%] shadow-[0_0_40px_10px_rgba(239,68,68,0.8)]" style={{ animation: 'pulse-flame 0.2s infinite alternate' }} />
+                  <div className="absolute w-12 h-16 bg-[radial-gradient(ellipse_at_bottom,_var(--tw-gradient-stops))] from-white via-yellow-200 to-transparent blur-sm rounded-[50%]" style={{ animation: 'pulse-flame 0.15s infinite alternate', animationDelay: '0.1s' }} />
+                </div>
+              </div>
+            </div>
+            
+            <h2 className="text-5xl font-black text-transparent bg-clip-text bg-gradient-to-r from-red-400 via-rose-400 to-orange-500 uppercase tracking-widest drop-shadow-[0_0_20px_rgba(239,68,68,0.6)]" style={{ animation: 'text-burn-in 3.5s cubic-bezier(0.1, 0.9, 0.2, 1) forwards' }}>
+              Education Incinerated
+            </h2>
+            <p className="mt-4 text-red-200/80 text-xl font-bold uppercase tracking-[0.4em]" style={{ animation: 'text-burn-in 3.8s cubic-bezier(0.1, 0.9, 0.2, 1) forwards' }}>
+              Reduced to Ash
+            </p>
+          </div>
+        </div>
+      , document.body)}
     </div>
   )
 }

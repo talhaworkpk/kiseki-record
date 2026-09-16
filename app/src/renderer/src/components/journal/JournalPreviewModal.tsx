@@ -2,6 +2,7 @@ import { JournalEntry } from '../../types'
 import { X, Calendar, Clock, MapPin, Tag } from 'lucide-react'
 import { normalizeUrl, getSafeMediaUrl } from '../../lib/utils'
 import { useEffect, useRef, useState } from 'react'
+import { createPortal } from 'react-dom'
 
 const MOODS = [
   { emoji: '😀', label: 'Happy', value: 'happy' },
@@ -78,8 +79,8 @@ export default function JournalPreviewModal({
     scrollRef.current.scrollTop = scrollTop - walk
   }
 
-  return (
-    <div className="fixed inset-0 z-50 animate-in fade-in duration-300">
+  return createPortal(
+    <div className="fixed inset-0 z-[9999] animate-in fade-in duration-300">
       
       {/* Base Background */}
       <div className="absolute inset-0 bg-background/80 backdrop-blur-2xl z-0" onClick={onClose} />
@@ -182,6 +183,7 @@ export default function JournalPreviewModal({
 
         </div>
       </div>
-    </div>
+    </div>,
+    document.body
   )
 }

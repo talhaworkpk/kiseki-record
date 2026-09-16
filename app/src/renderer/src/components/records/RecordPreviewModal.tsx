@@ -1,4 +1,5 @@
 import { useEffect, useRef, useState } from 'react'
+import { createPortal } from 'react-dom'
 import { RecordItem } from '../../types'
 import { X, ChevronLeft, ChevronRight, MapPin, Smile, Calendar, Tag, FileText, Download, Edit, Trash2, Maximize2, ExternalLink, Film, Music } from 'lucide-react'
 import SafeImage from './SafeImage'
@@ -82,8 +83,8 @@ export default function RecordPreviewModal({ record, isOpen, onClose, onPrevious
     scrollRef.current.scrollTop = scrollTop - walk
   }
 
-  return (
-    <div className="fixed inset-0 z-[100] animate-in fade-in duration-300">
+  return createPortal(
+    <div className="fixed inset-0 z-[9999] animate-in fade-in duration-300">
       
       {/* Base Background */}
       <div className="absolute inset-0 bg-background/80 backdrop-blur-2xl z-0" onClick={onClose} />
@@ -267,6 +268,7 @@ export default function RecordPreviewModal({ record, isOpen, onClose, onPrevious
           </div>
         </div>
       </div>
-    </div>
+    </div>,
+    document.body
   )
 }

@@ -1,4 +1,5 @@
 import { X, Filter } from 'lucide-react'
+import { createPortal } from 'react-dom'
 
 export interface RecordFilters {
   type: string
@@ -24,16 +25,16 @@ export default function RecordFilterDrawer({ isOpen, onClose, filters, setFilter
     setFilters({ ...filters, [key]: value })
   }
 
-  return (
-    <>
+  return createPortal(
+    <div className="relative z-[9999]">
       {/* Backdrop */}
       <div 
-        className={`fixed inset-0 bg-background/50 backdrop-blur-sm z-40 transition-opacity duration-300 ${isOpen ? 'opacity-100' : 'opacity-0 pointer-events-none'}`} 
+        className={`fixed inset-0 bg-background/50 backdrop-blur-sm transition-opacity duration-300 ${isOpen ? 'opacity-100' : 'opacity-0 pointer-events-none'}`} 
         onClick={onClose}
       />
       
       {/* Drawer */}
-      <div className={`fixed top-0 right-0 h-full w-80 bg-card border-l border-border shadow-2xl z-50 transform transition-transform duration-300 flex flex-col ${isOpen ? 'translate-x-0' : 'translate-x-full'}`}>
+      <div className={`fixed top-0 right-0 h-full w-80 bg-card border-l border-border shadow-2xl transform transition-transform duration-300 flex flex-col ${isOpen ? 'translate-x-0' : 'translate-x-full'}`}>
         
         <div className="h-16 px-6 border-b border-border flex items-center justify-between shrink-0">
           <h2 className="text-lg font-bold flex items-center gap-2"><Filter size={18}/> Advanced Filters</h2>
@@ -107,6 +108,7 @@ export default function RecordFilterDrawer({ isOpen, onClose, filters, setFilter
         </div>
 
       </div>
-    </>
+    </div>,
+    document.body
   )
 }

@@ -27,7 +27,7 @@ export default function TipTapEditor({ content, onChange, editable = true, place
       Underline,
       TextStyle,
       Color,
-      Highlight,
+      Highlight.configure({ multicolor: true }),
       Placeholder.configure({
         placeholder: placeholder,
       }),
@@ -143,6 +143,7 @@ export default function TipTapEditor({ content, onChange, editable = true, place
           
           <div className="w-px bg-border mx-1" />
           <button
+            type="button"
             onClick={() => editor.chain().focus().toggleBold().run()}
             className={`p-2 rounded hover:bg-accent ${editor.isActive('bold') ? 'bg-accent' : ''}`}
             title="Bold"
@@ -150,6 +151,7 @@ export default function TipTapEditor({ content, onChange, editable = true, place
             <b>B</b>
           </button>
           <button
+            type="button"
             onClick={() => editor.chain().focus().toggleItalic().run()}
             className={`p-2 rounded hover:bg-accent ${editor.isActive('italic') ? 'bg-accent' : ''}`}
             title="Italic"
@@ -157,6 +159,7 @@ export default function TipTapEditor({ content, onChange, editable = true, place
             <i>I</i>
           </button>
           <button
+            type="button"
             onClick={() => editor.chain().focus().toggleUnderline().run()}
             className={`p-2 rounded hover:bg-accent ${editor.isActive('underline') ? 'bg-accent' : ''}`}
             title="Underline"
@@ -164,6 +167,7 @@ export default function TipTapEditor({ content, onChange, editable = true, place
             <u>U</u>
           </button>
           <button
+            type="button"
             onClick={() => editor.chain().focus().toggleStrike().run()}
             className={`p-2 rounded hover:bg-accent ${editor.isActive('strike') ? 'bg-accent' : ''}`}
             title="Strikethrough"
@@ -172,6 +176,7 @@ export default function TipTapEditor({ content, onChange, editable = true, place
           </button>
           <div className="w-px bg-border mx-1" />
           <button
+            type="button"
             onClick={() => editor.chain().focus().toggleBulletList().run()}
             className={`p-2 rounded hover:bg-accent ${editor.isActive('bulletList') ? 'bg-accent' : ''}`}
             title="Bullet List"
@@ -179,6 +184,7 @@ export default function TipTapEditor({ content, onChange, editable = true, place
             •
           </button>
           <button
+            type="button"
             onClick={() => editor.chain().focus().toggleOrderedList().run()}
             className={`p-2 rounded hover:bg-accent ${editor.isActive('orderedList') ? 'bg-accent' : ''}`}
             title="Numbered List"
@@ -187,6 +193,7 @@ export default function TipTapEditor({ content, onChange, editable = true, place
           </button>
           <div className="w-px bg-border mx-1" />
           <button
+            type="button"
             onClick={() => {
               editor.chain().focus().unsetAllMarks().run()
               editor.chain().focus().unsetColor().run()

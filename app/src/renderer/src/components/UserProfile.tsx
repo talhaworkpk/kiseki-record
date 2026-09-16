@@ -1,5 +1,6 @@
 import { useState, useEffect, useRef } from 'react'
 import { User, Mail, Phone, MapPin, Calendar, Linkedin, Github, Link as LinkIcon, Camera, X, Save, RotateCcw, RotateCw, ZoomIn, ZoomOut } from 'lucide-react'
+import { OverscrollContainer } from './ui/OverscrollContainer'
 import { UserProfile } from '../types'
 
 interface UserProfileDialogProps {
@@ -216,17 +217,18 @@ export default function UserProfileDialog({ isOpen, onClose }: UserProfileDialog
 
   return (
     <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4">
-      <div className="bg-card border border-border rounded-2xl shadow-2xl max-w-2xl w-full max-h-[90vh] overflow-y-auto">
-        <div className="sticky top-0 bg-card border-b border-border p-6 flex justify-between items-center z-10">
-          <h2 className="text-2xl font-bold flex items-center gap-2">
-            <User className="text-primary" /> User Profile
-          </h2>
-          <button onClick={onClose} className="p-2 hover:bg-accent rounded-md">
-            <X size={20} />
-          </button>
-        </div>
+      <div className="bg-card border border-border rounded-2xl shadow-2xl max-w-2xl w-full h-[90vh] flex flex-col relative overflow-hidden">
+        <OverscrollContainer className="flex-1 w-full h-full relative" containerClassName="flex flex-col">
+          <div className="sticky top-0 bg-card border-b border-border p-6 flex justify-between items-center z-20 shrink-0">
+            <h2 className="text-2xl font-bold flex items-center gap-2">
+              <User className="text-primary" /> User Profile
+            </h2>
+            <button onClick={onClose} className="p-2 hover:bg-accent rounded-md">
+              <X size={20} />
+            </button>
+          </div>
 
-        <div className="p-6 space-y-6">
+          <div className="p-6 space-y-6 flex-1">
           {/* Profile Completion Indicator */}
           <div className="bg-accent/30 rounded-xl p-4">
             <div className="flex justify-between items-center mb-2">
@@ -528,6 +530,7 @@ export default function UserProfileDialog({ isOpen, onClose }: UserProfileDialog
             <Save size={16} /> {isLoading ? 'Saving...' : 'Save Changes'}
           </button>
         </div>
+        </OverscrollContainer>
       </div>
     </div>
   )

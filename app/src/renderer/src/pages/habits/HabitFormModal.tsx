@@ -1,4 +1,5 @@
 import { useState, useEffect } from 'react'
+import { createPortal } from 'react-dom'
 import { X, Clock, Save, Trash2, Archive, Loader2 } from 'lucide-react'
 import { Habit } from '../../types'
 import { logHabitActivity } from './HabitManager'
@@ -8,7 +9,7 @@ interface HabitFormModalProps {
   onClose: () => void
   initialData?: Habit
   onSave: () => void
-  onDelete?: (id: string, mode: 'archive' | 'delete') => void
+  onDelete?: (id: string, mode: 'archive' | 'delete', deleteTimeline?: boolean) => void
 }
 
 const CATEGORIES = ['Health', 'Productivity', 'Learning', 'Fitness', 'Mindfulness', 'Finance', 'Social', 'Hobbies', 'Bad Habit']
@@ -73,11 +74,18 @@ export default function HabitFormModal({ isOpen, onClose, initialData, onSave, o
       } else {
         // @ts-ignore
         const newHabit = await window.api.db.insert('habits', payload)
+        
         if (newHabit._id) await logHabitActivity(newHabit._id, 'created', 'Habit created.')
         
         setShowSuccessOverlay(true)
         setTimeout(() => {
           setShowSuccessOverlay(false)
+          
+          // Trigger achievement evaluation after success overlay finishes to prevent UI conflict
+          import('../../lib/AchievementEngine').then(({ AchievementEngine }) => {
+            AchievementEngine.evaluateHabit(newHabit._id)
+          })
+
           onSave()
           onClose()
         }, 3000)
@@ -91,6 +99,11 @@ export default function HabitFormModal({ isOpen, onClose, initialData, onSave, o
 
   useEffect(() => {
     const down = (e: KeyboardEvent) => {
+      if (e.key === 'Escape' && isOpen) {
+        e.preventDefault()
+        onClose()
+        return
+      }
       if (e.ctrlKey && e.key.toLowerCase() === 's') {
         if (isOpen) {
           e.preventDefault()
@@ -105,10 +118,18 @@ export default function HabitFormModal({ isOpen, onClose, initialData, onSave, o
   if (!isOpen) return null
 
   const handleDeleteReq = (mode: 'archive' | 'delete') => {
-    if (mode === 'delete' && !confirm('Delete this habit permanently? Its completion history, timer sessions, streaks, and analytics will also be deleted.')) return
-    if (onDelete && initialData && initialData._id) {
-      onDelete(initialData._id, mode)
-      onClose()
+    if (mode === 'delete') {
+      if (!confirm('Delete this habit permanently?')) return
+      const deleteTimeline = confirm('Do you also want to delete all timeline data (completion history, timer sessions, streaks, and analytics) for this habit? \n\nClick OK to delete timeline data, or Cancel to keep it.')
+      if (onDelete && initialData && initialData._id) {
+        onDelete(initialData._id, mode, deleteTimeline)
+        onClose()
+      }
+    } else {
+      if (onDelete && initialData && initialData._id) {
+        onDelete(initialData._id, mode)
+        onClose()
+      }
     }
   }
 
@@ -122,8 +143,8 @@ export default function HabitFormModal({ isOpen, onClose, initialData, onSave, o
   }
 
   if (showSuccessOverlay) {
-    return (
-      <div className="fixed inset-0 z-[100] flex items-center justify-center bg-[radial-gradient(ellipse_at_center,_var(--tw-gradient-stops))] from-green-500/30 via-background/80 to-background/95 backdrop-blur-sm animate-in fade-in duration-300">
+    return createPortal(
+      <div className="fixed inset-0 z-[9999] flex items-center justify-center bg-[radial-gradient(ellipse_at_center,_var(--tw-gradient-stops))] from-green-500/30 via-background/80 to-background/95 backdrop-blur-sm animate-in fade-in duration-300">
         <style>{`
           @keyframes popAndRotateCheck {
             0% { transform: scale(0) rotate(-45deg); opacity: 0; }
@@ -205,12 +226,13 @@ export default function HabitFormModal({ isOpen, onClose, initialData, onSave, o
             Habit Created!
           </h2>
         </div>
-      </div>
+      </div>,
+      document.body
     )
   }
 
-  return (
-    <div className="fixed inset-0 z-50 bg-background/80 backdrop-blur-sm flex items-center justify-center p-4">
+  return createPortal(
+    <div className="fixed inset-0 z-[9999] bg-background/80 backdrop-blur-sm flex items-center justify-center p-4">
       <div className="bg-card border border-border w-full max-w-2xl max-h-[90vh] rounded-3xl shadow-2xl flex flex-col overflow-hidden animate-in zoom-in-95 duration-200">
         
         <div className="px-6 py-4 border-b border-border flex justify-between items-center bg-card z-10 shrink-0">
@@ -331,6 +353,7 @@ export default function HabitFormModal({ isOpen, onClose, initialData, onSave, o
         </div>
 
       </div>
-    </div>
+    </div>,
+    document.body
   )
 }

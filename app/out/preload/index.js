@@ -15,7 +15,9 @@ if (process.contextIsolated) {
         delete: (options) => electron.ipcRenderer.invoke("vault:delete", options),
         rename: (options) => electron.ipcRenderer.invoke("vault:rename", options),
         download: (options) => electron.ipcRenderer.invoke("vault:download", options),
-        listBackups: () => electron.ipcRenderer.invoke("vault:listBackups")
+        listBackups: () => electron.ipcRenderer.invoke("vault:listBackups"),
+        getBackupLocation: () => electron.ipcRenderer.invoke("vault:getBackupLocation"),
+        setBackupLocation: () => electron.ipcRenderer.invoke("vault:setBackupLocation")
       },
       attachment: {
         add: (options) => electron.ipcRenderer.invoke("attachment:add", options),
@@ -61,23 +63,50 @@ if (process.contextIsolated) {
       notifications: {
         getSettings: () => electron.ipcRenderer.invoke("notifications:getSettings"),
         updateSettings: (updates) => electron.ipcRenderer.invoke("notifications:updateSettings", updates),
-        triggerTest: (type) => electron.ipcRenderer.invoke("notifications:triggerTest", type),
-        triggerInApp: (type, title, message, sourceModule, targetPath) => electron.ipcRenderer.invoke("notifications:triggerInApp", type, title, message, sourceModule, targetPath)
+        triggerTest: (type, modelName) => electron.ipcRenderer.invoke("notifications:triggerTest", type, modelName),
+        triggerInApp: (type, title, message, sourceModule, targetPath) => electron.ipcRenderer.invoke("notifications:triggerInApp", type, title, message, sourceModule, targetPath),
+        triggerDesktop: (type, title, message, targetPath) => electron.ipcRenderer.invoke("notifications:triggerDesktop", type, title, message, targetPath)
       },
       app: {
         restart: () => electron.ipcRenderer.invoke("app:restart")
+      },
+      window: {
+        minimize: () => electron.ipcRenderer.invoke("window:minimize"),
+        maximize: () => electron.ipcRenderer.invoke("window:maximize"),
+        restore: () => electron.ipcRenderer.invoke("window:restore"),
+        close: () => electron.ipcRenderer.invoke("window:close"),
+        isMaximized: () => electron.ipcRenderer.invoke("window:isMaximized"),
+        onMaximizedChanged: (callback) => {
+          electron.ipcRenderer.on("window:maximizedChanged", (_event, isMaximized) => callback(isMaximized));
+        },
+        offMaximizedChanged: () => {
+          electron.ipcRenderer.removeAllListeners("window:maximizedChanged");
+        }
+      },
+      ai: {
+        notifyModelLoaded: (modelName, success) => {
+          console.log(`[NOTIF-2] Preload: ipcRenderer.invoke ai:notifyModelLoaded model=${modelName} success=${success} ✓`);
+          return electron.ipcRenderer.invoke("ai:notifyModelLoaded", modelName, success);
+        }
+      },
+      system: {
+        getMemoryInfo: () => electron.ipcRenderer.invoke("system:getMemoryInfo")
       },
       storage: {
         getInfo: (mode) => electron.ipcRenderer.invoke("storage:getInfo", mode),
         clearCache: () => electron.ipcRenderer.invoke("storage:clearCache"),
         setMaxAppSize: (size) => electron.ipcRenderer.invoke("storage:setMaxAppSize", size),
-        checkLimits: (expectedBytes) => electron.ipcRenderer.invoke("storage:checkLimits", expectedBytes)
+        checkLimits: (expectedBytes) => electron.ipcRenderer.invoke("storage:checkLimits", expectedBytes),
+        resetData: (mode) => electron.ipcRenderer.invoke("storage:resetData", mode)
       },
       settings: {
         get: (key, defaultValue) => electron.ipcRenderer.invoke("settings:get", key, defaultValue),
         set: (key, value) => electron.ipcRenderer.invoke("settings:set", key, value),
         delete: (key) => electron.ipcRenderer.invoke("settings:delete", key),
         getAll: () => electron.ipcRenderer.invoke("settings:getAll")
+      },
+      clockAssets: {
+        choose: (type) => electron.ipcRenderer.invoke("clockAssets:choose", type)
       }
     });
   } catch (error) {
@@ -97,7 +126,9 @@ if (process.contextIsolated) {
       delete: (options) => electron.ipcRenderer.invoke("vault:delete", options),
       rename: (options) => electron.ipcRenderer.invoke("vault:rename", options),
       download: (options) => electron.ipcRenderer.invoke("vault:download", options),
-      listBackups: () => electron.ipcRenderer.invoke("vault:listBackups")
+      listBackups: () => electron.ipcRenderer.invoke("vault:listBackups"),
+      getBackupLocation: () => electron.ipcRenderer.invoke("vault:getBackupLocation"),
+      setBackupLocation: () => electron.ipcRenderer.invoke("vault:setBackupLocation")
     },
     attachment: {
       add: () => electron.ipcRenderer.invoke("attachment:add"),
@@ -144,22 +175,46 @@ if (process.contextIsolated) {
       getSettings: () => electron.ipcRenderer.invoke("notifications:getSettings"),
       updateSettings: (updates) => electron.ipcRenderer.invoke("notifications:updateSettings", updates),
       triggerTest: (type) => electron.ipcRenderer.invoke("notifications:triggerTest", type),
-      triggerInApp: (type, title, message, sourceModule, targetPath) => electron.ipcRenderer.invoke("notifications:triggerInApp", type, title, message, sourceModule, targetPath)
+      triggerInApp: (type, title, message, sourceModule, targetPath) => electron.ipcRenderer.invoke("notifications:triggerInApp", type, title, message, sourceModule, targetPath),
+      triggerDesktop: (type, title, message, targetPath) => electron.ipcRenderer.invoke("notifications:triggerDesktop", type, title, message, targetPath)
     },
     app: {
       restart: () => electron.ipcRenderer.invoke("app:restart")
+    },
+    window: {
+      minimize: () => electron.ipcRenderer.invoke("window:minimize"),
+      maximize: () => electron.ipcRenderer.invoke("window:maximize"),
+      restore: () => electron.ipcRenderer.invoke("window:restore"),
+      close: () => electron.ipcRenderer.invoke("window:close"),
+      isMaximized: () => electron.ipcRenderer.invoke("window:isMaximized"),
+      onMaximizedChanged: (callback) => {
+        electron.ipcRenderer.on("window:maximizedChanged", (_event, isMaximized) => callback(isMaximized));
+      },
+      offMaximizedChanged: () => {
+        electron.ipcRenderer.removeAllListeners("window:maximizedChanged");
+      }
+    },
+    ai: {
+      notifyModelLoaded: (modelName, success) => electron.ipcRenderer.invoke("ai:notifyModelLoaded", modelName, success)
+    },
+    system: {
+      getMemoryInfo: () => electron.ipcRenderer.invoke("system:getMemoryInfo")
     },
     storage: {
       getInfo: (mode) => electron.ipcRenderer.invoke("storage:getInfo", mode),
       clearCache: () => electron.ipcRenderer.invoke("storage:clearCache"),
       setMaxAppSize: (size) => electron.ipcRenderer.invoke("storage:setMaxAppSize", size),
-      checkLimits: (expectedBytes) => electron.ipcRenderer.invoke("storage:checkLimits", expectedBytes)
+      checkLimits: (expectedBytes) => electron.ipcRenderer.invoke("storage:checkLimits", expectedBytes),
+      resetData: (mode) => electron.ipcRenderer.invoke("storage:resetData", mode)
     },
     settings: {
       get: (key, defaultValue) => electron.ipcRenderer.invoke("settings:get", key, defaultValue),
       set: (key, value) => electron.ipcRenderer.invoke("settings:set", key, value),
       delete: (key) => electron.ipcRenderer.invoke("settings:delete", key),
       getAll: () => electron.ipcRenderer.invoke("settings:getAll")
+    },
+    clockAssets: {
+      choose: (type) => electron.ipcRenderer.invoke("clockAssets:choose", type)
     }
   };
 }

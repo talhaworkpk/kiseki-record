@@ -15,7 +15,9 @@ if (process.contextIsolated) {
         delete: (options: any) => ipcRenderer.invoke('vault:delete', options),
         rename: (options: any) => ipcRenderer.invoke('vault:rename', options),
         download: (options: any) => ipcRenderer.invoke('vault:download', options),
-        listBackups: () => ipcRenderer.invoke('vault:listBackups')
+        listBackups: () => ipcRenderer.invoke('vault:listBackups'),
+        getBackupLocation: () => ipcRenderer.invoke('vault:getBackupLocation'),
+        setBackupLocation: () => ipcRenderer.invoke('vault:setBackupLocation')
       },
       attachment: {
         add: (options?: any) => ipcRenderer.invoke('attachment:add', options),
@@ -61,24 +63,52 @@ if (process.contextIsolated) {
       notifications: {
         getSettings: () => ipcRenderer.invoke('notifications:getSettings'),
         updateSettings: (updates: any) => ipcRenderer.invoke('notifications:updateSettings', updates),
-        triggerTest: (type: string) => ipcRenderer.invoke('notifications:triggerTest', type),
+        triggerTest: (type: string, modelName?: string) => ipcRenderer.invoke('notifications:triggerTest', type, modelName),
         triggerInApp: (type: string, title: string, message: string, sourceModule?: string, targetPath?: string) => 
-          ipcRenderer.invoke('notifications:triggerInApp', type, title, message, sourceModule, targetPath)
+          ipcRenderer.invoke('notifications:triggerInApp', type, title, message, sourceModule, targetPath),
+        triggerDesktop: (type: string, title: string, message: string, targetPath?: string) => 
+          ipcRenderer.invoke('notifications:triggerDesktop', type, title, message, targetPath)
       },
       app: {
         restart: () => ipcRenderer.invoke('app:restart')
+      },
+      window: {
+        minimize: () => ipcRenderer.invoke('window:minimize'),
+        maximize: () => ipcRenderer.invoke('window:maximize'),
+        restore: () => ipcRenderer.invoke('window:restore'),
+        close: () => ipcRenderer.invoke('window:close'),
+        isMaximized: () => ipcRenderer.invoke('window:isMaximized'),
+        onMaximizedChanged: (callback: (isMaximized: boolean) => void) => {
+          ipcRenderer.on('window:maximizedChanged', (_event, isMaximized) => callback(isMaximized))
+        },
+        offMaximizedChanged: () => {
+          ipcRenderer.removeAllListeners('window:maximizedChanged')
+        }
+      },
+      ai: {
+        notifyModelLoaded: (modelName: string, success: boolean) => {
+          console.log(`[NOTIF-2] Preload: ipcRenderer.invoke ai:notifyModelLoaded model=${modelName} success=${success} ✓`)
+          return ipcRenderer.invoke('ai:notifyModelLoaded', modelName, success)
+        }
+      },
+      system: {
+        getMemoryInfo: () => ipcRenderer.invoke('system:getMemoryInfo')
       },
       storage: {
         getInfo: (mode?: string) => ipcRenderer.invoke('storage:getInfo', mode),
         clearCache: () => ipcRenderer.invoke('storage:clearCache'),
         setMaxAppSize: (size: number | null) => ipcRenderer.invoke('storage:setMaxAppSize', size),
-        checkLimits: (expectedBytes: number) => ipcRenderer.invoke('storage:checkLimits', expectedBytes)
+        checkLimits: (expectedBytes: number) => ipcRenderer.invoke('storage:checkLimits', expectedBytes),
+        resetData: (mode: 'public' | 'private' | 'both') => ipcRenderer.invoke('storage:resetData', mode)
       },
       settings: {
         get: (key: string, defaultValue?: any) => ipcRenderer.invoke('settings:get', key, defaultValue),
         set: (key: string, value: any) => ipcRenderer.invoke('settings:set', key, value),
         delete: (key: string) => ipcRenderer.invoke('settings:delete', key),
         getAll: () => ipcRenderer.invoke('settings:getAll')
+      },
+      clockAssets: {
+        choose: (type: 'background' | 'cursor') => ipcRenderer.invoke('clockAssets:choose', type)
       }
     })
   } catch (error) {
@@ -99,7 +129,9 @@ if (process.contextIsolated) {
       delete: (options: any) => ipcRenderer.invoke('vault:delete', options),
       rename: (options: any) => ipcRenderer.invoke('vault:rename', options),
       download: (options: any) => ipcRenderer.invoke('vault:download', options),
-      listBackups: () => ipcRenderer.invoke('vault:listBackups')
+      listBackups: () => ipcRenderer.invoke('vault:listBackups'),
+      getBackupLocation: () => ipcRenderer.invoke('vault:getBackupLocation'),
+      setBackupLocation: () => ipcRenderer.invoke('vault:setBackupLocation')
     },
     attachment: {
       add: () => ipcRenderer.invoke('attachment:add'),
@@ -147,22 +179,47 @@ if (process.contextIsolated) {
       updateSettings: (updates: any) => ipcRenderer.invoke('notifications:updateSettings', updates),
       triggerTest: (type: string) => ipcRenderer.invoke('notifications:triggerTest', type),
       triggerInApp: (type: string, title: string, message: string, sourceModule?: string, targetPath?: string) => 
-        ipcRenderer.invoke('notifications:triggerInApp', type, title, message, sourceModule, targetPath)
+        ipcRenderer.invoke('notifications:triggerInApp', type, title, message, sourceModule, targetPath),
+      triggerDesktop: (type: string, title: string, message: string, targetPath?: string) => 
+        ipcRenderer.invoke('notifications:triggerDesktop', type, title, message, targetPath)
     },
     app: {
       restart: () => ipcRenderer.invoke('app:restart')
+    },
+    window: {
+      minimize: () => ipcRenderer.invoke('window:minimize'),
+      maximize: () => ipcRenderer.invoke('window:maximize'),
+      restore: () => ipcRenderer.invoke('window:restore'),
+      close: () => ipcRenderer.invoke('window:close'),
+      isMaximized: () => ipcRenderer.invoke('window:isMaximized'),
+      onMaximizedChanged: (callback: (isMaximized: boolean) => void) => {
+        ipcRenderer.on('window:maximizedChanged', (_event, isMaximized) => callback(isMaximized))
+      },
+      offMaximizedChanged: () => {
+        ipcRenderer.removeAllListeners('window:maximizedChanged')
+      }
+    },
+    ai: {
+      notifyModelLoaded: (modelName: string, success: boolean) => ipcRenderer.invoke('ai:notifyModelLoaded', modelName, success)
+    },
+    system: {
+      getMemoryInfo: () => ipcRenderer.invoke('system:getMemoryInfo')
     },
     storage: {
       getInfo: (mode?: string) => ipcRenderer.invoke('storage:getInfo', mode),
       clearCache: () => ipcRenderer.invoke('storage:clearCache'),
       setMaxAppSize: (size: number | null) => ipcRenderer.invoke('storage:setMaxAppSize', size),
-      checkLimits: (expectedBytes: number) => ipcRenderer.invoke('storage:checkLimits', expectedBytes)
+      checkLimits: (expectedBytes: number) => ipcRenderer.invoke('storage:checkLimits', expectedBytes),
+      resetData: (mode: 'public' | 'private' | 'both') => ipcRenderer.invoke('storage:resetData', mode)
     },
     settings: {
       get: (key: string, defaultValue?: any) => ipcRenderer.invoke('settings:get', key, defaultValue),
       set: (key: string, value: any) => ipcRenderer.invoke('settings:set', key, value),
       delete: (key: string) => ipcRenderer.invoke('settings:delete', key),
       getAll: () => ipcRenderer.invoke('settings:getAll')
+    },
+    clockAssets: {
+      choose: (type: 'background' | 'cursor') => ipcRenderer.invoke('clockAssets:choose', type)
     }
   }
 }

@@ -90,10 +90,11 @@ export default function Dashboard() {
 
   useEffect(() => {
     const handleGlobalKeyDown = (e: KeyboardEvent) => {
-      if (e.ctrlKey && e.shiftKey && e.key.toLowerCase() === 's') {
+      if (e.ctrlKey && e.shiftKey && e.key.toLowerCase() === 'n') {
         e.preventDefault()
-        searchInputRef.current?.focus()
+        setIsNewModalOpen(true)
       }
+      // Note: ctrl+shift+s is now handled globally in useKeyboardShortcuts
     }
     window.addEventListener('keydown', handleGlobalKeyDown)
     return () => window.removeEventListener('keydown', handleGlobalKeyDown)
@@ -334,14 +335,14 @@ export default function Dashboard() {
     filteredData.records.slice(0,5).forEach((x:any) => fl.push({ ...x, nav: `/records?highlight=${x._id}` }))
     filteredData.journal.slice(0,5).forEach((x:any) => fl.push({ ...x, nav: `/journal?highlight=${x._id}` }))
     filteredData.habits.slice(0,5).forEach((x:any) => fl.push({ ...x, nav: `/habits?highlight=${x._id}` }))
-    filteredData.goals.slice(0,5).forEach((x:any) => fl.push({ ...x, nav: `/career/goals?highlight=${x._id}` }))
-    filteredData.achievements.slice(0,5).forEach((x:any) => fl.push({ ...x, nav: `/career/achievements?highlight=${x._id}` }))
-    filteredData.skills.slice(0,5).forEach((x:any) => fl.push({ ...x, nav: `/career/skills?highlight=${x._id}` }))
-    filteredData.projects.slice(0,5).forEach((x:any) => fl.push({ ...x, nav: `/career/projects?highlight=${x._id}` }))
+    filteredData.goals.slice(0,5).forEach((x:any) => fl.push({ ...x, nav: `/build-grow/goals?highlight=${x._id}` }))
+    filteredData.achievements.slice(0,5).forEach((x:any) => fl.push({ ...x, nav: `/build-grow/achievements?highlight=${x._id}` }))
+    filteredData.skills.slice(0,5).forEach((x:any) => fl.push({ ...x, nav: `/build-grow/skills?highlight=${x._id}` }))
+    filteredData.projects.slice(0,5).forEach((x:any) => fl.push({ ...x, nav: `/build-grow/projects?highlight=${x._id}` }))
     filteredData.memoryCapsules.slice(0,5).forEach((x:any) => fl.push({ ...x, nav: `/memory-capsules?highlight=${x._id}` }))
-    filteredData.certificates.slice(0,5).forEach((x:any) => fl.push({ ...x, nav: `/career/certificates?highlight=${x._id}` }))
-    filteredData.career.slice(0,5).forEach((x:any) => fl.push({ ...x, nav: `/career/career?highlight=${x._id}` }))
-    filteredData.education.slice(0,5).forEach((x:any) => fl.push({ ...x, nav: `/career/education?highlight=${x._id}` }))
+    filteredData.certificates.slice(0,5).forEach((x:any) => fl.push({ ...x, nav: `/build-grow/certificates?highlight=${x._id}` }))
+    filteredData.career.slice(0,5).forEach((x:any) => fl.push({ ...x, nav: `/build-grow/career?highlight=${x._id}` }))
+    filteredData.education.slice(0,5).forEach((x:any) => fl.push({ ...x, nav: `/build-grow/education?highlight=${x._id}` }))
     return fl
   }, [filteredData, searchQuery])
 
@@ -359,7 +360,7 @@ export default function Dashboard() {
   if (loading) return <div className="p-8 flex justify-center items-center h-full"><div className="animate-spin rounded-full h-8 w-8 border-b-2 border-primary"></div></div>
 
   return (
-    <div className="h-full flex flex-col bg-background animate-in fade-in duration-500 relative overflow-hidden">
+    <div className="h-full flex flex-col bg-transparent animate-in fade-in duration-500 relative overflow-hidden">
       {isBirthday && <BirthdayBackground />}
       
       {/* Top Navigation Bar */}
@@ -471,7 +472,7 @@ export default function Dashboard() {
                       {filteredData.goals.slice(0, 5).map((g: any) => {
                         const isSelected = currentIndex === selectedIndex
                         currentIndex++
-                        return <SearchResultItem key={g._id} onClick={() => navigate(`/career/goals?highlight=${g._id}`)} icon={Target} title={g.title} desc={g.description} highlight={searchQuery} isSelected={isSelected} id={`search-result-${currentIndex - 1}`} />
+                        return <SearchResultItem key={g._id} onClick={() => navigate(`/build-grow/goals?highlight=${g._id}`)} icon={Target} title={g.title} desc={g.description} highlight={searchQuery} isSelected={isSelected} id={`search-result-${currentIndex - 1}`} />
                       })}
                     </div>
                   </div>
@@ -483,7 +484,7 @@ export default function Dashboard() {
                       {filteredData.achievements.slice(0, 5).map((a: any) => {
                         const isSelected = currentIndex === selectedIndex
                         currentIndex++
-                        return <SearchResultItem key={a._id} onClick={() => navigate(`/career/achievements?highlight=${a._id}`)} icon={Award} title={a.title} desc={a.description} highlight={searchQuery} isSelected={isSelected} id={`search-result-${currentIndex - 1}`} />
+                        return <SearchResultItem key={a._id} onClick={() => navigate(`/build-grow/achievements?highlight=${a._id}`)} icon={Award} title={a.title} desc={a.description} highlight={searchQuery} isSelected={isSelected} id={`search-result-${currentIndex - 1}`} />
                       })}
                     </div>
                   </div>
@@ -495,7 +496,7 @@ export default function Dashboard() {
                       {filteredData.skills.slice(0, 5).map((s: any) => {
                         const isSelected = currentIndex === selectedIndex
                         currentIndex++
-                        return <SearchResultItem key={s._id} onClick={() => navigate(`/career/skills?highlight=${s._id}`)} icon={Sparkles} title={s.name} desc={s.description} highlight={searchQuery} isSelected={isSelected} id={`search-result-${currentIndex - 1}`} />
+                        return <SearchResultItem key={s._id} onClick={() => navigate(`/build-grow/skills?highlight=${s._id}`)} icon={Sparkles} title={s.name} desc={s.description} highlight={searchQuery} isSelected={isSelected} id={`search-result-${currentIndex - 1}`} />
                       })}
                     </div>
                   </div>
@@ -507,7 +508,7 @@ export default function Dashboard() {
                       {filteredData.projects.slice(0, 5).map((p: any) => {
                         const isSelected = currentIndex === selectedIndex
                         currentIndex++
-                        return <SearchResultItem key={p._id} onClick={() => navigate(`/career/projects?highlight=${p._id}`)} icon={FolderGit2} title={p.title} desc={p.description || p.role} highlight={searchQuery} isSelected={isSelected} id={`search-result-${currentIndex - 1}`} />
+                        return <SearchResultItem key={p._id} onClick={() => navigate(`/build-grow/projects?highlight=${p._id}`)} icon={FolderGit2} title={p.title} desc={p.description || p.role} highlight={searchQuery} isSelected={isSelected} id={`search-result-${currentIndex - 1}`} />
                       })}
                     </div>
                   </div>
@@ -531,7 +532,7 @@ export default function Dashboard() {
                       {filteredData.certificates.slice(0, 5).map((c: any) => {
                         const isSelected = currentIndex === selectedIndex
                         currentIndex++
-                        return <SearchResultItem key={c._id} onClick={() => navigate(`/career/certificates?highlight=${c._id}`)} icon={FileText} title={c.name} desc={c.organization} highlight={searchQuery} isSelected={isSelected} id={`search-result-${currentIndex - 1}`} />
+                        return <SearchResultItem key={c._id} onClick={() => navigate(`/build-grow/certificates?highlight=${c._id}`)} icon={FileText} title={c.name} desc={c.organization} highlight={searchQuery} isSelected={isSelected} id={`search-result-${currentIndex - 1}`} />
                       })}
                     </div>
                   </div>
@@ -543,7 +544,7 @@ export default function Dashboard() {
                       {filteredData.career.slice(0, 5).map((job: any) => {
                         const isSelected = currentIndex === selectedIndex
                         currentIndex++
-                        return <SearchResultItem key={job._id} onClick={() => navigate(`/career/career?highlight=${job._id}`)} icon={Briefcase} title={job.position} desc={job.company} highlight={searchQuery} isSelected={isSelected} id={`search-result-${currentIndex - 1}`} />
+                        return <SearchResultItem key={job._id} onClick={() => navigate(`/build-grow/career?highlight=${job._id}`)} icon={Briefcase} title={job.position} desc={job.company} highlight={searchQuery} isSelected={isSelected} id={`search-result-${currentIndex - 1}`} />
                       })}
                     </div>
                   </div>
@@ -555,7 +556,7 @@ export default function Dashboard() {
                       {filteredData.education.slice(0, 5).map((edu: any) => {
                         const isSelected = currentIndex === selectedIndex
                         currentIndex++
-                        return <SearchResultItem key={edu._id} onClick={() => navigate(`/career/education?highlight=${edu._id}`)} icon={GraduationCap} title={edu.degree} desc={edu.school} highlight={searchQuery} isSelected={isSelected} id={`search-result-${currentIndex - 1}`} />
+                        return <SearchResultItem key={edu._id} onClick={() => navigate(`/build-grow/education?highlight=${edu._id}`)} icon={GraduationCap} title={edu.degree} desc={edu.school} highlight={searchQuery} isSelected={isSelected} id={`search-result-${currentIndex - 1}`} />
                       })}
                     </div>
                   </div>

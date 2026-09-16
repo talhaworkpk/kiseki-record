@@ -12,12 +12,22 @@ export default function DesktopNotificationSettings({ devMode }: DesktopNotifica
     birthdayNotificationEnabled: true,
     annualMemoryNotificationEnabled: true,
     memoryCapsuleNotificationEnabled: true,
-    achievementsNotificationEnabled: true
+    achievementsNotificationEnabled: true,
+    launchAtStartupEnabled: false,
+    dreamNotificationEnabled: true,
+    alarmNotificationEnabled: true,
+    aiResponseNotificationEnabled: true,
+    onlineReminderNotificationEnabled: true,
+    habitPreferredNotificationEnabled: true,
+    habitDeadlineNotificationEnabled: true
   })
+  const [isPrivate, setIsPrivate] = useState(false)
 
   useEffect(() => {
     // @ts-ignore
     window.api.notifications.getSettings().then(setSettings)
+    // @ts-ignore
+    window.api.profile.getCurrent().then((p: string) => setIsPrivate(p === 'private'))
   }, [])
 
   const updateSetting = async (key: string, value: boolean) => {
@@ -56,6 +66,16 @@ export default function DesktopNotificationSettings({ devMode }: DesktopNotifica
 
         <div className={`space-y-4 pt-4 border-t border-border transition-opacity duration-300 ${!settings.desktopNotificationsEnabled ? 'opacity-50 pointer-events-none' : ''}`}>
           
+          {!isPrivate && (
+            <SettingRow 
+              icon={<Clock size={20} className="text-primary" />}
+              title="Launch on System Startup"
+              description="Automatically start Kiseki Record in the background when your computer boots up."
+              checked={settings.launchAtStartupEnabled}
+              onChange={(v: boolean) => updateSetting('launchAtStartupEnabled', v)}
+            />
+          )}
+
           <SettingRow 
             icon={<Clock size={20} className="text-blue-500" />}
             title="Daily Inactivity Reminder"
@@ -95,6 +115,67 @@ export default function DesktopNotificationSettings({ devMode }: DesktopNotifica
             checked={settings.achievementsNotificationEnabled}
             onChange={v => updateSetting('achievementsNotificationEnabled', v)}
           />
+
+          <SettingRow 
+            icon={<Clock size={20} className="text-orange-500" />}
+            title="Dream Target Notifications"
+            description="Notifies you when a dream's target date is missed."
+            checked={settings.dreamNotificationEnabled}
+            onChange={v => updateSetting('dreamNotificationEnabled', v)}
+          />
+
+          <SettingRow 
+            icon={<Bell size={20} className="text-amber-500" />}
+            title="Alarm Notifications"
+            description="Alerts you when an alarm goes off."
+            checked={settings.alarmNotificationEnabled !== false}
+            onChange={v => updateSetting('alarmNotificationEnabled', v)}
+          />
+
+          <SettingRow 
+            icon={<Bell size={20} className="text-indigo-500" />}
+            title="AI Assistant Response"
+            description="Alerts you when the AI assistant completes a response."
+            checked={settings.aiResponseNotificationEnabled !== false}
+            onChange={v => updateSetting('aiResponseNotificationEnabled', v)}
+          />
+
+          <SettingRow 
+            icon={<Clock size={20} className="text-teal-500" />}
+            title="Habit Preferred Time"
+            description="Reminds you when it's your preferred time to do a habit."
+            checked={settings.habitPreferredNotificationEnabled !== false}
+            onChange={v => updateSetting('habitPreferredNotificationEnabled', v)}
+          />
+
+          <SettingRow 
+            icon={<Bell size={20} className="text-rose-500" />}
+            title="Habit Deadline"
+            description="Alerts you when a habit's deadline is approaching or passed."
+            checked={settings.habitDeadlineNotificationEnabled !== false}
+            onChange={v => updateSetting('habitDeadlineNotificationEnabled', v)}
+          />
+
+          <div className="flex items-start justify-between p-3 rounded-lg hover:bg-accent/50 transition-colors">
+            <div className="flex items-center gap-4">
+              <div className="p-2 bg-background rounded-md shadow-sm border border-border text-primary">
+                <Bell size={20} />
+              </div>
+              <div>
+                <h3 className="font-medium">Online Reminders</h3>
+                <p className="text-xs text-muted-foreground">Get notified when a tracked contact comes online on Kiseki.</p>
+              </div>
+            </div>
+            <label className="relative inline-flex items-center cursor-pointer">
+              <input 
+                type="checkbox" 
+                className="sr-only peer" 
+                checked={settings.onlineReminderNotificationEnabled} 
+                onChange={e => updateSetting('onlineReminderNotificationEnabled', e.target.checked)} 
+              />
+              <div className="w-9 h-5 bg-accent peer-focus:outline-none rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-gray-300 after:border after:rounded-full after:h-4 after:w-4 after:transition-all peer-checked:bg-primary"></div>
+            </label>
+          </div>
         </div>
       </section>
 
@@ -110,6 +191,27 @@ export default function DesktopNotificationSettings({ devMode }: DesktopNotifica
             <button onClick={() => triggerTest('inactivity')} className="px-4 py-2 bg-background border border-border rounded hover:bg-accent text-sm font-medium">Test Inactivity</button>
             <button onClick={() => triggerTest('birthday')} className="px-4 py-2 bg-background border border-border rounded hover:bg-accent text-sm font-medium">Test Birthday</button>
             <button onClick={() => triggerTest('memory')} className="px-4 py-2 bg-background border border-border rounded hover:bg-accent text-sm font-medium">Test Memory Capsule</button>
+            <button 
+              onClick={() => {
+                window.dispatchEvent(new CustomEvent('achievement-unlocked', {
+                  detail: {
+                    title: 'Eternal Flame',
+                    achievementTitle: 'Eternal Flame',
+                    stage: 'Kiseki',
+                    stageTitle: 'Kiseki',
+                    description: 'Maintain a scheduled streak of habit completions for 365 days.',
+                    icon: '🌌',
+                    rarity: 'Kiseki',
+                    category: 'Streak',
+                    isKiseki: true,
+                    sourceName: 'Daily Meditation'
+                  }
+                }))
+              }} 
+              className="px-4 py-2 bg-primary text-primary-foreground border border-border rounded hover:bg-primary/90 text-sm font-medium"
+            >
+              Test 3D Achievement
+            </button>
           </div>
         </section>
       )}

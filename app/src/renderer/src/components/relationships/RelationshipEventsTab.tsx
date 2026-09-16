@@ -1,4 +1,5 @@
-import { useState, useMemo } from 'react'
+import { useState, useMemo, useEffect } from 'react'
+import { createPortal } from 'react-dom'
 import { Plus, Search, Sparkles, Star, Loader2, Image as ImageIcon, Edit2, Trash2, Copy, Archive } from 'lucide-react'
 import EventFormModal from './EventFormModal'
 import EventPreviewModal from './EventPreviewModal'
@@ -14,6 +15,21 @@ export default function RelationshipEventsTab({ person, records, relationships, 
   const [showEventForm, setShowEventForm] = useState(false)
   const [editingEvent, setEditingEvent] = useState<any>(null)
   const [previewEvent, setPreviewEvent] = useState<any>(null)
+  const [deleteConfirmId, setDeleteConfirmId] = useState<string | null>(null)
+
+  useEffect(() => {
+    const handleKeyDown = (e: KeyboardEvent) => {
+      if (deleteConfirmId) {
+        if (e.key === 'Escape') {
+          setDeleteConfirmId(null)
+        } else if (e.key === 'Enter') {
+          confirmDelete()
+        }
+      }
+    }
+    window.addEventListener('keydown', handleKeyDown)
+    return () => window.removeEventListener('keydown', handleKeyDown)
+  }, [deleteConfirmId])
   const [searchQuery, setSearchQuery] = useState('')
   const [filterMode, setFilterMode] = useState('All') // All, Favorites, Archived
   const [aiInsight, setAiInsight] = useState<string | null>(null)
@@ -100,12 +116,18 @@ export default function RelationshipEventsTab({ person, records, relationships, 
   const handleDelete = async (e?: React.MouseEvent, eventId?: string) => {
     if (e) e.stopPropagation()
     const id = eventId || (previewEvent && previewEvent._id)
-    if (!id || !confirm('Permanently delete this event?')) return
+    if (!id) return
+    setDeleteConfirmId(id)
+  }
+
+  const confirmDelete = async () => {
+    if (!deleteConfirmId) return
     try {
       // @ts-ignore
-      await window.api.db.remove('records', { _id: id })
+      await window.api.db.remove('records', { _id: deleteConfirmId })
       loadData(person._id)
-      if (previewEvent && previewEvent._id === id) setPreviewEvent(null)
+      if (previewEvent && previewEvent._id === deleteConfirmId) setPreviewEvent(null)
+      setDeleteConfirmId(null)
     } catch(err) { console.error(err) }
   }
 
@@ -301,6 +323,44 @@ export default function RelationshipEventsTab({ person, records, relationships, 
         onEdit={() => handleEdit()}
         onDelete={() => handleDelete()}
       />
+
+      {/* Delete Confirmation Modal */}
+      {deleteConfirmId && createPortal(
+        <div className="fixed inset-0 z-[9999] flex items-center justify-center p-4 bg-background/60 backdrop-blur-md animate-in fade-in duration-300">
+          <div className="bg-card text-card-foreground p-0 rounded-2xl shadow-[0_0_50px_-12px_rgba(239,68,68,0.25)] border border-red-500/20 w-full max-w-md flex flex-col overflow-hidden scale-in-center animate-in zoom-in-95 duration-300">
+            <div className="bg-red-500/10 p-6 flex flex-col items-center justify-center text-center border-b border-red-500/10 relative overflow-hidden">
+              <div className="absolute inset-0 bg-gradient-to-b from-red-500/5 to-transparent"></div>
+              <div className="w-16 h-16 bg-background rounded-full flex items-center justify-center shadow-inner mb-4 relative z-10 border border-red-500/20">
+                <Trash2 size={32} className="text-red-500 drop-shadow-md animate-pulse" />
+              </div>
+              <h3 className="text-xl font-bold text-foreground relative z-10">Delete Event?</h3>
+            </div>
+            
+            <div className="p-6">
+              <p className="text-center text-muted-foreground mb-6">
+                Are you sure you want to permanently delete this event? This action cannot be undone.
+              </p>
+
+              <div className="flex justify-end gap-3">
+                <button 
+                  onClick={() => setDeleteConfirmId(null)}
+                  className="px-5 py-2.5 rounded-xl text-sm font-semibold text-foreground bg-accent hover:bg-accent/80 border border-transparent hover:border-border transition-all active:scale-95"
+                >
+                  Cancel
+                </button>
+                <button 
+                  onClick={confirmDelete}
+                  className="px-5 py-2.5 rounded-xl text-sm font-semibold text-white shadow-lg transition-all active:scale-95 flex items-center gap-2 bg-gradient-to-r from-red-500 to-rose-600 hover:shadow-red-500/50"
+                >
+                  <Trash2 size={16} />
+                  Delete Permanently
+                </button>
+              </div>
+            </div>
+          </div>
+        </div>,
+        document.body
+      )}
 
     </div>
   )

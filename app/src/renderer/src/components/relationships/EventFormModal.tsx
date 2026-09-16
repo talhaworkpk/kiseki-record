@@ -48,6 +48,16 @@ export default function EventFormModal({ isOpen, onClose, personId, initialData,
   const [selectedPeople, setSelectedPeople] = useState<string[]>([personId])
 
   useEffect(() => {
+    const handleKeyDown = (e: KeyboardEvent) => {
+      if (e.key === 'Escape' && isOpen) {
+        onClose()
+      }
+    }
+    window.addEventListener('keydown', handleKeyDown)
+    return () => window.removeEventListener('keydown', handleKeyDown)
+  }, [isOpen, onClose])
+
+  useEffect(() => {
     if (isOpen) {
       loadRelationships()
       if (initialData) {
@@ -231,8 +241,8 @@ export default function EventFormModal({ isOpen, onClose, personId, initialData,
               <div className="space-y-6 flex flex-col">
                 <div className="flex-1 flex flex-col min-h-[250px]">
                   <label className="text-xs font-bold text-muted-foreground uppercase mb-2 block">Notes</label>
-                  <div className="flex-1 border border-border rounded-xl bg-background overflow-hidden flex flex-col focus-within:ring-2 focus-within:ring-primary/50">
-                    <div className="flex-1 overflow-y-auto p-4 prose prose-invert max-w-none prose-sm">
+                  <div className="flex-1 border border-border rounded-xl bg-gradient-to-br from-indigo-50/50 via-white to-purple-50/50 dark:bg-none dark:bg-background overflow-hidden flex flex-col focus-within:ring-2 focus-within:ring-primary/50">
+                    <div className="flex-1 overflow-y-auto p-4 prose dark:prose-invert max-w-none prose-sm">
                       <TipTapEditor content={notes} onChange={setNotes} placeholder="Write down the details of this event..." />
                     </div>
                   </div>

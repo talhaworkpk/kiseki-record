@@ -254,9 +254,43 @@ export default function HabitDetails() {
         onClose={() => setFormOpen(false)} 
         initialData={habit}
         onSave={loadData}
-        onDelete={() => {
-          // Handled via Dashboard or Archive, here we just return to habits list after deletion
-          navigate('/habits')
+        onDelete={async (id: string, mode: 'archive' | 'delete', deleteTimeline?: boolean) => {
+          try {
+            if (mode === 'archive') {
+              // @ts-ignore
+              await window.api.db.update('habits', { _id: id }, { $set: { archived: true, updatedAt: Date.now() } })
+            } else {
+              // Get the habit title before deleting
+              // @ts-ignore
+              const habitToDel = await window.api.db.find('habits', { _id: id })
+              const hTitle = habitToDel?.[0]?.title || 'Deleted Habit'
+
+              // @ts-ignore
+              await window.api.db.remove('habits', { _id: id })
+              if (deleteTimeline) {
+                // @ts-ignore
+                await window.api.db.remove('habitLogs', { habitId: id }, { multi: true })
+                // @ts-ignore
+                await window.api.db.remove('habitActivityLogs', { habitId: id }, { multi: true })
+                // @ts-ignore
+                await window.api.db.remove('habitBreaks', { habitId: id }, { multi: true })
+                // @ts-ignore
+                await window.api.db.remove('habitTimerSessions', { habitId: id }, { multi: true })
+              } else {
+                // @ts-ignore
+                await window.api.db.update('habitLogs', { habitId: id }, { $set: { habitTitle: hTitle } }, { multi: true })
+                // @ts-ignore
+                await window.api.db.update('habitActivityLogs', { habitId: id }, { $set: { habitTitle: hTitle } }, { multi: true })
+                // @ts-ignore
+                await window.api.db.update('habitBreaks', { habitId: id }, { $set: { habitTitle: hTitle } }, { multi: true })
+                // @ts-ignore
+                await window.api.db.update('habitTimerSessions', { habitId: id }, { $set: { habitTitle: hTitle } }, { multi: true })
+              }
+            }
+            navigate('/habits')
+          } catch (e) {
+            console.error(e)
+          }
         }}
       />
 

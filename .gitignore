@@ -4,3 +4,13 @@ node_modules
  
 *.kvault
 scratch_unzip/
+*.zip
+scratch/
+app/scratch/
+app/scripts/
+app/temp_transcript.txt
+extracted_diff.txt
+notes.txt
+patch.py
+app/diagnostic.ts
+app/test_structured.ts

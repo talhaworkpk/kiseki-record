@@ -1,11 +1,12 @@
 import { useState, useEffect, useRef } from 'react'
-import { Target, Search, ArrowDownUp, CheckSquare, Square, Star, Archive as ArchiveIcon, ArchiveRestore, Trash2, Edit2, ChevronDown, ListChecks, Download, Upload, MoreVertical } from 'lucide-react'
+import { createPortal } from 'react-dom'
+import { Target, Search, ArrowDownUp, CheckSquare, Square, Star, Archive as ArchiveIcon, ArchiveRestore, Trash2, Edit2, ChevronDown, ListChecks, Download, Upload, MoreVertical, BarChart2 } from 'lucide-react'
 import { Tooltip, TooltipTrigger, TooltipContent } from '../../components/ui/tooltip'
 import { NotificationEngine } from '../../lib/NotificationEngine'
 import { Habit } from '../../types'
 import HabitsStatistics from '../../components/habits/HabitsStatistics'
 import HabitFormModal from './HabitFormModal'
-
+import HabitAnalyticsModal from './HabitAnalyticsModal'
 export default function AllHabits() {
   const [habits, setHabits] = useState<Habit[]>([])
   const [isDragging, setIsDragging] = useState(false)
@@ -23,6 +24,14 @@ export default function AllHabits() {
   // Edit Modal State
   const [formOpen, setFormOpen] = useState(false)
   const [activeHabit, setActiveHabit] = useState<Habit | null>(null)
+  
+  // Analytics Modal State
+  const [analyticsHabit, setAnalyticsHabit] = useState<Habit | null>(null)
+
+  const [deleteConfirmId, setDeleteConfirmId] = useState<string | null>(null)
+  const [showBulkDeleteModal, setShowBulkDeleteModal] = useState(false)
+  const [deleteTimeline, setDeleteTimeline] = useState(false)
+  const [showDeleteSuccess, setShowDeleteSuccess] = useState(false)
 
   const [showGlobalMenu, setShowGlobalMenu] = useState(false)
   const [importConflicts, setImportConflicts] = useState<{imported: any, existing: Habit}[]>([])
@@ -176,6 +185,11 @@ export default function AllHabits() {
         const { _id, ...habitData } = habit
         // @ts-ignore
         const newHabit = await window.api.db.insert('habits', habitData)
+        
+        import('../../lib/AchievementEngine').then(({ AchievementEngine }) => {
+          AchievementEngine.evaluateHabit(newHabit._id)
+        })
+
         if (oldId && newHabit._id) idMap.set(oldId, newHabit._id)
         importedCount++
       }
@@ -253,24 +267,65 @@ export default function AllHabits() {
     return 0
   })
 
-  const bulkAction = async (action: 'delete' | 'archive' | 'unarchive' | 'favorite') => {
-    if (action === 'delete' && !confirm(`Delete ${selectedIds.size} habits?`)) return
+  const confirmBulkDelete = async () => {
     try {
       for (const id of selectedIds) {
-        if (action === 'delete') {
+        // Get the habit title before deleting
+        // @ts-ignore
+        const habitToDel = await window.api.db.find('habits', { _id: id })
+        const hTitle = habitToDel?.[0]?.title || 'Deleted Habit'
+
+        // @ts-ignore
+        await window.api.db.remove('habits', { _id: id }, {})
+        
+        if (deleteTimeline) {
           // @ts-ignore
-          await window.api.db.remove('habits', { _id: id }, {})
-          NotificationEngine.notify('info', 'Habit Deleted', 'The habit was permanently removed.', 'Habits')
+          await window.api.db.remove('habitLogs', { habitId: id }, { multi: true })
+          // @ts-ignore
+          await window.api.db.remove('habitActivityLogs', { habitId: id }, { multi: true })
+          // @ts-ignore
+          await window.api.db.remove('habitBreaks', { habitId: id }, { multi: true })
+          // @ts-ignore
+          await window.api.db.remove('habitTimerSessions', { habitId: id }, { multi: true })
         } else {
-          const updateData = action === 'favorite' ? { isFavorite: true, updatedAt: Date.now() } 
-                           : action === 'archive' ? { archived: true, updatedAt: Date.now() }
-                           : { archived: false, updatedAt: Date.now() }
           // @ts-ignore
-          await window.api.db.update('habits', { _id: id }, { $set: updateData }, {})
+          await window.api.db.update('habitLogs', { habitId: id }, { $set: { habitTitle: hTitle } }, { multi: true })
+          // @ts-ignore
+          await window.api.db.update('habitActivityLogs', { habitId: id }, { $set: { habitTitle: hTitle } }, { multi: true })
+          // @ts-ignore
+          await window.api.db.update('habitBreaks', { habitId: id }, { $set: { habitTitle: hTitle } }, { multi: true })
+          // @ts-ignore
+          await window.api.db.update('habitTimerSessions', { habitId: id }, { $set: { habitTitle: hTitle } }, { multi: true })
         }
       }
+      NotificationEngine.notify('info', 'Habits Deleted', `Deleted ${selectedIds.size} habits ${deleteTimeline ? 'with timeline data' : 'but kept timeline data'}.`, 'Habits')
       setSelectedIds(new Set())
-      if (action === 'delete') setIsSelectionMode(false)
+      setIsSelectionMode(false)
+      loadData()
+      
+      setShowBulkDeleteModal(false)
+      setDeleteTimeline(false)
+      
+      setShowDeleteSuccess(true)
+      setTimeout(() => setShowDeleteSuccess(false), 2500)
+    } catch (err) { console.error(err) }
+  }
+
+  const bulkAction = async (action: 'delete' | 'archive' | 'unarchive' | 'favorite') => {
+    if (action === 'delete') {
+      setShowBulkDeleteModal(true)
+      return
+    }
+
+    try {
+      for (const id of selectedIds) {
+        const updateData = action === 'favorite' ? { isFavorite: true, updatedAt: Date.now() } 
+                         : action === 'archive' ? { archived: true, updatedAt: Date.now() }
+                         : { archived: false, updatedAt: Date.now() }
+        // @ts-ignore
+        await window.api.db.update('habits', { _id: id }, { $set: updateData }, {})
+      }
+      setSelectedIds(new Set())
       loadData()
     } catch (err) { console.error(err) }
   }
@@ -291,13 +346,70 @@ export default function AllHabits() {
     } catch (err) { console.error(err) }
   }
 
-  const handleDelete = async (id: string) => {
-    if (!confirm('Delete this habit?')) return
+  useEffect(() => {
+    if (!deleteConfirmId && !showBulkDeleteModal) return
+    const handleKeyDown = (e: KeyboardEvent) => {
+      if (e.key === 'Escape') {
+        setDeleteConfirmId(null)
+        setShowBulkDeleteModal(false)
+        setDeleteTimeline(false)
+      } else if (e.key === 'Enter') {
+        if (showBulkDeleteModal) {
+          confirmBulkDelete()
+        } else if (deleteConfirmId) {
+          confirmDelete()
+        }
+      }
+    }
+    window.addEventListener('keydown', handleKeyDown)
+    return () => window.removeEventListener('keydown', handleKeyDown)
+  })
+
+  const handleDelete = async (id: string, mode?: 'archive' | 'delete', flag?: boolean) => {
+    setDeleteConfirmId(id)
+  }
+
+  const confirmDelete = async () => {
+    if (!deleteConfirmId) return
+    const id = deleteConfirmId
     try {
+      // Get the habit title before deleting
+      // @ts-ignore
+      const habitToDel = await window.api.db.find('habits', { _id: id })
+      const hTitle = habitToDel?.[0]?.title || 'Deleted Habit'
+
       // @ts-ignore
       await window.api.db.remove('habits', { _id: id }, {})
-      NotificationEngine.notify('info', 'Habit Deleted', 'The habit was permanently removed.', 'Habits')
+      
+      if (deleteTimeline) {
+        // @ts-ignore
+        await window.api.db.remove('habitLogs', { habitId: id }, { multi: true })
+        // @ts-ignore
+        await window.api.db.remove('habitActivityLogs', { habitId: id }, { multi: true })
+        // @ts-ignore
+        await window.api.db.remove('habitBreaks', { habitId: id }, { multi: true })
+        // @ts-ignore
+        await window.api.db.remove('habitTimerSessions', { habitId: id }, { multi: true })
+        NotificationEngine.notify('warning', 'Habit Deleted', 'The habit and its timeline logs were removed.', 'Habits')
+      } else {
+        // @ts-ignore
+        await window.api.db.update('habitLogs', { habitId: id }, { $set: { habitTitle: hTitle } }, { multi: true })
+        // @ts-ignore
+        await window.api.db.update('habitActivityLogs', { habitId: id }, { $set: { habitTitle: hTitle } }, { multi: true })
+        // @ts-ignore
+        await window.api.db.update('habitBreaks', { habitId: id }, { $set: { habitTitle: hTitle } }, { multi: true })
+        // @ts-ignore
+        await window.api.db.update('habitTimerSessions', { habitId: id }, { $set: { habitTitle: hTitle } }, { multi: true })
+        
+        NotificationEngine.notify('info', 'Habit Deleted', 'The habit was permanently deleted.', 'Habits')
+      }
+      
+      setDeleteConfirmId(null)
+      setDeleteTimeline(false)
       loadData()
+      
+      setShowDeleteSuccess(true)
+      setTimeout(() => setShowDeleteSuccess(false), 2500)
     } catch (err) { console.error(err) }
   }
 
@@ -433,11 +545,23 @@ export default function AllHabits() {
 
         <div className="space-y-4">
           {filteredHabits.map(record => (
-            <div key={record._id} className="bg-card/70 backdrop-blur-md border border-border p-6 rounded-2xl shadow-sm relative group hover:border-primary/50 transition-colors">
+            <div 
+              key={record._id} 
+              onClick={() => {
+                if (isSelectionMode) {
+                  const s = new Set(selectedIds)
+                  if (s.has(record._id!)) s.delete(record._id!)
+                  else s.add(record._id!)
+                  setSelectedIds(s)
+                }
+              }}
+              className={`bg-card/70 backdrop-blur-md border p-6 rounded-2xl shadow-sm relative group transition-colors ${selectedIds.has(record._id!) ? 'border-primary ring-2 ring-primary/50' : 'border-border hover:border-primary/50'} ${isSelectionMode ? 'cursor-pointer' : ''}`}
+            >
               <div className="flex items-start gap-4">
                 {isSelectionMode && (
                   <button 
-                    onClick={() => {
+                    onClick={(e) => {
+                      e.stopPropagation()
                       const s = new Set(selectedIds)
                       if (s.has(record._id!)) s.delete(record._id!)
                       else s.add(record._id!)
@@ -484,10 +608,11 @@ export default function AllHabits() {
                 </div>
 
                 <div className="absolute top-4 right-4 flex items-center gap-1.5 opacity-0 group-hover:opacity-100 transition-opacity">
-                  <button onClick={() => toggleFavorite(record._id!, !!record.isFavorite)} className={`p-1.5 bg-background border border-border rounded-md hover:bg-yellow-500/20 hover:text-yellow-500 hover:border-yellow-500/50 transition-colors ${record.isFavorite ? 'text-yellow-500 bg-yellow-500/10 border-yellow-500/30' : 'text-foreground'}`} title={record.isFavorite ? "Unfavorite" : "Favorite"}><Star size={16} className={record.isFavorite ? "fill-yellow-500" : ""}/></button>
-                  <button onClick={() => toggleArchive(record._id!, !!record.archived)} className={`p-1.5 bg-background border border-border rounded-md hover:bg-gray-500/20 hover:text-gray-500 hover:border-gray-500/50 transition-colors ${record.archived ? 'text-gray-500 bg-gray-500/10 border-gray-500/30' : 'text-foreground'}`} title={record.archived ? "Unarchive" : "Archive"}><ArchiveIcon size={16}/></button>
-                  <button onClick={() => openEdit(record)} className="p-1.5 bg-background border border-border rounded-md hover:bg-accent text-foreground" title="Edit"><Edit2 size={16}/></button>
-                  <button onClick={() => handleDelete(record._id!)} className="p-1.5 bg-background border border-border text-destructive rounded-md hover:bg-destructive/10" title="Delete"><Trash2 size={16}/></button>
+                  <button onClick={(e) => { e.stopPropagation(); setAnalyticsHabit(record) }} className="p-1.5 bg-background border border-border rounded-md hover:bg-primary/20 hover:text-primary transition-colors text-foreground" title="View habit analytics"><BarChart2 size={16}/></button>
+                  <button onClick={(e) => { e.stopPropagation(); toggleFavorite(record._id!, !!record.isFavorite) }} className={`p-1.5 bg-background border border-border rounded-md hover:bg-yellow-500/20 hover:text-yellow-500 hover:border-yellow-500/50 transition-colors ${record.isFavorite ? 'text-yellow-500 bg-yellow-500/10 border-yellow-500/30' : 'text-foreground'}`} title={record.isFavorite ? "Unfavorite" : "Favorite"}><Star size={16} className={record.isFavorite ? "fill-yellow-500" : ""}/></button>
+                  <button onClick={(e) => { e.stopPropagation(); toggleArchive(record._id!, !!record.archived) }} className={`p-1.5 bg-background border border-border rounded-md hover:bg-gray-500/20 hover:text-gray-500 hover:border-gray-500/50 transition-colors ${record.archived ? 'text-gray-500 bg-gray-500/10 border-gray-500/30' : 'text-foreground'}`} title={record.archived ? "Unarchive" : "Archive"}><ArchiveIcon size={16}/></button>
+                  <button onClick={(e) => { e.stopPropagation(); openEdit(record) }} className="p-1.5 bg-background border border-border rounded-md hover:bg-accent text-foreground" title="Edit"><Edit2 size={16}/></button>
+                  <button onClick={(e) => { e.stopPropagation(); handleDelete(record._id!) }} className="p-1.5 bg-background border border-border text-destructive rounded-md hover:bg-destructive/10" title="Delete"><Trash2 size={16}/></button>
                 </div>
               </div>
             </div>
@@ -501,8 +626,8 @@ export default function AllHabits() {
       </div>
 
       {/* Global Menu Modal */}
-      {showGlobalMenu && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-background/80 backdrop-blur-sm" onClick={() => setShowGlobalMenu(false)}>
+      {showGlobalMenu && createPortal(
+        <div className="fixed inset-0 z-[9999] flex items-center justify-center p-4 bg-background/80 backdrop-blur-sm" onClick={() => setShowGlobalMenu(false)}>
           <div className="bg-card border border-border rounded-2xl shadow-2xl w-full max-w-sm overflow-hidden animate-in zoom-in-95 duration-200" onClick={e => e.stopPropagation()}>
             <div className="p-4 border-b border-border flex justify-between items-center bg-accent/30">
               <h3 className="font-bold">Habits Options</h3>
@@ -519,7 +644,8 @@ export default function AllHabits() {
               <button onClick={() => setShowGlobalMenu(false)} className="w-full py-2 bg-background border border-border hover:bg-accent rounded-xl font-bold transition-colors">Close</button>
             </div>
           </div>
-        </div>
+        </div>,
+        document.body
       )}
 
       {/* Hidden File Input for Import */}
@@ -532,8 +658,8 @@ export default function AllHabits() {
       />
 
       {/* Conflict Resolution Modal */}
-      {importConflicts.length > 0 && currentConflictIndex < importConflicts.length && (
-        <div className="fixed inset-0 bg-background/80 backdrop-blur-sm z-50 flex items-center justify-center p-4">
+      {importConflicts.length > 0 && currentConflictIndex < importConflicts.length && createPortal(
+        <div className="fixed inset-0 bg-background/80 backdrop-blur-sm z-[9999] flex items-center justify-center p-4">
           <div className="bg-card border border-border w-full max-w-lg rounded-2xl shadow-2xl overflow-hidden animate-in zoom-in-95 duration-200">
             <div className="p-6 border-b border-border bg-amber-500/10">
               <h2 className="text-xl font-bold flex items-center gap-2 text-amber-500">
@@ -572,7 +698,8 @@ export default function AllHabits() {
               )}
             </div>
           </div>
-        </div>
+        </div>,
+        document.body
       )}
 
       <HabitFormModal 
@@ -582,6 +709,179 @@ export default function AllHabits() {
         onSave={loadData}
         onDelete={handleDelete}
       />
+
+      {analyticsHabit && (
+        <HabitAnalyticsModal 
+          habit={analyticsHabit} 
+          onClose={() => setAnalyticsHabit(null)} 
+        />
+      )}
+
+      {deleteConfirmId && !showDeleteSuccess && createPortal(
+        <div className="fixed inset-0 z-[9999] flex items-center justify-center p-4 bg-background/60 backdrop-blur-md animate-in fade-in duration-300">
+          <div className="bg-card text-card-foreground p-0 rounded-2xl shadow-[0_0_50px_-12px_rgba(239,68,68,0.25)] border border-destructive/20 w-full max-w-md flex flex-col overflow-hidden scale-in-center animate-in zoom-in-95 duration-300">
+            <div className="bg-destructive/10 p-6 flex flex-col items-center justify-center text-center border-b border-destructive/10 relative overflow-hidden">
+              <div className="absolute inset-0 bg-gradient-to-b from-destructive/5 to-transparent"></div>
+              <div className="w-16 h-16 bg-background rounded-full flex items-center justify-center shadow-inner mb-4 relative z-10 border border-destructive/20">
+                <Trash2 size={32} className="text-destructive drop-shadow-md animate-pulse" />
+              </div>
+              <h3 className="text-xl font-bold text-foreground relative z-10">Delete Habit?</h3>
+            </div>
+            
+            <div className="p-6">
+              <p className="text-center text-muted-foreground mb-4">
+                You are about to permanently delete this habit.
+              </p>
+              
+              <label className="bg-accent/50 p-4 rounded-lg border border-border flex items-start gap-3 cursor-pointer hover:bg-accent transition-colors mb-6">
+                <input 
+                  type="checkbox" 
+                  checked={deleteTimeline}
+                  onChange={(e) => setDeleteTimeline(e.target.checked)}
+                  className="mt-1 w-4 h-4 rounded border-border text-destructive focus:ring-destructive" 
+                />
+                <div className="flex-1">
+                  <p className="text-sm font-semibold text-foreground">Delete timeline data</p>
+                  <p className="text-xs text-muted-foreground mt-1">
+                    Also remove all completion history, timer sessions, streaks, and analytics for this habit.
+                  </p>
+                </div>
+              </label>
+
+              <div className="flex justify-end gap-3 mt-2">
+                <button 
+                  onClick={() => { setDeleteConfirmId(null); setDeleteTimeline(false); }}
+                  className="px-5 py-2.5 rounded-xl text-sm font-semibold text-foreground bg-accent hover:bg-accent/80 border border-transparent hover:border-border transition-all active:scale-95"
+                >
+                  Cancel
+                </button>
+                <button 
+                  onClick={confirmDelete}
+                  className="px-5 py-2.5 rounded-xl text-sm font-semibold bg-gradient-to-r from-red-600 to-destructive text-white shadow-lg shadow-destructive/30 hover:shadow-destructive/50 hover:from-red-500 hover:to-red-600 transition-all active:scale-95 flex items-center gap-2"
+                >
+                  <Trash2 size={16} />
+                  Delete Habit
+                </button>
+              </div>
+            </div>
+          </div>
+        </div>,
+        document.body
+      )}
+
+      {showBulkDeleteModal && !showDeleteSuccess && createPortal(
+        <div className="fixed inset-0 z-[9999] flex items-center justify-center p-4 bg-background/60 backdrop-blur-md animate-in fade-in duration-300">
+          <div className="bg-card text-card-foreground p-0 rounded-2xl shadow-[0_0_50px_-12px_rgba(239,68,68,0.25)] border border-destructive/20 w-full max-w-md flex flex-col overflow-hidden scale-in-center animate-in zoom-in-95 duration-300">
+            <div className="bg-destructive/10 p-6 flex flex-col items-center justify-center text-center border-b border-destructive/10 relative overflow-hidden">
+              <div className="absolute inset-0 bg-gradient-to-b from-destructive/5 to-transparent"></div>
+              <div className="w-16 h-16 bg-background rounded-full flex items-center justify-center shadow-inner mb-4 relative z-10 border border-destructive/20">
+                <Trash2 size={32} className="text-destructive drop-shadow-md animate-pulse" />
+              </div>
+              <h3 className="text-xl font-bold text-foreground relative z-10">Delete {selectedIds.size} Habits?</h3>
+            </div>
+            
+            <div className="p-6">
+              <p className="text-center text-muted-foreground mb-4">
+                You are about to permanently delete {selectedIds.size} habits.
+              </p>
+              
+              <label className="bg-accent/50 p-4 rounded-lg border border-border flex items-start gap-3 cursor-pointer hover:bg-accent transition-colors mb-6">
+                <input 
+                  type="checkbox" 
+                  checked={deleteTimeline}
+                  onChange={(e) => setDeleteTimeline(e.target.checked)}
+                  className="mt-1 w-4 h-4 rounded border-border text-destructive focus:ring-destructive" 
+                />
+                <div className="flex-1">
+                  <p className="text-sm font-semibold text-foreground">Delete timeline data</p>
+                  <p className="text-xs text-muted-foreground mt-1">
+                    Also remove all completion history, timer sessions, streaks, and analytics for these habits.
+                  </p>
+                </div>
+              </label>
+
+              <div className="flex justify-end gap-3 mt-2">
+                <button 
+                  onClick={() => { setShowBulkDeleteModal(false); setDeleteTimeline(false); }}
+                  className="px-5 py-2.5 rounded-xl text-sm font-semibold text-foreground bg-accent hover:bg-accent/80 border border-transparent hover:border-border transition-all active:scale-95"
+                >
+                  Cancel
+                </button>
+                <button 
+                  onClick={confirmBulkDelete}
+                  className="px-5 py-2.5 rounded-xl text-sm font-semibold bg-gradient-to-r from-red-600 to-destructive text-white shadow-lg shadow-destructive/30 hover:shadow-destructive/50 hover:from-red-500 hover:to-red-600 transition-all active:scale-95 flex items-center gap-2"
+                >
+                  <Trash2 size={16} />
+                  Delete All
+                </button>
+              </div>
+            </div>
+          </div>
+        </div>,
+        document.body
+      )}
+
+      {showDeleteSuccess && createPortal(
+        <div className="fixed inset-0 z-[9999] flex items-center justify-center bg-black/90 backdrop-blur-md overflow-hidden animate-in fade-in duration-300">
+          <style>{`
+            @keyframes habit-shatter {
+              0% { transform: scale(1) rotate(0deg); opacity: 1; filter: drop-shadow(0 0 20px rgba(239,68,68,0.8)); }
+              20% { transform: scale(1.2) rotate(-5deg); filter: drop-shadow(0 0 40px rgba(239,68,68,1)); }
+              40% { transform: scale(0.9) rotate(5deg); opacity: 1; }
+              100% { transform: scale(2) rotate(20deg) translateY(-50px); opacity: 0; filter: blur(10px); }
+            }
+            @keyframes chain-break-left {
+              0% { transform: translate(0, 0) rotate(0); opacity: 1; }
+              100% { transform: translate(-100px, 50px) rotate(-45deg); opacity: 0; }
+            }
+            @keyframes chain-break-right {
+              0% { transform: translate(0, 0) rotate(0); opacity: 1; }
+              100% { transform: translate(100px, -50px) rotate(45deg); opacity: 0; }
+            }
+            @keyframes pulse-red {
+              0%, 100% { transform: scale(1); opacity: 0.5; }
+              50% { transform: scale(1.5); opacity: 0.2; }
+            }
+            @keyframes flash {
+              0% { opacity: 0; transform: scale(0.5); }
+              20% { opacity: 1; transform: scale(1.5); filter: drop-shadow(0 0 20px #facc15); }
+              100% { opacity: 0; transform: scale(1); }
+            }
+          `}</style>
+          
+          <div className="absolute inset-0 flex items-center justify-center pointer-events-none">
+            <div className="w-96 h-96 bg-red-600/30 rounded-full blur-[100px] animate-[pulse-red_2s_ease-in-out_infinite]" />
+          </div>
+
+          <div className="relative z-10 flex flex-col items-center">
+            <div className="relative w-40 h-40 flex items-center justify-center mb-8" style={{ animation: 'habit-shatter 2s cubic-bezier(0.2, 0.8, 0.2, 1) forwards' }}>
+              <div className="absolute inset-0 flex items-center justify-center" style={{ animation: 'chain-break-left 1.5s cubic-bezier(0.2, 0.8, 0.2, 1) 0.4s forwards' }}>
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className="w-24 h-24 text-red-500 drop-shadow-[0_0_15px_rgba(239,68,68,0.8)] opacity-80" style={{ clipPath: 'polygon(0 0, 50% 0, 30% 100%, 0 100%)' }}>
+                  <path d="M10 13a5 5 0 0 0 7.54.54l3-3a5 5 0 0 0-7.07-7.07l-1.72 1.71"/>
+                  <path d="M14 11a5 5 0 0 0-7.54-.54l-3 3a5 5 0 0 0 7.07 7.07l1.71-1.71"/>
+                </svg>
+              </div>
+              <div className="absolute inset-0 flex items-center justify-center" style={{ animation: 'chain-break-right 1.5s cubic-bezier(0.2, 0.8, 0.2, 1) 0.4s forwards' }}>
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className="w-24 h-24 text-red-500 drop-shadow-[0_0_15px_rgba(239,68,68,0.8)]" style={{ clipPath: 'polygon(50% 0, 100% 0, 100% 100%, 30% 100%)' }}>
+                  <path d="M10 13a5 5 0 0 0 7.54.54l3-3a5 5 0 0 0-7.07-7.07l-1.72 1.71"/>
+                  <path d="M14 11a5 5 0 0 0-7.54-.54l-3 3a5 5 0 0 0 7.07 7.07l1.71-1.71"/>
+                </svg>
+              </div>
+              
+              <svg viewBox="0 0 24 24" fill="currentColor" className="absolute w-16 h-16 text-yellow-400 z-10" style={{ animation: 'flash 0.5s ease-out 0.3s forwards', opacity: 0 }}>
+                <path d="M13 2L3 14h9l-1 8 10-12h-9l1-8z" />
+              </svg>
+            </div>
+            
+            <h2 className="text-5xl font-black text-transparent bg-clip-text bg-gradient-to-r from-red-500 via-orange-500 to-red-600 tracking-widest uppercase drop-shadow-[0_5px_15px_rgba(239,68,68,0.4)] animate-in slide-in-from-bottom-10 fade-in duration-700" style={{ animationDelay: '0.2s', animationFillMode: 'both' }}>
+              Habit Broken
+            </h2>
+            <p className="mt-4 text-red-200/60 text-lg tracking-widest uppercase font-medium animate-in slide-in-from-bottom-5 fade-in duration-700" style={{ animationDelay: '0.4s', animationFillMode: 'both' }}>
+              The cycle ends here
+            </p>
+          </div>
+        </div>
+      )}
     </div>
   )
 }

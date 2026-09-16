@@ -2,8 +2,12 @@
   "name": "kiseki-record",
   "version": "1.0.0",
   "description": "A private, local-first personal life-record desktop application.",
+  "homepage": "https://github.com/AhmedTalhaWorkspace/Kiseki-Record",
   "main": "./out/main/index.js",
-  "author": "Antigravity",
+  "author": {
+    "name": "Antigravity",
+    "email": "kisekirecord@proton.me"
+  },
   "scripts": {
     "format": "prettier --write .",
     "lint": "eslint . --ext .js,.jsx,.cjs,.mjs,.ts,.tsx,.cts,.mts",
@@ -12,10 +16,13 @@
     "typecheck": "npm run typecheck:node && npm run typecheck:web",
     "start": "electron-vite preview",
     "dev": "electron-vite dev",
-    "prebuild": "npx png-to-ico icon.png > build/icon.ico",
+    "prebuild": "node scripts/generate-windows-icon.cjs",
     "build": "electron-vite build && electron-builder",
+    "build:win": "electron-vite build && electron-builder --win",
+    "build:linux": "electron-vite build && electron-builder --linux",
     "postinstall": "electron-builder install-app-deps",
-    "build:unpack": "electron-vite build && electron-builder --dir"
+    "build:unpack": "electron-vite build && electron-builder --dir",
+    "build:web": "vite build --config vite.config.ts"
   },
   "dependencies": {
     "@radix-ui/react-dialog": "^1.1.1",
@@ -30,6 +37,7 @@
     "@radix-ui/react-toast": "^1.2.1",
     "@radix-ui/react-tooltip": "^1.1.2",
     "@seald-io/nedb": "^3.1.0",
+    "@supabase/supabase-js": "^2.112.4",
     "@tailwindcss/typography": "^0.5.20",
     "@tiptap/extension-character-count": "^2.27.2",
     "@tiptap/extension-color": "^2.27.2",
@@ -50,6 +58,7 @@
     "@tiptap/pm": "^2.6.6",
     "@tiptap/react": "^2.6.6",
     "@tiptap/starter-kit": "^2.6.6",
+    "@types/jszip": "^3.4.0",
     "@types/react-syntax-highlighter": "^15.5.13",
     "class-variance-authority": "^0.7.0",
     "clsx": "^2.1.1",
@@ -114,6 +123,20 @@
     "nsis": {
       "oneClick": false,
       "allowToChangeInstallationDirectory": true
+    },
+    "linux": {
+      "target": [
+        {
+          "target": "deb",
+          "arch": ["x64"]
+        }
+      ],
+      "category": "Utility",
+      "icon": "build/icons",
+      "description": "Personal AI Life OS for managing goals, projects, skills, habits, records, journal, relationships, and personal growth."
+    },
+    "deb": {
+      "priority": "optional"
     }
   }
 }

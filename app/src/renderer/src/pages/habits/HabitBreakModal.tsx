@@ -1,4 +1,5 @@
 import { useState } from 'react'
+import { createPortal } from 'react-dom'
 import { X, Calendar, Loader2 } from 'lucide-react'
 import { Habit, HabitBreak } from '../../types'
 import { logHabitActivity } from './HabitManager'

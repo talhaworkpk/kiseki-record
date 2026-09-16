@@ -1,16 +1,19 @@
 import { useState, useEffect, useRef } from 'react'
 import { useLocation } from 'react-router-dom'
-import { Check, X, Flame, Trophy, TrendingUp, Sparkles, Loader2, Plus, Clock, MoreVertical, Play, Pause, RotateCcw, StopCircle } from 'lucide-react'
+import { Check, X, Flame, Trophy, TrendingUp, Sparkles, Loader2, Plus, Clock, MoreVertical, Play, Pause, RotateCcw, StopCircle, Activity } from 'lucide-react'
+import * as Popover from '@radix-ui/react-popover'
 import { Tooltip, TooltipTrigger, TooltipContent } from '../../components/ui/tooltip'
-import { Habit, HabitDailyRecord, HabitTimerSession } from '../../types'
+import { Habit, HabitDailyRecord, HabitTimerSession, HabitDifficulty } from '../../types'
 import { calculateHabitStats, checkAutoMisses, runHabitMigrations, logHabitActivity, getEffectiveDeadline } from './HabitManager'
 import { NotificationEngine } from '../../lib/NotificationEngine'
+import { OllamaClient } from '../../lib/ai/OllamaClient'
 import HabitFormModal from './HabitFormModal'
 import HabitBreakModal from './HabitBreakModal'
 
 let globalState = {
   aiLoading: false,
-  aiReview: null as string | null
+  aiReview: null as string | null,
+  aiError: null as string | null
 }
 
 export default function Dashboard() {
@@ -24,6 +27,7 @@ export default function Dashboard() {
   
   const [aiReview, setAiReview] = useState<string | null>(globalState.aiReview)
   const [aiLoading, setAiLoading] = useState(globalState.aiLoading)
+  const [aiError, setAiError] = useState<string | null>(globalState.aiError)
 
   // Modals
   const [formOpen, setFormOpen] = useState(false)
@@ -33,9 +37,6 @@ export default function Dashboard() {
   // Toast / Undo
   const [toast, setToast] = useState<{message: string, onUndo?: () => void} | null>(null)
   const toastTimeout = useRef<any>(null)
-  const [isDragging, setIsDragging] = useState(false)
-  const [dragStartY, setDragStartY] = useState(0)
-  const [scrollTop, setScrollTop] = useState(0)
   const scrollContainerRef = useRef<HTMLDivElement>(null)
 
   // Timer State
@@ -104,6 +105,7 @@ export default function Dashboard() {
     // Sync with global state in case it changed while unmounted
     setAiLoading(globalState.aiLoading)
     setAiReview(globalState.aiReview)
+    setAiError(globalState.aiError)
 
     return () => {
       isMounted.current = false
@@ -176,34 +178,7 @@ export default function Dashboard() {
     toastTimeout.current = setTimeout(() => setToast(null), 5000)
   }
 
-  // Right-click drag scrolling handlers
-  const handleMouseDown = (e: React.MouseEvent) => {
-    if (e.button === 2) {
-      e.preventDefault()
-      setIsDragging(true)
-      setDragStartY(e.clientY)
-      setScrollTop(scrollContainerRef.current?.scrollTop || 0)
-    }
-  }
 
-  const handleMouseMove = (e: React.MouseEvent) => {
-    if (!isDragging) return
-    e.preventDefault()
-    const deltaY = e.clientY - dragStartY
-    if (scrollContainerRef.current) {
-      scrollContainerRef.current.scrollTop = scrollTop - deltaY
-    }
-  }
-
-  const handleMouseUp = () => {
-    setIsDragging(false)
-  }
-
-  const handleContextMenu = (e: React.MouseEvent) => {
-    if (isDragging) {
-      e.preventDefault()
-    }
-  }
 
   // Keyboard navigation
   const handleKeyDown = (e: React.KeyboardEvent) => {
@@ -267,6 +242,35 @@ export default function Dashboard() {
     }
   }
 
+  const handleUpdateDifficulty = async (habitId: string, difficultyLevel: HabitDifficulty | null) => {
+    try {
+      const existing = todayLogsMap[habitId]
+      
+      if (existing && existing._id) {
+        // @ts-ignore
+        await window.api.db.update('habitLogs', { _id: existing._id }, { $set: { difficultyLevel, updatedAt: Date.now() } })
+      } else {
+        if (!difficultyLevel) return
+        
+        const payload: Partial<HabitDailyRecord> = {
+          habitId,
+          date: todayStr,
+          status: 'pending',
+          difficultyLevel,
+          createdAt: Date.now(),
+          updatedAt: Date.now()
+        }
+        // @ts-ignore
+        await window.api.db.insert('habitLogs', payload)
+      }
+      
+      loadData()
+      showToast('Difficulty saved.')
+    } catch (err) {
+      console.error(err)
+    }
+  }
+
   const handleDelete = async (habitId: string, mode: 'archive' | 'delete') => {
     try {
       if (mode === 'archive') {
@@ -293,28 +297,98 @@ export default function Dashboard() {
     
     globalState.aiLoading = true
     globalState.aiReview = null
+    globalState.aiError = null
     
     if (isMounted.current) {
       setAiLoading(true)
       setAiReview(null)
+      setAiError(null)
     }
 
-    const prompt = `Act as an encouraging habit coach. I completed ${stats?.completedToday} out of ${stats?.totalToday} habits today. My global completion rate is ${stats?.completionRate}%. Give me a highly personalized, short daily review (max 3 sentences). Tell me what I did well and give one actionable tip for tomorrow. Don't use markdown.`
+    const completedHabits = habits.filter(h => todayLogsMap[h._id!]?.status === 'completed').map(h => h.title).join(', ');
+    const missedHabits = habits.filter(h => todayLogsMap[h._id!]?.status === 'missed').map(h => h.title).join(', ');
+    const pendingHabits = habits.filter(h => !todayLogsMap[h._id!] || todayLogsMap[h._id!]?.status === 'pending').map(h => h.title).join(', ');
+    
+    const prompt = `You are a concise, encouraging habit coach. 
+Today's Summary: Completed ${stats?.completedToday}/${stats?.totalToday} habits.
+Completed: ${completedHabits || 'None'}
+Missed: ${missedHabits || 'None'}
+Pending: ${pendingHabits || 'None'}
+Global Rate: ${stats?.completionRate}%
+
+Write a brief 3-sentence daily review. 
+Sentence 1: Praise them for the specific habits they completed.
+Sentence 2: Acknowledge ALL the specific habits they missed and the ones still pending today.
+Sentence 3: Give ONE short, actionable tip to help them complete their pending or missed habits tomorrow.
+Do NOT use markdown. Do NOT use bullet points.`
 
     try {
+      const controller = new AbortController();
+      const timeoutId = setTimeout(() => controller.abort(), 120000); // 2 minutes timeout
+
+      // Fetch available models first using the shared client
+      let selectedModel = '';
+      try {
+        selectedModel = await OllamaClient.getBestModel(controller.signal);
+      } catch (e: any) {
+        clearTimeout(timeoutId);
+        if (e.message === 'no_models_found') {
+          showToast('No models found in Ollama. Please run "ollama run llama3" in your terminal first.');
+        } else {
+          showToast('Cannot connect to Ollama. Please ensure Ollama is running locally.');
+        }
+        globalState.aiError = e.message;
+        if (isMounted.current) setAiError(e.message);
+        globalState.aiReview = null;
+        if (isMounted.current) setAiReview(null);
+        globalState.aiLoading = false;
+        if (isMounted.current) setAiLoading(false);
+        return;
+      }
+
       const res = await fetch('http://127.0.0.1:11434/api/generate', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ model: 'llama3.1:8b', prompt, stream: false })
-      })
-      const data = res.ok ? await res.json() : await (await fetch('http://127.0.0.1:11434/api/generate', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ model: 'llama3', prompt, stream: false })})).json()
+        body: JSON.stringify({ 
+          model: selectedModel, 
+          prompt, 
+          stream: false, 
+          keep_alive: 0,
+          options: {
+            num_ctx: 2048
+          }
+        }),
+        signal: controller.signal
+      });
+
+      if (!res.ok) {
+        let errBody = '';
+        try { errBody = await res.text(); } catch(e) {}
+        throw new Error(`generation_failed: ${res.status} ${errBody}`);
+      }
       
-      globalState.aiReview = data.response
-      if (isMounted.current) setAiReview(data.response)
-    } catch (err) {
-      const errMsg = 'Great job today! Consistency is the key to building strong habits. Try keeping this momentum tomorrow.'
-      globalState.aiReview = errMsg
-      if (isMounted.current) setAiReview(errMsg)
+      clearTimeout(timeoutId);
+      const data = await res.json();
+      
+      globalState.aiReview = data.response;
+      if (isMounted.current) setAiReview(data.response);
+    } catch (err: any) {
+      let errMsg = 'An error occurred while generating the review.';
+      if (err.name === 'AbortError') {
+        errMsg = 'Request timed out after 2 minutes. Ollama might be stuck or still downloading.';
+      } else if (err.message === 'connection_failed' || err.message.includes('fetch')) {
+        errMsg = 'Cannot connect to Ollama. Please ensure Ollama is running locally.';
+      } else if (err.message.startsWith('generation_failed')) {
+        errMsg = 'Ollama error: ' + err.message.replace('generation_failed: ', '');
+      } else {
+        console.error(err);
+      }
+      
+      showToast('Error generating AI review. See details below.');
+      globalState.aiError = errMsg;
+      if (isMounted.current) setAiError(errMsg);
+      globalState.aiReview = null;
+      if (isMounted.current) setAiReview(null);
     } finally {
       globalState.aiLoading = false
       if (isMounted.current) setAiLoading(false)
@@ -326,12 +400,7 @@ export default function Dashboard() {
   return (
     <div 
       ref={scrollContainerRef}
-      className={`h-full overflow-y-auto p-8 animate-in fade-in duration-500 relative ${isDragging ? 'cursor-grabbing' : 'cursor-grab'}`}
-      onMouseDown={handleMouseDown}
-      onMouseMove={handleMouseMove}
-      onMouseUp={handleMouseUp}
-      onMouseLeave={handleMouseUp}
-      onContextMenu={handleContextMenu}
+      className="h-full overflow-y-auto p-8 pb-32 animate-in fade-in duration-500 relative"
       onKeyDown={handleKeyDown}
       tabIndex={0}
     >
@@ -415,6 +484,15 @@ export default function Dashboard() {
                 const s = diff % 60
                 return `${h.toString().padStart(2, '0')}:${m.toString().padStart(2, '0')}:${s.toString().padStart(2, '0')}`
               }
+              
+              const currentDifficulty = statusLog?.difficultyLevel
+              const diffIconMap: Record<string, { icon: string, color: string }> = {
+                'easy': { icon: '🟢', color: 'text-green-500' },
+                'slight': { icon: '🟡', color: 'text-yellow-500' },
+                'difficult': { icon: '🟠', color: 'text-orange-500' },
+                'very_difficult': { icon: '🔴', color: 'text-red-500' },
+                'couldnt_resist': { icon: '⚫', color: 'text-gray-900 dark:text-gray-400' }
+              }
 
               return (
                 <div key={h._id} id={`habit-${h._id}`} className={`flex items-center justify-between p-4 rounded-2xl border transition-all duration-1000 ${status === 'completed' ? 'bg-green-500/5 border-green-500/30 shadow-inner' : status === 'missed' ? 'bg-red-500/5 border-red-500/30 opacity-75' : activeTimerHabit === h._id ? 'bg-blue-500/10 border-blue-500/50 shadow-md ring-2 ring-blue-500/20' : 'bg-card border-border hover:border-primary/50'}`}>
@@ -495,6 +573,38 @@ export default function Dashboard() {
                       <X size={20} strokeWidth={status === 'missed' ? 3 : 2} />
                     </button>
                     
+                    <Popover.Root>
+                      <Popover.Trigger asChild>
+                        <button 
+                          className={`w-10 h-10 ml-1 rounded-xl flex items-center justify-center transition-transform hover:scale-110 ${currentDifficulty ? 'bg-accent shadow-inner' : 'hover:bg-accent text-muted-foreground hover:text-foreground'}`}
+                          title="Record Resistance"
+                        >
+                          {currentDifficulty && diffIconMap[currentDifficulty] ? (
+                            <span className="text-sm">{diffIconMap[currentDifficulty].icon}</span>
+                          ) : (
+                            <Activity size={18} />
+                          )}
+                        </button>
+                      </Popover.Trigger>
+                      <Popover.Portal>
+                        <Popover.Content sideOffset={5} className="z-[9999] bg-card border border-border shadow-2xl rounded-2xl p-4 w-64 animate-in zoom-in-95 data-[state=closed]:animate-out data-[state=closed]:fade-out-0 data-[state=closed]:zoom-out-95">
+                          <div className="text-sm font-bold mb-3 text-center">How strong was your urge to skip this habit?</div>
+                          <div className="space-y-1">
+                            <button onClick={() => handleUpdateDifficulty(h._id!, 'easy')} className="w-full flex items-center gap-2 p-2 hover:bg-accent rounded-lg text-sm text-left"><span className="text-base">🟢</span> <span className="font-medium">Easy (None)</span></button>
+                            <button onClick={() => handleUpdateDifficulty(h._id!, 'slight')} className="w-full flex items-center gap-2 p-2 hover:bg-accent rounded-lg text-sm text-left"><span className="text-base">🟡</span> <span className="font-medium">Slight Resistance</span></button>
+                            <button onClick={() => handleUpdateDifficulty(h._id!, 'difficult')} className="w-full flex items-center gap-2 p-2 hover:bg-accent rounded-lg text-sm text-left"><span className="text-base">🟠</span> <span className="font-medium">Difficult</span></button>
+                            <button onClick={() => handleUpdateDifficulty(h._id!, 'very_difficult')} className="w-full flex items-center gap-2 p-2 hover:bg-accent rounded-lg text-sm text-left"><span className="text-base">🔴</span> <span className="font-medium">Very Difficult</span></button>
+                            <button onClick={() => handleUpdateDifficulty(h._id!, 'couldnt_resist')} className="w-full flex items-center gap-2 p-2 hover:bg-accent rounded-lg text-sm text-left"><span className="text-base">⚫</span> <span className="font-medium">Couldn't Resist</span></button>
+                          </div>
+                          {currentDifficulty && (
+                            <div className="mt-3 pt-3 border-t border-border">
+                              <button onClick={() => handleUpdateDifficulty(h._id!, null)} className="w-full py-2 bg-accent text-muted-foreground hover:text-foreground rounded-lg text-xs font-bold uppercase tracking-widest">Clear</button>
+                            </div>
+                          )}
+                        </Popover.Content>
+                      </Popover.Portal>
+                    </Popover.Root>
+
                     <div className="relative group ml-1">
                       <button className="w-8 h-10 flex items-center justify-center text-muted-foreground hover:text-foreground">
                         <MoreVertical size={18}/>
@@ -522,27 +632,40 @@ export default function Dashboard() {
 
         {/* AI Daily Review */}
         <div className="lg:col-span-1">
-          <div className="bg-gradient-to-b from-primary/10 to-background border border-primary/20 p-6 rounded-3xl shadow-sm relative overflow-hidden">
-            <div className="absolute top-0 right-0 p-4 opacity-10 pointer-events-none text-primary"><Sparkles size={120}/></div>
+          <div className="bg-gradient-to-br from-indigo-500/20 via-purple-500/10 to-pink-500/20 border border-indigo-500/30 p-6 rounded-3xl shadow-[0_0_40px_-15px_rgba(99,102,241,0.3)] relative overflow-hidden group">
+            <div className="absolute -top-10 -right-10 opacity-20 pointer-events-none text-indigo-500 blur-xl group-hover:blur-md transition-all duration-700">
+              <Sparkles size={180}/>
+            </div>
             
-            <h3 className="text-xl font-black mb-4 flex items-center gap-2 text-primary relative z-10"><Sparkles size={20}/> AI Daily Review</h3>
+            <h3 className="text-xl font-black mb-4 flex items-center gap-2 text-indigo-500 relative z-10">
+              <Sparkles size={20} className="animate-pulse"/> AI Daily Review
+            </h3>
             
             {stats.completedToday > 0 || Object.keys(todayLogsMap).length > 0 ? (
               <div className="relative z-10">
                 {aiLoading ? (
-                  <div className="flex items-center gap-3 text-primary py-4"><Loader2 size={16} className="animate-spin"/> Analyzing your day...</div>
+                  <div className="flex flex-col items-center justify-center py-6 text-indigo-500 space-y-3">
+                    <Loader2 size={24} className="animate-spin"/>
+                    <span className="text-sm font-bold tracking-widest uppercase animate-pulse">Consulting AI...</span>
+                  </div>
+                ) : aiError ? (
+                  <div className="text-sm leading-relaxed text-red-500 font-medium bg-red-500/10 backdrop-blur-md p-5 rounded-2xl border border-red-500/20 shadow-inner">
+                    <div className="font-bold mb-2">Error Generating Review</div>
+                    <div className="select-text whitespace-pre-wrap">{aiError}</div>
+                    <button onClick={() => { setAiError(null); globalState.aiError = null; }} className="mt-4 px-3 py-1.5 bg-red-500/20 hover:bg-red-500/30 rounded-lg text-xs font-bold transition-colors">Dismiss</button>
+                  </div>
                 ) : aiReview ? (
-                  <div className="text-sm leading-relaxed text-foreground/90 font-medium bg-background/50 p-4 rounded-xl border border-border/50">
+                  <div className="text-sm leading-relaxed text-foreground font-medium bg-background/60 backdrop-blur-md p-5 rounded-2xl border border-indigo-500/20 shadow-inner select-text">
                     {aiReview}
                   </div>
                 ) : (
-                  <button onClick={generateAIReview} className="w-full py-3 bg-primary text-primary-foreground rounded-xl font-bold hover:scale-[1.02] transition-transform shadow-lg shadow-primary/20 flex items-center justify-center gap-2">
-                    <Sparkles size={18}/> Generate Review
+                  <button onClick={generateAIReview} className="w-full py-3.5 bg-gradient-to-r from-indigo-500 to-purple-500 text-white rounded-xl font-bold hover:scale-[1.02] hover:shadow-[0_0_20px_-5px_rgba(99,102,241,0.5)] transition-all flex items-center justify-center gap-2">
+                    <Sparkles size={18}/> Generate Insights
                   </button>
                 )}
               </div>
             ) : (
-              <p className="text-muted-foreground text-sm relative z-10 bg-background/50 p-4 rounded-xl">Complete or miss some habits today to get your personalized AI review.</p>
+              <p className="text-muted-foreground text-sm relative z-10 bg-background/50 backdrop-blur-sm p-4 rounded-xl border border-border/50">Complete or miss some habits today to get your personalized AI review.</p>
             )}
           </div>
         </div>

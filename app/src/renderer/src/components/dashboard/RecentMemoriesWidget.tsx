@@ -61,7 +61,7 @@ export function RecentMemoriesWidget({ data }: any) {
             const handleDelete = async () => {
               try {
                 // @ts-ignore
-                await window.api.db.remove('records', selectedMemory._id)
+                await window.api.db.remove('records', { _id: selectedMemory._id })
                 setSelectedMemory(null)
                 // Reload the widget data
                 window.location.reload()

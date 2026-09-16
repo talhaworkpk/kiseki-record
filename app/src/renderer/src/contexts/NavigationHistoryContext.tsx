@@ -18,7 +18,7 @@ export function NavigationHistoryProvider({ children }: { children: ReactNode })
   const [backStack, setBackStack] = useState<string[]>([])
   const [forwardStack, setForwardStack] = useState<string[]>([])
   const isInternalNavigation = useRef(false)
-  const previousLocation = useRef(location.pathname)
+  const previousLocation = useRef(location.pathname + location.search)
   const isInitialized = useRef(false)
 
   const canGoBack = backStack.length > 0
@@ -37,14 +37,15 @@ export function NavigationHistoryProvider({ children }: { children: ReactNode })
       return
     }
 
-    // Only add to history if the location actually changed
-    if (location.pathname !== previousLocation.current) {
+    // Only add to history if the full location actually changed
+    const currentPath = location.pathname + location.search
+    if (currentPath !== previousLocation.current) {
       // Capture the previous location BEFORE updating
       const locationToAdd = previousLocation.current
 
       setBackStack(prev => {
         // Don't add if it's the same as the last item in back stack
-        if (prev.length > 0 && prev[prev.length - 1] === location.pathname) {
+        if (prev.length > 0 && prev[prev.length - 1] === currentPath) {
           return prev
         }
         // Add previous location to back stack
@@ -53,9 +54,9 @@ export function NavigationHistoryProvider({ children }: { children: ReactNode })
         setForwardStack([])
         return newBackStack
       })
-      previousLocation.current = location.pathname
+      previousLocation.current = currentPath
     }
-  }, [location.pathname])
+  }, [location.pathname, location.search])
 
   const addToHistory = useCallback((_path: string) => {
     // This is called when user clicks on navigation links
@@ -70,7 +71,7 @@ export function NavigationHistoryProvider({ children }: { children: ReactNode })
       const previousPath = newBackStack.pop()!
       
       // Add current location to forward stack
-      setForwardStack(forwardPrev => [location.pathname, ...forwardPrev])
+      setForwardStack(forwardPrev => [location.pathname + location.search, ...forwardPrev])
       
       // Mark as internal navigation to prevent history tracking
       isInternalNavigation.current = true
@@ -81,7 +82,7 @@ export function NavigationHistoryProvider({ children }: { children: ReactNode })
       
       return newBackStack
     })
-  }, [backStack.length, location.pathname, navigate])
+  }, [backStack.length, location.pathname, location.search, navigate])
 
   const goForward = useCallback(() => {
     if (forwardStack.length === 0) return
@@ -91,7 +92,7 @@ export function NavigationHistoryProvider({ children }: { children: ReactNode })
       const nextPath = newForwardStack.shift()!
       
       // Add current location to back stack
-      setBackStack(backPrev => [...backPrev, location.pathname])
+      setBackStack(backPrev => [...backPrev, location.pathname + location.search])
       
       // Mark as internal navigation to prevent history tracking
       isInternalNavigation.current = true
