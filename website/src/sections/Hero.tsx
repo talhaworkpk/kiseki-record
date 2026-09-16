@@ -164,7 +164,17 @@ export default function Hero() {
             className="px-8 py-4 glass-card rounded-xl font-semibold text-lg hover:bg-accent transition-all duration-300 flex items-center gap-2"
           >
             <Sparkles size={20} />
-            View Features
+            Features
+          </a>
+          
+          <a
+            href="./demo/"
+            target="_blank"
+            rel="noopener noreferrer"
+            className="px-8 py-4 bg-primary/10 border border-primary/20 text-primary rounded-xl font-semibold text-lg hover:bg-primary hover:text-white transition-all duration-300 flex items-center gap-2 shadow-sm hover:shadow-md"
+          >
+            <Sparkles size={20} />
+            Try Web Demo
           </a>
         </motion.div>
 
